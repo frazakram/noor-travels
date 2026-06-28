@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-sand-50 text-noor-900;
+  }
+}
+
+.font-arabic {
+  font-family: "Amiri", serif;
+  line-height: 2;
+  font-size: 1.35rem;
+}
+
+.card {
+  @apply rounded-2xl border border-noor-100 bg-white p-5 shadow-sm;
+}
+
+.btn-primary {
+  @apply rounded-xl bg-noor-700 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-noor-800 disabled:opacity-50;
+}
+
+.input {
+  @apply w-full rounded-xl border border-noor-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-noor-500 focus:ring-2 focus:ring-noor-200;
+}

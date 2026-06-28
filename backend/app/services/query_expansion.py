@@ -1,0 +1,501 @@
+"""Dynamic query expansion and intent routing — not per-question hardcoding."""
+import re
+from typing import Any
+
+# Thematic clusters: pattern → search terms, dua DB categories, curated Quran verses
+# Higher priority wins when multiple themes match (specific beats generic).
+THEMATIC_CLUSTERS: list[dict[str, Any]] = [
+    {
+        "id": "fitrah",
+        "priority": 90,
+        "pattern": r"fitr|fitrah|fitrana|zakat\s*ul?\s*fitr|sadaqat\s*ul?\s*fitr|فطرہ|فطر|फ़ितर|फितरा",
+        "terms": ["fitr", "fitrah", "zakat", "charity", "dates", "barley", "eid", "poor", "ramadan"],
+        "dua_categories": [],
+        "verse_keys": ["2:267", "9:60"],
+        "hadith_refs": ["Sahih al-Bukhari 1451", "Sahih al-Bukhari 1452", "Sahih al-Bukhari 1453"],
+    },
+    {
+        "id": "zakat_rate",
+        "priority": 85,
+        "pattern": (
+            r"zakat|zakah|"
+            r"(?:percentage|percent|how\s+much).{0,40}(?:wealth|money|spend|pay)|"
+            r"(?:wealth|money).{0,40}(?:percentage|percent|spend|pay|zakat)|"
+            r"fortieth|2\.5\s*%|one.fortieth|nisab"
+        ),
+        "terms": ["zakat", "charity", "wealth", "fortieth", "poor", "spend", "silver", "gold", "obligation"],
+        "dua_categories": [],
+        "verse_keys": ["9:60", "2:267"],
+        "hadith_refs": ["Sahih al-Bukhari 1405"],
+    },
+    {
+        "id": "study",
+        "priority": 50,
+        "pattern": r"exam|test|stud(y|ies)|school|college|university|result|marks|memory",
+        "terms": ["knowledge", "learn", "teach", "wisdom", "easy", "difficulty", "understand", "success", "grant"],
+        "dua_categories": ["study", "knowledge", "exam"],
+        "verse_keys": ["20:114", "26:83", "3:8"],
+    },
+    {
+        "id": "travel",
+        "priority": 50,
+        "pattern": r"travel|journey|safar|سفر|trip|flight|vehicle|mounting",
+        "terms": ["travel", "journey", "safety", "vehicle", "leaving", "home", "return"],
+        "dua_categories": ["travel"],
+        "verse_keys": [],
+    },
+    {
+        "id": "patience",
+        "priority": 50,
+        "pattern": r"patien|sabr|صبر|सब्र|hardship|difficult",
+        "terms": ["patient", "patience", "steadfast", "persevere", "trial", "hardship", "ease"],
+        "dua_categories": ["patience"],
+        "verse_keys": ["2:153", "2:155", "3:200"],
+    },
+    {
+        "id": "purpose",
+        "priority": 50,
+        "pattern": r"purpose|meaning of life|why.*(exist|created|human)",
+        "terms": ["worship", "created", "mankind", "test", "deeds", "aimlessly"],
+        "dua_categories": [],
+        "verse_keys": ["51:56", "2:30", "23:115"],
+    },
+    {
+        "id": "marriage",
+        "priority": 50,
+        "pattern": r"marriage|wedding|nikah|نکاح|shadi|शादी",
+        "terms": ["marriage", "spouse", "wife", "husband", "mercy", "tranquillity"],
+        "dua_categories": ["marriage"],
+        "verse_keys": ["30:21", "25:74"],
+    },
+    {
+        "id": "death",
+        "priority": 50,
+        "pattern": r"death|dying|grave|janaz|funeral|موت",
+        "terms": ["death", "grave", "hereafter", "mercy", "forgive"],
+        "dua_categories": ["death"],
+        "verse_keys": [],
+    },
+    {
+        "id": "forgiveness",
+        "priority": 50,
+        "pattern": r"forgive|mercy|repent|tawbah|توبہ",
+        "terms": ["forgive", "mercy", "repent", "sin", "pardon"],
+        "dua_categories": ["forgiveness"],
+        "verse_keys": ["39:53", "2:286"],
+    },
+    {
+        "id": "rizq",
+        "priority": 20,
+        "pattern": r"rizq|sustenance|provision|job|wealth|money|poverty",
+        "terms": ["provision", "sustenance", "wealth", "poor", "charity", "rizq"],
+        "dua_categories": ["rizq"],
+        "verse_keys": ["2:201", "28:24"],
+    },
+    {
+        "id": "health",
+        "priority": 50,
+        "pattern": r"health|sick|illness|heal|شفا",
+        "terms": ["heal", "health", "sick", "cure", "mercy"],
+        "dua_categories": ["health"],
+        "verse_keys": [],
+    },
+    {
+        "id": "anxiety",
+        "priority": 50,
+        "pattern": r"anxiety|worry|stress|fear|afraid|غم",
+        "terms": ["anxiety", "fear", "grief", "ease", "peace", "trust", "heart"],
+        "dua_categories": ["anxiety"],
+        "verse_keys": ["13:28", "94:5"],
+    },
+    {
+        "id": "parents",
+        "priority": 50,
+        "pattern": r"parent|mother|father|والدین",
+        "terms": ["parent", "mother", "father", "kindness", "mercy"],
+        "dua_categories": [],
+        "verse_keys": ["17:23", "31:14"],
+    },
+    {
+        "id": "sleep",
+        "priority": 50,
+        "pattern": r"sleep|bedtime|before\s+sleep|going\s+to\s+bed|bed\s*time|at\s+night|سونے|نیند|सोने|सोना",
+        "terms": [
+            "mulk", "ikhlas", "falaq", "nas", "kursi", "sleep", "bed", "night",
+            "recite", "read", "protect", "grave", "blow", "palms",
+        ],
+        "dua_categories": [],
+        "verse_keys": ["67:1", "2:255", "112:1", "113:1", "114:1"],
+        "hadith_refs": ["Sahih al-Bukhari 5526", "Sahih al-Bukhari 247"],
+    },
+    {
+        "id": "salah",
+        "priority": 50,
+        "pattern": r"salah|salat|namaz|نماز|नमाज|prayer\s*time|five\s+prayer",
+        "terms": ["prayer", "salah", "establish", "mosque", "congregation", "wudu"],
+        "dua_categories": [],
+        "verse_keys": ["2:238", "29:45", "20:14"],
+        "hadith_refs": [],
+    },
+    {
+        "id": "ramadan",
+        "priority": 30,
+        "pattern": r"ramadan|ramzan|fasting|fast\b|roza|روزہ|रोज़ा|iftar|suhoor",
+        "terms": ["fast", "fasting", "ramadan", "month", "break", "poor", "taqwa"],
+        "dua_categories": [],
+        "verse_keys": ["2:183", "2:185", "2:187"],
+        "hadith_refs": [],
+    },
+    {
+        "id": "hajj",
+        "priority": 50,
+        "pattern": r"hajj|haj|umrah|عمرہ|حج|हज",
+        "terms": ["hajj", "pilgrimage", "kaaba", "arafat", "tawaf", "ihram"],
+        "dua_categories": [],
+        "verse_keys": ["2:196", "3:97", "22:27"],
+        "hadith_refs": [],
+    },
+    {
+        "id": "charity",
+        "priority": 40,
+        "pattern": r"zakat|zakah|charity|sadaq|صدقہ|दान|poor|needy",
+        "terms": ["charity", "zakat", "poor", "needy", "spend", "wealth"],
+        "dua_categories": [],
+        "verse_keys": ["2:267", "9:60", "57:7"],
+        "hadith_refs": [],
+    },
+    {
+        "id": "neighbors",
+        "priority": 50,
+        "pattern": r"neighbor|neighbour|پڑوس|पड़ोस",
+        "terms": ["neighbor", "neighbour", "rights", "kindness", "harm"],
+        "dua_categories": [],
+        "verse_keys": ["4:36", "49:10"],
+        "hadith_refs": ["Sahih al-Bukhari 6014"],
+    },
+]
+
+THEME_SUMMARIES: dict[str, dict[str, str]] = {
+    "fitrah": {
+        "en": (
+            "Zakat al-Fitr (Fitrana) is obligatory on every Muslim — young or old, male or female. "
+            "The Prophet ﷺ prescribed one Sa' of dates or barley per person (about 3 kg), paid before "
+            "Eid al-Fitr prayer (Sahih al-Bukhari 1451–1453). Many communities pay a fixed cash amount "
+            "set locally each Ramadan — confirm the rate with your local mosque or scholar."
+        ),
+        "ur": (
+            "زکوٰۃُ الفطر (فطرانہ) ہر مسلمان پر واجب ہے — چھوٹے بڑے، مرد و عورت سب پر۔ "
+            "نبی ﷺ نے فی شخص ایک صاع کھجور یا جو کا حکم دیا، عید الفطر کی نماز سے پہلے ادا کرنا ہے "
+            "(صحیح بخاری 1451–1453)۔ بہت سی جماعتیں نقد رقم ادا کرتی ہیں — اپنے علاقے کی مسجد یا "
+            "عالم سے رقم معلوم کریں۔"
+        ),
+        "hi": (
+            "ज़कातुल फ़ित्र (फ़ितराना) हर मुसलमान पर वाजिब है — बच्चे-बड़े, पुरुष-महिला सभी पर। "
+            "नबी ﷺ ने प्रति व्यक्ति एक साअ खजूर या जौ का हुक्म दिया, ईदुल फ़ित्र की नमाज़ से पहले "
+            "(सहीह बुखारी 1451–1453)। कई समुदाय नकद राशि देते हैं — अपने इलाके की मस्जिद या आलिम से "
+            "दर जानें।"
+        ),
+    },
+    "zakat_rate": {
+        "en": (
+            "Zakah on qualifying wealth is 2.5% (one-fortieth) when it reaches nisab and has been held "
+            "for one lunar year — it is not a Ramadan-only payment. Abu Bakr's letter citing the Prophet ﷺ "
+            "states: 'For silver the Zakat is one-fortieth of the lot (i.e. 2.5%)' (Sahih al-Bukhari 1405). "
+            "Livestock and crops have different rates. See sources for details."
+        ),
+        "ur": (
+            "قابلِ زکوٰۃ مال پر زکوٰۃ 2.5% (چالیسواں حصہ) ہے جب نصاب پورا ہو اور ایک قمری سال گزر جائے — "
+            "یہ صرف رمضان کی ادائیگی نہیں۔ حضرت ابوبکرؓ کا خطوط نبی ﷺ کے مطابق: 'چاندی کی زکوٰۃ "
+            "مال کا چالیسواں حصہ (یعنی 2.5%)' (صحیح بخاری 1405)۔ مویشی اور فصل کی شرح الگ ہے۔"
+        ),
+        "hi": (
+            "क़ाबिल ज़कात धन पर ज़कात 2.5% (चालीसवाँ हिस्सा) है जब निसाब पूरा हो और एक क़मरी साल बीत जाए — "
+            "यह सिर्फ़ रमज़ान की अदायगी नहीं। अबू बक्र का ख़त नबी ﷺ के मुताबिक़: 'चाँदी की ज़कात "
+            "माल का चालीसवाँ हिस्सा (यानी 2.5%)' (सहीह बुखारी 1405)। पशु और फ़सल की दर अलग है।"
+        ),
+    },
+    "study": {
+        "en": (
+            "There is no single fixed 'exam dua' in the Quran, but Muslims often ask Allah for knowledge "
+            "and ease — especially the dua in Surah Ta-Ha (20:114): 'My Lord, increase me in knowledge.' "
+            "See sources for related verses and hadith on seeking knowledge."
+        ),
+        "ur": (
+            "قرآن میں کوئی ایک مقررہ 'امتحان کی دعا' نہیں، مگر مسلمان اکثر علم اور آسانی کے لیے دعا کرتے ہیں — "
+            "خاص طور پر سورہ طہ (20:114) کی دعا: 'اے میرے رب! میرے علم میں اضافہ فرما۔' "
+            "علم کے متعلق آیات و احادیث کے لیے ذرائع دیکھیں۔"
+        ),
+        "hi": (
+            "कुरान में कोई एक निश्चित 'परीक्षा की दुआ' नहीं है, पर मुसलमान अक्सर ज्ञान और आसानी के लिए दुआ करते हैं — "
+            "खासकर सूरह तहा (20:114): 'ऐ मेरे रब! मेरे ज्ञान में इज़ाफा कर।' "
+            "संबंधित आयतें और हदीस के लिए स्रोत देखें।"
+        ),
+    },
+    "sleep": {
+        "en": (
+            "Before sleep, the Prophet ﷺ would recite Surah Al-Mulk (67), Ayat al-Kursi (2:255), and the last three "
+            "surahs — Al-Ikhlas, Al-Falaq, and An-Nas (112–114) — then blow into his palms and wipe over his body. "
+            "Al-Mulk is widely recommended for protection from the punishment of the grave; the three Quls seek "
+            "Allah's protection through the night."
+        ),
+        "ur": (
+            "سونے سے پہلے نبی ﷺ سورہ الملک (67)، آیت الکرسی (2:255)، اور آخری تین سورتیں — اخلاص، فلق اور ناس "
+            "(112–114) — پڑھتے، پھر دونوں ہاتھوں پر پھونک مار کر جسم پر پھیرتے تھے۔ الملک قبر کے عذاب سے بچاؤ "
+            "کے لیے مشہور ہے؛ تین قل رات بھر اللہ کی حفاظت کے لیے ہیں۔"
+        ),
+        "hi": (
+            "सोने से पहले नबी ﷺ सूरह अल-मुल्क (67), आयतुल कुर्सी (2:255), और आखिरी तीन सूरतें — इख़्लास, फ़लक़ "
+            "और नास (112–114) — पढ़ते, फिर हथेलियों पर फूंक मारकर शरीर पर मलते थे। अल-मुल्क क़ब्र के अज़ाब से "
+            "बचाव के लिए प्रसिद्ध है; तीन क़ुल रात भर अल्लाह की हिफ़ाज़त के लिए हैं।"
+        ),
+    },
+    "salah": {
+        "en": (
+            "The Quran commands believers to establish prayer (salah) at appointed times (4:103, 2:238) and describes "
+            "it as a defining trait of the faithful (70:22–23). Prayer connects a Muslim to Allah throughout the day."
+        ),
+        "ur": (
+            "قرآن مومنوں کو مقررہ اوقات پر نماز قائم کرنے کا حکم دیتا ہے (4:103، 2:238) اور اسے مومنین کی علامت "
+            "قرار دیتا ہے (70:22–23)۔ نماز دن بھر اللہ سے تعلق قائم رکھتی ہے۔"
+        ),
+        "hi": (
+            "कुरान ईमान वालों को निर्धारित समय पर नमाज़ क़ायम करने का हुक्म देता है (4:103, 2:238) और इसे "
+            "मोमिनों की पहचान बताता है (70:22–23)। नमाज़ पूरे दिन अल्लाह से राब्ता बनाए रखती है।"
+        ),
+    },
+    "ramadan": {
+        "en": (
+            "Fasting in Ramadan is ordained in the Quran (2:183–185) so believers may attain taqwa (God-consciousness). "
+            "It teaches patience, gratitude, and empathy for those who are hungry."
+        ),
+        "ur": (
+            "رمضان میں روزہ قرآن میں فرض کیا گیا (2:183–185) تاکہ لوگ تقویٰ حاصل کریں۔ یہ صبر، شکرگزاری "
+            "اور بھوکوں کے احساس کی تعلیم دیتا ہے۔"
+        ),
+        "hi": (
+            "रमज़ान में रोज़ा कुरान में फ़र्ज़ किया गया (2:183–185) ताकि लोग तक़वा पाएँ। यह सब्र, शुक्र "
+            "और भूखों के प्रति सहानुभूति सिखाता है।"
+        ),
+    },
+    "hajj": {
+        "en": (
+            "Hajj to the Sacred House is a pillar of Islam for those who are able (3:97). The Quran links it to "
+            "the legacy of Ibrahim (AS) and unity of the ummah at Arafat and Mina."
+        ),
+        "ur": (
+            "استطاعت رکھنے والوں پر بیت اللہ کا حج اسلام کا رکن ہے (3:97)۔ قرآن اسے حضرت ابراہیم کی میراث "
+            "اور عرفات و منیٰ میں امت کی یکجہتی سے جوڑتا ہے۔"
+        ),
+        "hi": (
+            "उस पर जिसकी सामर्थ्य हो, बैतुल्लाह का हज्ज इस्लाम का स्तंभ है (3:97)। कुरान इसे इब्राहीम (अलै.) "
+            "की विरासत और अरफात व मिना में उम्मत की एकता से जोड़ता है।"
+        ),
+    },
+    "charity": {
+        "en": (
+            "Zakat and charity (sadaqah) purify wealth and support the needy (9:60, 2:267). The Quran praises those "
+            "who spend in Allah's cause without extravagance or stinginess."
+        ),
+        "ur": (
+            "زکوٰۃ اور صدقہ مال کو پاک کرتے ہیں اور محتاجوں کی مدد کرتے ہیں (9:60، 2:267)۔ قرآن ان کی تعریف "
+            "کرتا ہے جو اللہ کی راہ میں بے جا خرچی یا کنجوسی کے بغیر خرچ کرتے ہیں۔"
+        ),
+        "hi": (
+            "ज़कात और सदक़ा धन को पाक करते हैं और ज़रूरतमंदों की मदद करते हैं (9:60, 2:267)। कुरान उनकी "
+            "तारीफ़ करता है जो अल्लाह की राह में फिज़ूलख़र्ची या कंजूसी के बिना खर्च करते हैं।"
+        ),
+    },
+    "neighbors": {
+        "en": (
+            "The Quran commands kindness to neighbors alongside parents and relatives (4:36). The Prophet ﷺ "
+            "emphasized neighbors' rights so strongly that companions thought they might inherit from them."
+        ),
+        "ur": (
+            "قرآن والدین اور رشتہ داروں کے ساتھ پڑوسیوں کے ساتھ حسن سلوک کا حکم دیتا ہے (4:36)۔ نبی ﷺ نے "
+            "پڑوسیوں کے حقوق پر اتنا زور دیا کہ صحابہ سمجھنے لگے شاید انہیں وراثت ملے گی۔"
+        ),
+        "hi": (
+            "कुरान माता-पिता और रिश्तेदारों के साथ पड़ोसियों के प्रति भलाई का हुक्म देता है (4:36)। नबी ﷺ "
+            "ने पड़ोसियों के हक़ पर इतना ज़ोर दिया कि सहाबा को लगा शायद उन्हें विरासत मिलेगी।"
+        ),
+    },
+    "purpose": {
+        "en": (
+            "The Quran teaches that humans were created to worship Allah alone (51:56) and as trustees on earth (2:30). "
+            "Life is a test of deeds and gratitude — not aimless existence."
+        ),
+        "ur": (
+            "قرآن سکھاتا ہے کہ انسان صرف اللہ کی عبادت کے لیے پیدا ہوئے (51:56) اور زمین کے نائب ہیں (2:30)۔ "
+            "زندگی اعمال اور شکر کا امتحان ہے — بے مقصد وجود نہیں۔"
+        ),
+        "hi": (
+            "कुरान सिखाता है कि इंसान केवल अल्लाह की इबादत के लिए पैदा हुए (51:56) और ज़मीन के नाइब हैं (2:30)। "
+            "ज़िंदगी अमल और शुक्र की आज़माइश है — बेमतलब वजूद नहीं।"
+        ),
+    },
+    "forgiveness": {
+        "en": (
+            "Allah's mercy encompasses all things (7:156). The Quran repeatedly invites believers to seek forgiveness — "
+            "Allah loves those who repent and purify themselves (2:222)."
+        ),
+        "ur": (
+            "اللہ کی رحمت ہر چیز پر محیط ہے (7:156)۔ قرآن بار بار بندوں کو مغفرت طلب کرنے کی دعوت دیتا ہے — "
+            "اللہ توبہ کرنے والوں سے محبت کرتا ہے (2:222)۔"
+        ),
+        "hi": (
+            "अल्लाह की रहमत हर चीज़ पर छाई है (7:156)। कुरान बार-बार बंदों को माफ़ी माँगने की दावत देता है — "
+            "अल्लाह तौबा करने वालों से महब्बत करता है (2:222)।"
+        ),
+    },
+    "marriage": {
+        "en": (
+            "The Quran describes marriage as a bond of love and mercy between spouses (30:21). Believers pray for "
+            "righteous partners and tranquil homes (25:74)."
+        ),
+        "ur": (
+            "قرآن نکاح کو میاں بیوی کے درمیان محبت اور رحمت کا بندھن قرار دیتا ہے (30:21)۔ مومن نیک ساتھی "
+            "اور پرسکون گھر کی دعا کرتے ہیں (25:74)۔"
+        ),
+        "hi": (
+            "कुरान निकाह को पति-पत्नी के बीच मोहब्बत और रहमत का बंधन बताता है (30:21)। मोमिन नेक साथी "
+            "और सुकून भरे घर की दुआ करते हैं (25:74)।"
+        ),
+    },
+    "anxiety": {
+        "en": (
+            "The Quran reminds us that with hardship comes ease (94:5–6) and that hearts find rest in the remembrance "
+            "of Allah (13:28). Trust in Allah eases worry and grief."
+        ),
+        "ur": (
+            "قرآن یاد دہانی کراتا ہے کہ مشکل کے ساتھ آسانی ہے (94:5–6) اور اللہ کے ذکر سے دلوں کو سکون ملتا ہے "
+            "(13:28)۔ اللہ پر بھروسہ غم و فکر کو کم کرتا ہے۔"
+        ),
+        "hi": (
+            "कुरान याद दिलाता है कि मुश्किल के साथ आसानी है (94:5–6) और अल्लाह के ज़िक्र से दिलों को सुकून "
+            "मिलता है (13:28)। अल्लाह पर भरोसा ग़म और फिक्र को कम करता है।"
+        ),
+    },
+    "parents": {
+        "en": (
+            "The Quran commands excellence to parents — especially in old age — and forbids even saying 'uff' to them (17:23). "
+            "Paradise lies at the mother's feet according to prophetic teaching."
+        ),
+        "ur": (
+            "قرآن والدین کے ساتھ احسان کا حکم دیتا ہے — خاص طور پر بڑھاپے میں — اور 'اف' تک کہنے سے منع کرتا ہے "
+            "(17:23)۔ نبوی تعلیم کے مطابق جنت ماؤں کے قدموں تلے ہے۔"
+        ),
+        "hi": (
+            "कुरान माता-पिता के साथ अहसान का हुक्म देता है — खासकर बुढ़ापे में — और 'उफ़' कहने से भी मना करता है "
+            "(17:23)। नबी की तालीम के मुताबिक़ जन्नत माओं के क़दमों तले है।"
+        ),
+    },
+    "patience": {
+        "en": (
+            "Sabr (patience) is praised throughout the Quran (2:153, 3:200). Believers are told that Allah is with the "
+            "patient and that trials are a path to spiritual growth."
+        ),
+        "ur": (
+            "صبر پورے قرآن میں تعریف یافتہ ہے (2:153، 3:200)۔ مومنوں کو بتایا گیا کہ اللہ صبر کرنے والوں کے ساتھ "
+            "ہے اور آزمائشیں روحانی ترقی کا ذریعہ ہیں۔"
+        ),
+        "hi": (
+            "सब्र पूरे कुरान में तारीफ़ पाता है (2:153, 3:200)। मोमिनों को बताया गया कि अल्लाह सब्र करने वालों के "
+            "साथ है और आज़माइशें रूहानी उन्नति का ज़रिया हैं।"
+        ),
+    },
+    "rizq": {
+        "en": (
+            "Allah is the Provider (Ar-Razzaq) who expands and restricts provision as He wills (11:6). The Quran encourages "
+            "trust in Him while working lawfully for sustenance."
+        ),
+        "ur": (
+            "اللہ رزاق ہے جو چاہے رزق فراخ یا تنگ کرے (11:6)۔ قرآن حلال کمائی کے ساتھ اللہ پر بھروسہ کرنے کی "
+            "ترغیب دیتا ہے۔"
+        ),
+        "hi": (
+            "अल्लाह रज़्ज़ाक़ है जो चाहे रिज़्क़ खुला या तंग करे (11:6)। कुरान हलाल कमाई के साथ अल्लाह पर "
+            "भरोसा करने की तरगीब देता है।"
+        ),
+    },
+}
+
+DUA_HINT = re.compile(r"\b(dua|duas|supplication|دعا|दुआ|prayer for)\b", re.I)
+HADITH_HINT = re.compile(r"\b(hadith|hadeeth|حدیث|हदीस|bukhari|sahih)\b", re.I)
+TAFSIR_HINT = re.compile(r"\b(tafsir|تفسیر|تفسير|commentary|explain)\b", re.I)
+TRAVEL_HINT = re.compile(r"\b(travel|journey|safar|سفر|trip)\b", re.I)
+
+_CLUSTER_BY_ID: dict[str, dict[str, Any]] = {c["id"]: c for c in THEMATIC_CLUSTERS}
+
+
+def match_themes(question: str) -> list[dict[str, Any]]:
+    return [c for c in THEMATIC_CLUSTERS if re.search(c["pattern"], question, re.I)]
+
+
+def theme_priority(theme_id: str) -> int:
+    return int(_CLUSTER_BY_ID.get(theme_id, {}).get("priority", 0))
+
+
+def expand_query(question: str, base_terms: list[str]) -> list[str]:
+    terms = list(base_terms)
+    for cluster in match_themes(question):
+        terms.extend(cluster["terms"])
+    return list(dict.fromkeys(terms))[:16]
+
+
+def infer_dua_categories(question: str) -> list[str]:
+    categories: list[str] = []
+    for cluster in match_themes(question):
+        categories.extend(cluster.get("dua_categories") or [])
+    return list(dict.fromkeys(categories))
+
+
+def infer_verse_keys(question: str) -> list[str]:
+    keys: list[str] = []
+    for cluster in match_themes(question):
+        keys.extend(cluster.get("verse_keys") or [])
+    return list(dict.fromkeys(keys))
+
+
+def infer_hadith_refs(question: str) -> list[str]:
+    refs: list[str] = []
+    for cluster in match_themes(question):
+        refs.extend(cluster.get("hadith_refs") or [])
+    return list(dict.fromkeys(refs))
+
+
+def get_theme_summary(themes: list[str], lang: str) -> str | None:
+    if not themes:
+        return None
+    ordered = sorted(themes, key=theme_priority, reverse=True)
+    for theme_id in ordered:
+        summaries = THEME_SUMMARIES.get(theme_id)
+        if summaries:
+            return summaries.get(lang) or summaries.get("en")
+    return None
+
+
+def infer_source_filter(question: str) -> list[str]:
+    q = question.lower()
+    if HADITH_HINT.search(q):
+        return ["hadith", "quran"]
+    if TAFSIR_HINT.search(q):
+        return ["tafsir", "quran"]
+    if DUA_HINT.search(q) or TRAVEL_HINT.search(q):
+        return ["dua", "quran", "hadith"]
+    return ["quran", "hadith", "dua", "tafsir"]
+
+
+def build_analysis(question: str, lang: str, base_terms: list[str]) -> dict[str, Any]:
+    themes = match_themes(question)
+    terms = expand_query(question, base_terms)
+    return {
+        "search_terms": terms,
+        "source_filter": infer_source_filter(question),
+        "dua_categories": infer_dua_categories(question),
+        "verse_keys": infer_verse_keys(question),
+        "hadith_refs": infer_hadith_refs(question),
+        "themes": [t["id"] for t in themes],
+        "detected_language": lang,
+        "intent": "expanded_search",
+        "standalone_question": question,
+    }
