@@ -7,10 +7,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.db import get_conn, use_sqlite
-from app.services.embedding_service import embed_texts, use_local_embeddings
+from app.services.embedding_service import embed_texts, use_local_embeddings, use_xenova_embeddings
 from ingestion.embedding_chunks import insert_chunk
 
-BATCH = 32 if use_local_embeddings() else 50
+BATCH = 32 if (use_local_embeddings() or use_xenova_embeddings()) else 50
 
 
 def _insert_batch(cur, rows, source_type, ref_fn, text_fn, meta_fn, is_sqlite) -> None:
@@ -22,7 +22,12 @@ def _insert_batch(cur, rows, source_type, ref_fn, text_fn, meta_fn, is_sqlite) -
 
 def main():
     is_sqlite = use_sqlite()
-    provider = "local bge-m3" if use_local_embeddings() else "OpenAI"
+    if use_xenova_embeddings():
+        provider = "Xenova/all-MiniLM-L6-v2 via /api/embed"
+    elif use_local_embeddings():
+        provider = "local bge-m3"
+    else:
+        provider = "OpenAI"
     print(f"Embedding provider: {provider}")
 
     with get_conn() as conn:
