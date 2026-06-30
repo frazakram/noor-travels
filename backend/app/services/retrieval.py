@@ -51,7 +51,13 @@ def retrieve_for_question(question: str, lang: str = "en") -> tuple[list[dict], 
 
     surah_num = detect_surah_number(question)
     if surah_num and not (DUA_HINT.search(question) and not _has_surah_context(question)):
-        return keyword_retrieve_smart(question, lang)
+        # If the question asks about a theme within a surah (e.g. "jihad in Surah Imran"),
+        # don't short-circuit to surah_summary — do full hybrid retrieval so theme-specific
+        # verses surface instead of returning the whole surah in order.
+        from app.services.query_expansion import match_themes
+        has_theme = bool(match_themes(question))
+        if not has_theme:
+            return keyword_retrieve_smart(question, lang)
 
     analysis = build_analysis(question, lang, extract_search_terms(question))
     search_queries = list(dict.fromkeys([question, *analysis["search_terms"][:6]]))
@@ -67,6 +73,15 @@ def retrieve_for_question(question: str, lang: str = "en") -> tuple[list[dict], 
     kw_chunks, kw_analysis = keyword_retrieve_smart(question, lang)
     candidates.extend(kw_chunks)
     analysis = {**kw_analysis, **analysis, "search_terms": analysis["search_terms"]}
+
+    # Pin cluster-specific verse keys so theme questions always surface the right ayahs
+    from app.services.keyword_search import _fetch_ayah_chunks
+    from app.services.query_expansion import match_themes
+    for cluster in match_themes(question):
+        pinned = _fetch_ayah_chunks(cluster.get("verse_keys") or [])
+        for p in pinned:
+            p["final_score"] = 0.85
+        candidates.extend(pinned)
 
     merged = rerank(" ".join(analysis["search_terms"]), candidates, settings.rag_retrieval_k)
     merged = _filter_dua_by_theme(merged, analysis)

@@ -341,7 +341,6 @@ def _chat_with_openai(
     response = client.chat.completions.create(
         model=model or get_settings().chat_model,
         messages=llm_messages,
-        ],
         response_format={"type": "json_object"},
         temperature=0,
         max_tokens=900,
