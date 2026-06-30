@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from app.db import SQLITE_PATH, use_sqlite
 
 PG_SQL = Path(__file__).resolve().parents[1] / "migrations/001_schema.sql"
+PG_SQL_EXTRA = Path(__file__).resolve().parents[1] / "migrations/003_tafsir_hindi.sql"
 SQLITE_SQL = Path(__file__).resolve().parents[1] / "migrations/001_schema_sqlite.sql"
 
 
@@ -22,6 +23,7 @@ def migrate_postgres():
     conn.autocommit = True
     cur = conn.cursor()
     cur.execute(sql)
+    cur.execute(PG_SQL_EXTRA.read_text())
     cur.close()
     conn.close()
     print("Postgres migration applied.")
