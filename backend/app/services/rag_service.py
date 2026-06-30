@@ -58,6 +58,33 @@ def chat(
         cached["from_cache"] = True
         return cached
 
+    if settings.use_groq_chat:
+        client = OpenAI(
+            api_key=settings.groq_api_key,
+            base_url="https://api.groq.com/openai/v1",
+        )
+        try:
+            result = _chat_with_openai(
+                client,
+                question,
+                out_lang,
+                history,
+                include_transliteration,
+                analysis=None,
+                cache_key=cache_key,
+                model="llama-3.3-70b-versatile",
+            )
+            return _apply_validation(question, result)
+        except APIError as exc:
+            if not _is_quota_or_auth_error(exc):
+                raise
+            return _chat_local(
+                question,
+                out_lang,
+                include_transliteration,
+                reason="Groq unavailable",
+            )
+
     if not settings.use_openai_chat:
         return _chat_local(
             question,
@@ -241,6 +268,7 @@ def _chat_with_openai(
     include_transliteration: bool,
     analysis: dict[str, Any] | None,
     cache_key: str,
+    model: str | None = None,
 ) -> dict[str, Any]:
     analysis = analysis or analyze_query(client, question, out_lang, history)
     search_queries = analysis["search_queries_en"]
@@ -271,7 +299,7 @@ def _chat_with_openai(
     lang_name = {"en": "English", "ur": "Urdu", "hi": "Hindi"}.get(out_lang, "English")
 
     response = client.chat.completions.create(
-        model=get_settings().chat_model,
+        model=model or get_settings().chat_model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {

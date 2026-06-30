@@ -46,6 +46,32 @@ const SUGGESTIONS: Record<Lang, string[]> = {
   hi: ["सफ़र की दुआ क्या है?", "कुरान में सब्र", "सफ़र में नमाज़ की हदीस"],
 };
 
+function ConfidenceBadge({ confidence, sources }: { confidence: string; sources?: SourceDetail[] }) {
+  const topScore = sources?.[0]?.score;
+  const pct = topScore != null ? Math.round(topScore * 100) : null;
+
+  const colorClass =
+    confidence === "high"
+      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+      : confidence === "medium"
+      ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300"
+      : "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300";
+
+  const dot =
+    confidence === "high"
+      ? "bg-emerald-500"
+      : confidence === "medium"
+      ? "bg-yellow-500"
+      : "bg-red-500";
+
+  return (
+    <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${colorClass}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+      {pct != null ? `${pct}% match` : confidence.charAt(0).toUpperCase() + confidence.slice(1)}
+    </span>
+  );
+}
+
 export function ChatWidget() {
   const { lang } = useLang();
   const { isOpen, closeChat, toggleChat } = useChat();
@@ -236,6 +262,10 @@ export function ChatWidget() {
                 )}
 
                 <p className="whitespace-pre-wrap">{m.content}</p>
+
+                {m.role === "assistant" && m.confidence && (
+                  <ConfidenceBadge confidence={m.confidence} sources={m.sources} />
+                )}
 
                 {m.role === "assistant" && m.transliteration && (
                   <p className="mt-2 border-t border-subtle pt-2 text-xs italic text-faint" dir="ltr">

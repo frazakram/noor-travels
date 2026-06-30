@@ -173,6 +173,30 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "verse_keys": ["4:36", "49:10"],
         "hadith_refs": ["Sahih al-Bukhari 6014"],
     },
+    {
+        "id": "riba",
+        "priority": 80,
+        "pattern": (
+            r"riba|ribaa|ربا|سود|sood|usury|"
+            r"(?:bank|loan|credit|mortgage|finance).{0,30}(?:interest|halal|haram|permiss)|"
+            r"(?:interest).{0,30}(?:bank|loan|haram|halal|permiss|money)|"
+            r"interest.{0,20}(?:earn|pay|charg|allow|forbid)|"
+            r"(?:haram|halal|permiss).{0,30}interest"
+        ),
+        "terms": ["riba", "usury", "interest", "forbidden", "prohibited", "trade", "halal", "debt", "loan", "consume", "devour", "doubling"],
+        "dua_categories": [],
+        "verse_keys": ["2:275", "2:276", "2:278", "2:279", "3:130", "4:161"],
+        "hadith_refs": [],
+    },
+    {
+        "id": "halal_haram",
+        "priority": 40,
+        "pattern": r"(?:is|are).{0,20}(?:halal|haram|permissible|allowed|forbidden|prohibited|lawful|unlawful)",
+        "terms": ["halal", "haram", "permissible", "forbidden", "lawful", "unlawful", "allowed", "prohibited"],
+        "dua_categories": [],
+        "verse_keys": ["2:168", "5:3", "6:145"],
+        "hadith_refs": [],
+    },
 ]
 
 THEME_SUMMARIES: dict[str, dict[str, str]] = {
@@ -415,6 +439,28 @@ THEME_SUMMARIES: dict[str, dict[str, str]] = {
         "hi": (
             "अल्लाह रज़्ज़ाक़ है जो चाहे रिज़्क़ खुला या तंग करे (11:6)। कुरान हलाल कमाई के साथ अल्लाह पर "
             "भरोसा करने की तरगीब देता है।"
+        ),
+    },
+    "riba": {
+        "en": (
+            "Riba (interest/usury) is explicitly forbidden in the Quran. Allah says: 'Allah has permitted trade and "
+            "forbidden riba' (2:275). Those who consume riba are warned of severe punishment: 'O you who believe, "
+            "do not consume riba, doubled and multiplied, and fear Allah that you may be successful' (3:130). "
+            "The Quran commands: 'Give up what remains of riba if you are believers' (2:278). "
+            "Bank interest, mortgage interest, and any fixed return on a loan are generally held to be riba "
+            "by the majority of scholars — consult a qualified Islamic scholar for your specific situation."
+        ),
+        "ur": (
+            "ربا (سود) قرآن میں صریحاً حرام ہے۔ اللہ فرماتا ہے: 'اللہ نے تجارت کو حلال اور سود کو حرام کیا ہے' "
+            "(2:275)۔ سود کھانے والوں کو سخت وعید ہے: 'اے ایمان والو! کئی گنا بڑھا کر سود مت کھاؤ' (3:130)۔ "
+            "قرآن حکم دیتا ہے: 'جو سود باقی رہ گیا ہو اسے چھوڑ دو اگر تم مومن ہو' (2:278)۔ "
+            "بینک سود، قرض پر سود — اکثر علماء کے نزدیک یہ سب ربا میں شامل ہیں۔ اپنے معاملے کے لیے مستند عالم سے رہنمائی لیں۔"
+        ),
+        "hi": (
+            "रिबा (ब्याज/सूद) कुरान में स्पष्ट रूप से हराम है। अल्लाह फरमाता है: 'अल्लाह ने व्यापार को हलाल और रिबा को "
+            "हराम किया है' (2:275)। रिबा खाने वालों को सख्त वेद है: 'ऐ ईमान वालो! कई गुना बढ़ाकर रिबा मत खाओ' (3:130)। "
+            "कुरान हुक्म देता है: 'जो रिबा बाकी रह गया हो उसे छोड़ दो अगर तुम मोमिन हो' (2:278)। "
+            "बैंक ब्याज, कर्ज़ पर ब्याज — अधिकांश उलमा के अनुसार ये सब रिबा में शामिल हैं। अपने मामले के लिए किसी योग्य आलिम से मार्गदर्शन लें।"
         ),
     },
 }
