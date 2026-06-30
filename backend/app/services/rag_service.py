@@ -84,6 +84,7 @@ def chat(
                 analysis=local_analysis,
                 cache_key=cache_key,
                 model="llama-3.3-70b-versatile",
+                mode="groq",
             )
             return _apply_validation(question, result)
         except APIError as exc:
@@ -280,6 +281,7 @@ def _chat_with_openai(
     analysis: dict[str, Any] | None,
     cache_key: str,
     model: str | None = None,
+    mode: str = "openai",
 ) -> dict[str, Any]:
     analysis = analysis or analyze_query(client, question, out_lang, history)
     search_queries = analysis["search_queries_en"]
@@ -351,7 +353,7 @@ def _chat_with_openai(
         ],
         "analysis": _public_analysis(analysis),
         "from_cache": False,
-        "mode": "openai",
+        "mode": mode,
     }
 
     set_cached(cache_key, result)
