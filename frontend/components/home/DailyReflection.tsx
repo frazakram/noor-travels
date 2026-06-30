@@ -1,0 +1,70 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
+import { cleanQuranText } from "@/lib/quran-display";
+
+type Ayah = {
+  verse_key: string;
+  name_en?: string;
+  arabic: string;
+  transliteration?: string;
+  translation_en: string;
+  translation_ur: string;
+  translation_hi?: string;
+};
+
+type Surah = {
+  number: number;
+  name_en: string;
+  ayah_count: number;
+};
+
+function dayOfYear(): number {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  return Math.floor((now.getTime() - start.getTime()) / 86_400_000);
+}
+
+export function DailyReflection({ lang }: { lang: "en" | "ur" | "hi" }) {
+  const [ayah, setAyah] = useState<Ayah | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      const data = await api<{ surahs: Surah[] }>("/api/quran/surahs");
+      const total = data.surahs.reduce((sum, s) => sum + s.ayah_count, 0);
+      let index = dayOfYear() % total;
+      for (const surah of data.surahs) {
+        if (index < surah.ayah_count) {
+          const row = await api<Ayah>(`/api/quran/ayahs/${surah.number}:${index + 1}`);
+          setAyah({ ...row, name_en: surah.name_en });
+          return;
+        }
+        index -= surah.ayah_count;
+      }
+    }
+    void load().catch(() => setAyah(null));
+  }, []);
+
+  const ayahTranslation = ayah
+    ? cleanQuranText(lang === "ur" ? ayah.translation_ur : lang === "hi" ? ayah.translation_hi || ayah.translation_en : ayah.translation_en)
+    : "";
+
+  return (
+    <section>
+      <article className="rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 to-emerald-50 p-4 dark:border-teal-800 dark:from-teal-900/20 dark:to-emerald-900/20 sm:p-5">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-600">Ayah of the Day</p>
+        {ayah ? (
+          <>
+            <p className="font-arabic mb-3 text-right text-xl leading-loose text-slate-800 dark:text-white sm:text-2xl" dir="rtl">{ayah.arabic}</p>
+            {ayah.transliteration && <p className="mb-1 text-sm italic text-slate-600 dark:text-slate-300">{ayah.transliteration}</p>}
+            <p className="text-sm text-slate-700 dark:text-slate-200" dir={lang === "ur" ? "rtl" : "ltr"}>{ayahTranslation}</p>
+            <p className="mt-3 text-xs font-medium text-teal-600">{ayah.name_en ?? "Quran"} · {ayah.verse_key}</p>
+          </>
+        ) : (
+          <p className="mt-3 text-sm text-muted">Loading today&apos;s ayah…</p>
+        )}
+      </article>
+    </section>
+  );
+}

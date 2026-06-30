@@ -1,7 +1,7 @@
 "use client";
 
 const MAX_TAFSIR_CHARS = 1400;
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API = process.env.NEXT_PUBLIC_API_URL || "";
 
 let voicesReady: Promise<SpeechSynthesisVoice[]> | null = null;
 let playbackGeneration = 0;

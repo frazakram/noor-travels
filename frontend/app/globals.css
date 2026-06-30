@@ -3,8 +3,12 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-sand-50 text-noor-900;
+    @apply bg-sand-50 text-noor-900 transition-colors duration-300 dark:bg-noor-950 dark:text-noor-50;
   }
 }
 
@@ -14,14 +18,584 @@
   font-size: 1.35rem;
 }
 
-.card {
-  @apply rounded-2xl border border-noor-100 bg-white p-5 shadow-sm;
+@layer components {
+  .card {
+    @apply rounded-2xl border border-noor-100 bg-white p-5 shadow-sm transition-all duration-200
+      dark:border-noor-700 dark:bg-noor-900 dark:shadow-black/20;
+  }
+
+  .btn-primary {
+    @apply rounded-xl bg-noor-700 px-5 py-2.5 text-sm font-medium text-white transition-all duration-150
+      hover:bg-noor-800 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100
+      dark:bg-noor-600 dark:hover:bg-noor-500;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-noor-200 bg-white px-4 py-2.5 text-sm text-noor-900
+      outline-none placeholder:text-noor-400
+      focus:border-noor-500 focus:ring-2 focus:ring-noor-200
+      dark:border-noor-600 dark:bg-noor-800 dark:text-noor-50 dark:placeholder:text-noor-400
+      dark:focus:border-noor-400 dark:focus:ring-noor-700;
+  }
 }
 
-.btn-primary {
-  @apply rounded-xl bg-noor-700 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-noor-800 disabled:opacity-50;
+@layer utilities {
+  .text-heading {
+    @apply text-noor-800 dark:text-noor-50;
+  }
+
+  .text-body {
+    @apply text-noor-700 dark:text-noor-200;
+  }
+
+  .text-muted {
+    @apply text-noor-600 dark:text-noor-300;
+  }
+
+  .text-faint {
+    @apply text-noor-500 dark:text-noor-400;
+  }
+
+  .text-accent {
+    @apply text-gold-500 dark:text-gold-400;
+  }
+
+  .bg-surface-muted {
+    @apply bg-sand-50 dark:bg-noor-900/60;
+  }
+
+  .border-subtle {
+    @apply border-noor-100 dark:border-noor-700;
+  }
+
+  .sticky-toolbar {
+    @apply bg-white/95 backdrop-blur transition-colors duration-200 dark:bg-noor-900/95;
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 0.28s ease-out both;
+  }
+
+  .animate-ayah-glow {
+    animation: ayah-glow 0.6s ease-out;
+  }
+
+  .animate-orb-drift {
+    animation: orb-drift 12s ease-in-out infinite;
+  }
+
+  .animate-orb-drift-reverse {
+    animation: orb-drift-reverse 15s ease-in-out infinite;
+  }
+
+  .animate-twinkle {
+    animation: twinkle 4s ease-in-out infinite;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.42s ease-out both;
+  }
+
+  .animate-check-pop {
+    animation: check-pop 0.28s cubic-bezier(0.2, 1.4, 0.35, 1) both;
+  }
+
+  .animate-confetti {
+    animation: confetti-burst 0.7s ease-out both;
+  }
+
+  .islamic-pattern {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    opacity: 0.18;
+    background-image:
+      linear-gradient(30deg, rgba(255, 255, 255, 0.18) 12%, transparent 12.5%, transparent 87%, rgba(255, 255, 255, 0.18) 87.5%, rgba(255, 255, 255, 0.18)),
+      linear-gradient(150deg, rgba(255, 255, 255, 0.18) 12%, transparent 12.5%, transparent 87%, rgba(255, 255, 255, 0.18) 87.5%, rgba(255, 255, 255, 0.18)),
+      linear-gradient(30deg, rgba(212, 168, 83, 0.2) 12%, transparent 12.5%, transparent 87%, rgba(212, 168, 83, 0.2) 87.5%, rgba(212, 168, 83, 0.2)),
+      linear-gradient(150deg, rgba(212, 168, 83, 0.2) 12%, transparent 12.5%, transparent 87%, rgba(212, 168, 83, 0.2) 87.5%, rgba(212, 168, 83, 0.2));
+    background-position: 0 0, 0 0, 36px 63px, 36px 63px;
+    background-size: 72px 126px;
+    mask-image: radial-gradient(circle at 60% 30%, black, transparent 72%);
+    animation: pattern-glide 28s linear infinite;
+  }
+
+  .parallax-starfield {
+    pointer-events: none;
+    position: absolute;
+    inset: -20%;
+    z-index: 1;
+    opacity: 0.28;
+    background-image:
+      radial-gradient(circle, rgba(255,255,255,0.9) 0 1px, transparent 1.5px),
+      radial-gradient(circle, rgba(255,255,255,0.6) 0 1px, transparent 1.5px);
+    background-position: 0 0, 28px 36px;
+    background-size: 72px 72px, 108px 108px;
+    animation: drift 52s linear infinite;
+  }
+
+  .hero-light-ribbons {
+    @apply pointer-events-none absolute inset-0 z-[1] overflow-hidden;
+  }
+
+  .hero-light-ribbons span {
+    @apply absolute h-24 w-[32rem] rounded-full blur-2xl;
+    background: linear-gradient(90deg, transparent, rgba(255, 233, 170, 0.28), rgba(45, 112, 96, 0.18), transparent);
+    transform: rotate(-18deg);
+    animation: ribbon-sweep 10s ease-in-out infinite;
+  }
+
+  .hero-light-ribbons span:nth-child(1) {
+    top: 6%;
+    left: -26rem;
+  }
+
+  .hero-light-ribbons span:nth-child(2) {
+    top: 38%;
+    left: -34rem;
+    animation-delay: -3.5s;
+    opacity: 0.65;
+  }
+
+  .hero-light-ribbons span:nth-child(3) {
+    bottom: 10%;
+    left: -30rem;
+    animation-delay: -7s;
+    opacity: 0.45;
+  }
+
+  .celestial-track {
+    @apply pointer-events-none absolute right-5 top-8 z-[2] h-28 w-28 md:right-12 md:top-10 md:h-36 md:w-36;
+    animation: celestial-orbit 14s ease-in-out infinite;
+  }
+
+  .real-sun,
+  .real-moon {
+    @apply absolute inset-0 rounded-full;
+  }
+
+  .real-sun {
+    background:
+      radial-gradient(circle at 36% 32%, rgba(255, 255, 255, 0.95) 0 7%, rgba(255, 255, 255, 0) 18%),
+      radial-gradient(circle at 50% 50%, #fff7b2 0 25%, #ffd66b 45%, #f59e0b 68%, rgba(245, 158, 11, 0) 72%);
+    box-shadow:
+      0 0 34px rgba(255, 221, 110, 0.85),
+      0 0 80px rgba(251, 146, 60, 0.45),
+      inset -18px -18px 32px rgba(180, 83, 9, 0.24);
+  }
+
+  .sun-rays {
+    @apply absolute -inset-8 rounded-full;
+    background:
+      conic-gradient(from 0deg, rgba(255, 244, 174, 0.65), transparent 9deg 18deg, rgba(255, 244, 174, 0.5) 27deg, transparent 36deg 45deg);
+    filter: blur(1px);
+    opacity: 0.55;
+    animation: sun-rays-spin 24s linear infinite;
+  }
+
+  .sun-core {
+    @apply absolute inset-0 rounded-full;
+    background:
+      radial-gradient(circle at 38% 30%, rgba(255, 255, 255, 0.75), transparent 18%),
+      radial-gradient(circle at 55% 58%, rgba(255, 207, 95, 0.35), transparent 45%);
+  }
+
+  .real-moon {
+    background:
+      radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.98) 0 6%, transparent 16%),
+      radial-gradient(circle at 50% 50%, #f8fafc 0 24%, #dbeafe 47%, #94a3b8 74%, #64748b 100%);
+    box-shadow:
+      0 0 30px rgba(219, 234, 254, 0.75),
+      0 0 90px rgba(147, 197, 253, 0.35),
+      inset -16px -18px 28px rgba(30, 41, 59, 0.22);
+  }
+
+  .real-crescent::after {
+    content: "";
+    @apply absolute -right-2 top-0 h-full w-full rounded-full;
+    background: radial-gradient(circle at 44% 50%, rgba(15, 23, 42, 0.96), rgba(13, 34, 31, 0.9) 62%, transparent 72%);
+    transform: scale(1.04);
+  }
+
+  .moon-crater {
+    @apply absolute rounded-full bg-slate-400/35 shadow-inner;
+  }
+
+  .moon-crater-one {
+    @apply left-[31%] top-[26%] h-4 w-4 md:h-5 md:w-5;
+  }
+
+  .moon-crater-two {
+    @apply bottom-[27%] left-[50%] h-3 w-3 md:h-4 md:w-4;
+  }
+
+  .moon-crater-three {
+    @apply right-[25%] top-[49%] h-2.5 w-2.5 md:h-3 md:w-3;
+  }
+
+  .cloud-layer {
+    @apply pointer-events-none absolute z-[1] flex items-end gap-0 opacity-50 blur-[0.2px];
+  }
+
+  .cloud-layer span {
+    @apply block rounded-full bg-white/35;
+    box-shadow: 0 14px 45px rgba(255, 255, 255, 0.16);
+  }
+
+  .cloud-layer-one {
+    @apply left-[-9rem] top-20;
+    animation: cloud-sail 34s linear infinite;
+  }
+
+  .cloud-layer-one span:nth-child(1) {
+    @apply h-10 w-20;
+  }
+
+  .cloud-layer-one span:nth-child(2) {
+    @apply -ml-7 h-14 w-28;
+  }
+
+  .cloud-layer-one span:nth-child(3) {
+    @apply -ml-8 h-9 w-24;
+  }
+
+  .cloud-layer-two {
+    @apply left-[-14rem] top-40 opacity-30;
+    animation: cloud-sail 48s linear infinite;
+    animation-delay: -14s;
+  }
+
+  .cloud-layer-two span:nth-child(1) {
+    @apply h-8 w-24;
+  }
+
+  .cloud-layer-two span:nth-child(2) {
+    @apply -ml-8 h-12 w-28;
+  }
+
+  .bird-flock {
+    @apply pointer-events-none absolute left-[-8rem] top-16 z-[2] h-16 w-28 opacity-70;
+    animation: birds-cross 24s linear infinite;
+  }
+
+  .bird-flock span,
+  .bird-flock span::before,
+  .bird-flock span::after {
+    @apply absolute block h-3 w-5 border-t-2 border-noor-950/45;
+    content: "";
+    border-radius: 50% 50% 0 0;
+  }
+
+  .bird-flock span {
+    animation: bird-flap 1.4s ease-in-out infinite;
+  }
+
+  .bird-flock span:nth-child(1) {
+    left: 0;
+    top: 12px;
+  }
+
+  .bird-flock span:nth-child(2) {
+    left: 42px;
+    top: 0;
+    transform: scale(0.82);
+    animation-delay: -0.3s;
+  }
+
+  .bird-flock span:nth-child(3) {
+    left: 82px;
+    top: 20px;
+    transform: scale(0.65);
+    animation-delay: -0.6s;
+  }
+
+  .bird-flock span::before {
+    left: -12px;
+    top: -2px;
+    transform: rotate(-18deg);
+  }
+
+  .bird-flock span::after {
+    right: -12px;
+    top: -2px;
+    transform: rotate(18deg);
+  }
+
+  .shooting-star {
+    @apply absolute h-px w-24 rounded-full;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 246, 214, 0.9), rgba(255, 255, 255, 0));
+    box-shadow: 0 0 16px rgba(255, 246, 214, 0.9);
+    opacity: 0;
+    transform: rotate(-24deg);
+    animation: shooting-star 7s ease-in-out infinite;
+  }
+
+  .shooting-star-one {
+    left: 72%;
+    top: 14%;
+  }
+
+  .shooting-star-two {
+    left: 44%;
+    top: 28%;
+    animation-delay: -3.8s;
+    animation-duration: 9s;
+  }
+
+  .mosque-silhouette {
+    @apply pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-24 opacity-25 md:h-28;
+    background: linear-gradient(to top, rgba(13, 34, 31, 0.88), rgba(13, 34, 31, 0));
+  }
+
+  .dome,
+  .minaret {
+    @apply absolute bottom-0 bg-noor-950/75;
+  }
+
+  .dome-main {
+    @apply left-1/2 h-20 w-40 -translate-x-1/2 rounded-t-full md:h-24 md:w-52;
+  }
+
+  .dome-main::before {
+    content: "";
+    @apply absolute -top-7 left-1/2 h-7 w-px -translate-x-1/2 bg-noor-950/70;
+  }
+
+  .dome-main::after {
+    content: "";
+    @apply absolute -top-9 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full border border-gold-300/60;
+  }
+
+  .dome-small {
+    @apply left-[25%] h-12 w-24 rounded-t-full md:h-14 md:w-28;
+  }
+
+  .dome-right {
+    @apply left-auto right-[25%];
+  }
+
+  .minaret {
+    @apply h-24 w-5 rounded-t-full md:h-28 md:w-6;
+  }
+
+  .minaret::before {
+    content: "";
+    @apply absolute -top-3 left-1/2 h-4 w-9 -translate-x-1/2 rounded-full bg-noor-950/75;
+  }
+
+  .minaret-left {
+    @apply left-[12%];
+  }
+
+  .minaret-right {
+    @apply right-[12%];
+  }
 }
 
-.input {
-  @apply w-full rounded-xl border border-noor-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-noor-500 focus:ring-2 focus:ring-noor-200;
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes check-pop {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  70% {
+    transform: scale(1.18);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes confetti-burst {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(var(--tw-translate-x, -16px), -28px, 0) scale(0.6);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ayah-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(196, 154, 60, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(196, 154, 60, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(196, 154, 60, 0);
+  }
+}
+
+@keyframes orb-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(24px, 16px) scale(1.08);
+  }
+}
+
+@keyframes orb-drift-reverse {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-20px, -12px) scale(1.05);
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes pattern-glide {
+  from {
+    background-position: 0 0, 0 0, 36px 63px, 36px 63px;
+  }
+  to {
+    background-position: 144px 252px, 144px 252px, 180px 315px, 180px 315px;
+  }
+}
+
+@keyframes drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(120px, 80px, 0);
+  }
+}
+
+@keyframes ribbon-sweep {
+  0% {
+    transform: translateX(0) rotate(-18deg);
+    opacity: 0;
+  }
+  25%,
+  65% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(calc(100vw + 46rem)) rotate(-18deg);
+    opacity: 0;
+  }
+}
+
+@keyframes celestial-orbit {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-2deg) scale(1);
+  }
+  35% {
+    transform: translate3d(-18px, 10px, 0) rotate(3deg) scale(1.04);
+  }
+  70% {
+    transform: translate3d(8px, 18px, 0) rotate(-4deg) scale(0.98);
+  }
+}
+
+@keyframes sun-rays-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes cloud-sail {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(100vw + 28rem));
+  }
+}
+
+@keyframes birds-cross {
+  from {
+    transform: translateX(0) translateY(0);
+  }
+  50% {
+    transform: translateX(calc(50vw + 10rem)) translateY(16px);
+  }
+  to {
+    transform: translateX(calc(100vw + 22rem)) translateY(-8px);
+  }
+}
+
+@keyframes bird-flap {
+  0%,
+  100% {
+    transform: translateY(0) scaleY(1);
+  }
+  50% {
+    transform: translateY(2px) scaleY(0.72);
+  }
+}
+
+@keyframes shooting-star {
+  0%,
+  72% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotate(-24deg);
+  }
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-220px, 112px, 0) rotate(-24deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-ayah-glow,
+  .animate-orb-drift,
+  .animate-orb-drift-reverse,
+  .animate-twinkle,
+  .celestial-track,
+  .sun-rays,
+  .cloud-layer,
+  .islamic-pattern,
+  .hero-light-ribbons span,
+  .bird-flock,
+  .bird-flock span,
+  .shooting-star,
+  .parallax-starfield,
+  .animate-confetti {
+    animation: none !important;
+  }
 }

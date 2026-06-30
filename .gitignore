@@ -2,6 +2,8 @@
 .env
 .env.local
 .env.*.local
+.vercel.env
+.env.vercel
 !.env.example
 data/.env
 backend/.env

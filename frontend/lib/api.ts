@@ -1,4 +1,4 @@
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API = process.env.NEXT_PUBLIC_API_URL || "";
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
@@ -9,13 +9,13 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
       cache: "no-store",
     });
   } catch {
-    throw new Error("Cannot reach backend. Is it running on port 8000?");
+    throw new Error("We could not connect right now. Please check your internet and try again.");
   }
   if (!res.ok) {
-    let detail = `Request failed (${res.status})`;
+    let detail = "Something went wrong while loading this content. Please try again.";
     try {
       const body = await res.json();
-      if (typeof body.detail === "string") detail = body.detail;
+      if (typeof body.detail === "string" && !looksTechnical(body.detail)) detail = body.detail;
     } catch {
       /* ignore */
     }
@@ -24,7 +24,15 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
+function looksTechnical(message: string): boolean {
+  return /backend|websocket|python|traceback|exception|localhost|port\s*\d+|enoent|module|stack/i.test(message);
+}
+
 export function wsUrl(path: string): string {
+  if (!API && typeof window !== "undefined") {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${protocol}//${window.location.host}${path}`;
+  }
   const base = API.replace(/^http/, "ws");
   return `${base}${path}`;
 }

@@ -40,20 +40,20 @@ export default function DuasPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-noor-800">{t(lang, "duas")}</h1>
+      <h1 className="text-2xl font-bold text-heading">{t(lang, "duas")}</h1>
 
       <div className="space-y-4">
         {duas.map((d) => (
           <article key={d.id} className="card">
-            <h2 className="font-semibold text-noor-800" dir={lang === "ur" ? "rtl" : "ltr"}>
+            <h2 className="font-semibold text-heading" dir={lang === "ur" ? "rtl" : "ltr"}>
               {title(d)}
             </h2>
             <p className="font-arabic mt-3 text-right text-xl" dir="rtl">{d.arabic}</p>
-            <p className="mt-2 text-sm italic text-noor-500">{d.transliteration}</p>
-            <p className="mt-3 text-sm leading-relaxed" dir={lang === "ur" ? "rtl" : "ltr"}>
+            <p className="mt-2 text-sm italic text-faint">{d.transliteration}</p>
+            <p className="mt-3 text-sm leading-relaxed text-body" dir={lang === "ur" ? "rtl" : "ltr"}>
               {translation(d)}
             </p>
-            <p className="mt-2 text-xs text-gold-500">{d.source}</p>
+            <p className="mt-2 text-xs text-accent">{d.source}</p>
           </article>
         ))}
       </div>

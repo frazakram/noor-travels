@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import duas, hadith, khutba, quran, quran_audio, rag, tts
+from app.api import duas, hadith, khutba, quran, quran_audio, rag, salah, tts
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -23,6 +23,7 @@ app.include_router(duas.router, prefix="/api/duas", tags=["duas"])
 app.include_router(rag.router, prefix="/api/rag", tags=["rag"])
 app.include_router(tts.router, prefix="/api/tts", tags=["tts"])
 app.include_router(khutba.router, prefix="/api/khutba", tags=["khutba"])
+app.include_router(salah.router, prefix="/api/salah", tags=["salah"])
 
 
 @app.get("/api/health")

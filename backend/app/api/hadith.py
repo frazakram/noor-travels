@@ -5,6 +5,48 @@ from app.db import get_cursor
 router = APIRouter()
 
 
+@router.get("/chapters")
+def list_chapters():
+    with get_cursor() as cur:
+        cur.execute(
+            """
+            SELECT chapter_en, COUNT(*) AS count
+            FROM hadiths
+            GROUP BY chapter_en
+            ORDER BY chapter_en
+            """
+        )
+        return {"chapters": cur.fetchall()}
+
+
+@router.get("/browse")
+def browse_hadith(
+    chapter: str = Query(min_length=2),
+    limit: int = Query(default=40, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    with get_cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, collection, chapter_en, hadith_number, arabic, english, reference
+            FROM hadiths
+            WHERE chapter_en = %s
+            ORDER BY hadith_number
+            LIMIT %s OFFSET %s
+            """,
+            (chapter, limit, offset),
+        )
+        rows = cur.fetchall()
+        cur.execute(
+            "SELECT COUNT(*) AS total FROM hadiths WHERE chapter_en = %s",
+            (chapter,),
+        )
+        total = cur.fetchone()["total"]
+    if not rows and offset == 0:
+        raise HTTPException(404, "Chapter not found")
+    return {"results": rows, "total": total, "chapter": chapter}
+
+
 @router.get("/search")
 def search_hadith(q: str = Query(min_length=2)):
     pattern = f"%{q}%"

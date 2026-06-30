@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useLang } from "@/components/LangProvider";
 import { api } from "@/lib/api";
 import {
@@ -13,7 +14,13 @@ import {
   truncateForSpeech,
 } from "@/lib/quran-audio";
 import { t } from "@/lib/i18n";
-import type { TranslationLang } from "@/app/quran/[surah]/page";
+import { speechLangForSource, type TafsirSource } from "@/lib/tafsir";
+import type { TranslationLang } from "@/lib/quran-types";
+
+const MAX_REPEAT = 5;
+const MAX_SURAH = 114;
+
+type RepeatScope = "ayah" | "surah";
 
 type Reciter = { id: string; name: string };
 
@@ -44,21 +51,27 @@ type TextAyah = {
 type Props = {
   surahNumber: number;
   surahName?: string;
+  startAyah?: number;
 };
 
-export function QuranAudiobookPlayer({ surahNumber, surahName }: Props) {
+export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: Props) {
   const { lang } = useLang();
+  const router = useRouter();
   const [reciters, setReciters] = useState<Reciter[]>([]);
   const [reciter, setReciter] = useState("ar.alafasy");
   const [translationLang, setTranslationLang] = useState<TranslationLang>("en");
   const [includeTranslation, setIncludeTranslation] = useState(true);
   const [includeTafsir, setIncludeTafsir] = useState(false);
+  const [tafsirSource, setTafsirSource] = useState<TafsirSource>("ibn_kathir_en");
+  const [repeatScope, setRepeatScope] = useState<RepeatScope>("ayah");
+  const [repeatCount, setRepeatCount] = useState(1);
   const [audioAyahs, setAudioAyahs] = useState<AudioAyah[]>([]);
   const [textAyahs, setTextAyahs] = useState<TextAyah[]>([]);
   const [translationAudioInfo, setTranslationAudioInfo] = useState<TranslationAudioInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [playing, setPlaying] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [repeatPass, setRepeatPass] = useState(1);
   const [status, setStatus] = useState("");
   const stopRef = useRef(false);
   const sessionRef = useRef(0);
@@ -72,6 +85,14 @@ export function QuranAudiobookPlayer({ surahNumber, surahName }: Props) {
     const incTf = localStorage.getItem("noor-audio-tafsir");
     if (incTr !== null) setIncludeTranslation(incTr === "1");
     if (incTf !== null) setIncludeTafsir(incTf === "1");
+    const savedTafsirSource = localStorage.getItem("noor-audio-tafsir-source");
+    if (savedTafsirSource === "ibn_kathir_en" || savedTafsirSource === "maududi_ur") {
+      setTafsirSource(savedTafsirSource);
+    }
+    const savedScope = localStorage.getItem("noor-audio-repeat-scope");
+    if (savedScope === "ayah" || savedScope === "surah") setRepeatScope(savedScope);
+    const savedRepeat = Number(localStorage.getItem("noor-audio-repeat-count"));
+    if (savedRepeat >= 1 && savedRepeat <= MAX_REPEAT) setRepeatCount(savedRepeat);
   }, []);
 
   useEffect(() => {
@@ -82,13 +103,16 @@ export function QuranAudiobookPlayer({ surahNumber, surahName }: Props) {
     localStorage.setItem("noor-quran-translation", translationLang);
     localStorage.setItem("noor-audio-translation", includeTranslation ? "1" : "0");
     localStorage.setItem("noor-audio-tafsir", includeTafsir ? "1" : "0");
-  }, [translationLang, includeTranslation, includeTafsir]);
+    localStorage.setItem("noor-audio-repeat-scope", repeatScope);
+    localStorage.setItem("noor-audio-repeat-count", String(repeatCount));
+    localStorage.setItem("noor-audio-tafsir-source", tafsirSource);
+  }, [translationLang, includeTranslation, includeTafsir, repeatScope, repeatCount, tafsirSource]);
 
   const loadSurah = useCallback(async () => {
     setLoading(true);
     invalidatePlaybackSession();
     setPlaying(false);
-    setCurrentIndex(0);
+    setRepeatPass(1);
     stopRef.current = true;
     try {
       const trParam = includeTranslation ? `&translation_lang=${translationLang}` : "";
@@ -107,11 +131,13 @@ export function QuranAudiobookPlayer({ surahNumber, surahName }: Props) {
       setAudioAyahs(audio.ayahs);
       setTranslationAudioInfo(audio.translation_audio_info ?? null);
       setTextAyahs(text.ayahs);
+      const idx = Math.max(0, Math.min(audio.ayahs.length - 1, startAyah - 1));
+      setCurrentIndex(idx);
     } finally {
       setLoading(false);
       stopRef.current = false;
     }
-  }, [surahNumber, reciter, translationLang, includeTranslation]);
+  }, [surahNumber, reciter, translationLang, includeTranslation, startAyah]);
 
   useEffect(() => {
     loadSurah();
@@ -129,14 +155,55 @@ export function QuranAudiobookPlayer({ surahNumber, surahName }: Props) {
   }
 
   async function fetchTafsirText(verseKey: string): Promise<string> {
-    const source = translationLang === "ur" ? "maududi_ur" : "ibn_kathir_en";
     try {
       const row = await api<{ text: string }>(
-        `/api/quran/ayahs/${verseKey}/tafsir?source=${source}`
+        `/api/quran/ayahs/${verseKey}/tafsir?source=${tafsirSource}`
       );
       return truncateForSpeech(row.text);
     } catch {
       return "";
+    }
+  }
+
+  async function playSingleAyah(i: number, gen: number, passLabel?: string) {
+    const audio = audioAyahs[i];
+    const text = textAyahs[i];
+    if (!audio?.audio || !text) return;
+
+    setCurrentIndex(i);
+
+    const tafsirPromise =
+      includeTafsir && !stopRef.current ? fetchTafsirText(text.verse_key) : null;
+
+    const prefix = passLabel ? `${passLabel} · ` : "";
+
+    setStatus(`${prefix}${text.verse_key} — ${t(lang, "arabic")}`);
+    stopAllPlayback();
+    try {
+      await playAudioUrl(audio.audio, gen);
+    } catch {
+      /* skip broken ayah audio */
+    }
+    if (stopRef.current || sessionRef.current !== gen) return;
+
+    if (includeTranslation) {
+      const tr = getTranslation(text);
+      if (tr) {
+        setStatus(`${prefix}${text.verse_key} — ${t(lang, "translation")}`);
+        stopAllPlayback();
+        await playSpokenText(tr, translationLang, audio.translation_audio, gen);
+      }
+    }
+    if (stopRef.current || sessionRef.current !== gen) return;
+
+    if (includeTafsir && tafsirPromise) {
+      setStatus(`${prefix}${text.verse_key} — ${t(lang, "tafsir")}`);
+      const tf = await tafsirPromise;
+      if (stopRef.current || sessionRef.current !== gen) return;
+      if (tf) {
+        stopAllPlayback();
+        await playSpokenText(tf, speechLangForSource(tafsirSource), null, gen);
+      }
     }
   }
 
@@ -146,54 +213,41 @@ export function QuranAudiobookPlayer({ surahNumber, surahName }: Props) {
     sessionRef.current = gen;
     setPlaying(true);
 
-    for (let i = start; i < audioAyahs.length; i++) {
+    const surahPasses = repeatScope === "surah" ? repeatCount : 1;
+    const ayahRepeats = repeatScope === "ayah" ? repeatCount : 1;
+
+    for (let pass = 1; pass <= surahPasses; pass++) {
       if (stopRef.current || sessionRef.current !== gen) break;
-
-      const audio = audioAyahs[i];
-      const text = textAyahs[i];
-      if (!audio?.audio || !text) continue;
-
-      setCurrentIndex(i);
-
-      // Prefetch tafsir while Arabic + translation play (do not speak yet)
-      const tafsirPromise =
-        includeTafsir && !stopRef.current ? fetchTafsirText(text.verse_key) : null;
-
-      // 1) Arabic recitation
-      setStatus(`${text.verse_key} — ${t(lang, "arabic")}`);
-      stopAllPlayback();
-      try {
-        await playAudioUrl(audio.audio, gen);
-      } catch {
-        /* skip broken ayah audio */
+      if (repeatScope === "surah" && surahPasses > 1) {
+        setRepeatPass(pass);
       }
-      if (stopRef.current || sessionRef.current !== gen) break;
 
-      // 2) Translation (human MP3 when available, else TTS)
-      if (includeTranslation) {
-        const tr = getTranslation(text);
-        if (tr) {
-          setStatus(`${text.verse_key} — ${t(lang, "translation")}`);
-          stopAllPlayback();
-          await playSpokenText(tr, translationLang, audio.translation_audio, gen);
-        }
-      }
-      if (stopRef.current || sessionRef.current !== gen) break;
+      const passLabel =
+        repeatScope === "surah" && surahPasses > 1
+          ? `${t(lang, "repeatPass")} ${pass}/${surahPasses}`
+          : undefined;
 
-      // 3) Tafsir — always after recitation + translation
-      if (includeTafsir && tafsirPromise) {
-        setStatus(`${text.verse_key} — ${t(lang, "tafsir")}`);
-        const tf = await tafsirPromise;
+      for (let i = start; i < audioAyahs.length; i++) {
         if (stopRef.current || sessionRef.current !== gen) break;
-        if (tf) {
-          stopAllPlayback();
-          await playSpokenText(tf, translationLang, null, gen);
+
+        for (let r = 1; r <= ayahRepeats; r++) {
+          if (stopRef.current || sessionRef.current !== gen) break;
+
+          const ayahLabel =
+            repeatScope === "ayah" && ayahRepeats > 1
+              ? `${t(lang, "repeatPass")} ${r}/${ayahRepeats}`
+              : passLabel;
+
+          await playSingleAyah(i, gen, ayahLabel);
         }
       }
+
+      start = 0;
     }
 
     if (sessionRef.current === gen) {
       setPlaying(false);
+      setRepeatPass(1);
       setStatus("");
     }
   }
@@ -207,6 +261,7 @@ export function QuranAudiobookPlayer({ surahNumber, surahName }: Props) {
     stopRef.current = true;
     invalidatePlaybackSession();
     setPlaying(false);
+    setRepeatPass(1);
     setStatus("");
   }
 
@@ -218,6 +273,11 @@ export function QuranAudiobookPlayer({ surahNumber, surahName }: Props) {
   function handleNext() {
     handlePause();
     setCurrentIndex((i) => Math.min(audioAyahs.length - 1, i + 1));
+  }
+
+  function goToSurah(next: number) {
+    handlePause();
+    router.push(`/quran/listen/${next}`);
   }
 
   const translationSourceLabel =
@@ -243,6 +303,25 @@ export function QuranAudiobookPlayer({ surahNumber, surahName }: Props) {
           <Link href="/quran/listen" className="text-sm text-noor-600 underline hover:text-noor-800">
             {t(lang, "changeSurah")}
           </Link>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="rounded-lg border border-noor-200 px-3 py-1.5 text-sm disabled:opacity-40"
+            onClick={() => goToSurah(surahNumber - 1)}
+            disabled={surahNumber <= 1 || playing}
+          >
+            ← {t(lang, "prevSurah")}
+          </button>
+          <button
+            type="button"
+            className="rounded-lg border border-noor-200 px-3 py-1.5 text-sm disabled:opacity-40"
+            onClick={() => goToSurah(surahNumber + 1)}
+            disabled={surahNumber >= MAX_SURAH || playing}
+          >
+            {t(lang, "nextSurah")} →
+          </button>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -303,8 +382,65 @@ export function QuranAudiobookPlayer({ surahNumber, surahName }: Props) {
         </div>
 
         {includeTafsir && (
+          <label className="block text-sm">
+            <span className="text-noor-600">{t(lang, "tafsirLanguage")}</span>
+            <select
+              className="input mt-1"
+              value={tafsirSource}
+              onChange={(e) => setTafsirSource(e.target.value as TafsirSource)}
+              disabled={playing}
+            >
+              <option value="ibn_kathir_en">{t(lang, "tafsirIbnKathir")}</option>
+              <option value="maududi_ur">{t(lang, "tafsirMaududi")}</option>
+            </select>
+          </label>
+        )}
+
+        {includeTafsir && (
           <p className="text-xs text-noor-500">{t(lang, "tafsirAudioHint")}</p>
         )}
+
+        <div className="rounded-lg border border-noor-100 bg-noor-50/50 p-3 space-y-3">
+          <p className="text-xs font-medium text-noor-700">{t(lang, "repeat")}</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={playing}
+              onClick={() => setRepeatScope("ayah")}
+              className={`rounded-md px-3 py-1 text-xs font-medium ${
+                repeatScope === "ayah" ? "bg-noor-700 text-white" : "border border-noor-200 text-noor-600"
+              }`}
+            >
+              {t(lang, "repeatAyah")}
+            </button>
+            <button
+              type="button"
+              disabled={playing}
+              onClick={() => setRepeatScope("surah")}
+              className={`rounded-md px-3 py-1 text-xs font-medium ${
+                repeatScope === "surah" ? "bg-noor-700 text-white" : "border border-noor-200 text-noor-600"
+              }`}
+            >
+              {t(lang, "repeatSurah")}
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-noor-500">{t(lang, "repeatTimes")}:</span>
+            {Array.from({ length: MAX_REPEAT }, (_, i) => i + 1).map((n) => (
+              <button
+                key={n}
+                type="button"
+                disabled={playing}
+                onClick={() => setRepeatCount(n)}
+                className={`h-8 w-8 rounded-full text-xs font-medium ${
+                  repeatCount === n ? "bg-gold-500 text-white" : "border border-noor-200 text-noor-600"
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {!playing ? (
@@ -334,6 +470,9 @@ export function QuranAudiobookPlayer({ surahNumber, surahName }: Props) {
           </button>
           <span className="text-xs text-noor-500">
             {currentIndex + 1} / {audioAyahs.length}
+            {playing && repeatScope === "surah" && repeatCount > 1 && (
+              <> · {t(lang, "repeatPass")} {repeatPass}/{repeatCount}</>
+            )}
           </span>
         </div>
 
