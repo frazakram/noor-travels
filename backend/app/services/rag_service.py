@@ -66,6 +66,9 @@ def chat(
         return cached
 
     if settings.use_groq_chat:
+        from app.services.keyword_search import extract_search_terms
+        from app.services.query_expansion import build_analysis
+        local_analysis = build_analysis(question, out_lang, extract_search_terms(question))
         client = OpenAI(
             api_key=settings.groq_api_key,
             base_url="https://api.groq.com/openai/v1",
@@ -77,7 +80,7 @@ def chat(
                 out_lang,
                 history,
                 include_transliteration,
-                analysis=None,
+                analysis=local_analysis,
                 cache_key=cache_key,
                 model="llama-3.3-70b-versatile",
             )
