@@ -3,8 +3,16 @@ import re
 from typing import Any
 
 from app.core.config import get_settings
-from app.db import get_conn, use_sqlite
+from app.db import get_cursor, use_sqlite
 from app.services.query_expansion import DUA_HINT, build_analysis
+
+
+def _run_query(cur, sql: str, params: tuple | list = ()) -> None:
+    """SQLite uses ? placeholders; Postgres/psycopg2 uses %s."""
+    if use_sqlite():
+        cur.execute(sql, params)
+    else:
+        cur.execute(sql.replace("?", "%s"), params)
 
 STOP_WORDS = frozenset(
     """
@@ -304,8 +312,7 @@ def detect_surah_number(question: str) -> int | None:
     if not norm_q:
         return None
 
-    with get_conn() as conn:
-        cur = conn.cursor()
+    with get_cursor() as cur:
         cur.execute("SELECT number, name_en, name_en_translation FROM surahs")
         rows = cur.fetchall()
 
@@ -418,8 +425,7 @@ def _fetch_hadith_by_refs(refs: list[str]) -> list[dict]:
     if not refs:
         return []
     results = []
-    with get_conn() as conn:
-        cur = conn.cursor()
+    with get_cursor() as cur:
         for ref in refs:
             if use_sqlite():
                 cur.execute(
@@ -456,8 +462,7 @@ def _fetch_ayah_chunks(verse_keys: list[str]) -> list[dict]:
     if not verse_keys:
         return []
     results = []
-    with get_conn() as conn:
-        cur = conn.cursor()
+    with get_cursor() as cur:
         for vk in verse_keys:
             if use_sqlite():
                 cur.execute(
@@ -521,9 +526,8 @@ def _search_ayahs(terms: list[str], limit: int) -> list[dict]:
     params.append(limit * 4)
 
     results = []
-    with get_conn() as conn:
-        cur = conn.cursor()
-        cur.execute(sql.replace("%s", "?") if use_sqlite() else sql, params if not use_sqlite() else params)
+    with get_cursor() as cur:
+        _run_query(cur, sql, params)
         rows = cur.fetchall()
 
     for row in rows:
@@ -570,9 +574,8 @@ def _search_hadiths(terms: list[str], limit: int) -> list[dict]:
     params.append(limit * 3)
 
     results = []
-    with get_conn() as conn:
-        cur = conn.cursor()
-        cur.execute(sql, params)
+    with get_cursor() as cur:
+        _run_query(cur, sql, params)
         rows = cur.fetchall()
 
     for row in rows:
@@ -621,9 +624,8 @@ def _search_duas(terms: list[str], limit: int, dua_categories: list[str] | None 
     params.append(limit * 2)
 
     results = []
-    with get_conn() as conn:
-        cur = conn.cursor()
-        cur.execute(sql, params)
+    with get_cursor() as cur:
+        _run_query(cur, sql, params)
         rows = cur.fetchall()
 
     for row in rows:
@@ -679,9 +681,8 @@ def _search_tafsir(terms: list[str], limit: int) -> list[dict]:
     params.append(limit * 2)
 
     results = []
-    with get_conn() as conn:
-        cur = conn.cursor()
-        cur.execute(sql, params)
+    with get_cursor() as cur:
+        _run_query(cur, sql, params)
         rows = cur.fetchall()
 
     for row in rows:
@@ -709,9 +710,9 @@ def _search_tafsir(terms: list[str], limit: int) -> list[dict]:
 
 def _fetch_surah_summary_chunks(surah_number: int) -> list[dict]:
     chunks: list[dict] = []
-    with get_conn() as conn:
-        cur = conn.cursor()
-        cur.execute(
+    with get_cursor() as cur:
+        _run_query(
+            cur,
             """
             SELECT verse_key, arabic, transliteration, translation_en, translation_ur, ayah_number
             FROM ayahs WHERE surah_number = ? ORDER BY ayah_number
@@ -793,10 +794,10 @@ def _fetch_verse_range_chunks(surah_number: int, start_ayah: int, end_ayah: int)
 def _fetch_verse_lookup_chunks(verse_key: str) -> list[dict]:
     chunks = _fetch_ayah_chunks([verse_key])
     surah_num, ayah_num = verse_key.split(":")
-    with get_conn() as conn:
-        cur = conn.cursor()
+    with get_cursor() as cur:
         for source in ("ibn_kathir_en", "maududi_ur"):
-            cur.execute(
+            _run_query(
+                cur,
                 "SELECT text FROM tafsir WHERE verse_key = ? AND source = ?",
                 (verse_key, source),
             )
@@ -1040,18 +1041,19 @@ def _extract_ibn_kathir_teaching_bullets(text: str, max_bullets: int = 6) -> lis
 def _fetch_tafsir_at_ayahs(surah_number: int, ayah_numbers: list[int]) -> tuple[dict[int, str], dict[int, str]]:
     en_map: dict[int, str] = {}
     ur_map: dict[int, str] = {}
-    with get_conn() as conn:
-        cur = conn.cursor()
+    with get_cursor() as cur:
         for num in ayah_numbers:
             vk = f"{surah_number}:{num}"
-            cur.execute(
+            _run_query(
+                cur,
                 "SELECT text FROM tafsir WHERE verse_key = ? AND source = 'ibn_kathir_en'",
                 (vk,),
             )
             row = cur.fetchone()
             if row:
                 en_map[num] = row[0] if use_sqlite() else row["text"]
-            cur.execute(
+            _run_query(
+                cur,
                 "SELECT text FROM tafsir WHERE verse_key = ? AND source = 'maududi_ur'",
                 (vk,),
             )
@@ -1167,14 +1169,15 @@ def _period_note(revelation_type: str, tafsir_text: str, lang: str) -> str:
 
 
 def format_verse_range_answer(surah_number: int, start_ayah: int, end_ayah: int, lang: str) -> str:
-    with get_conn() as conn:
-        cur = conn.cursor()
-        cur.execute(
+    with get_cursor() as cur:
+        _run_query(
+            cur,
             "SELECT name_en, name_en_translation FROM surahs WHERE number = ?",
             (surah_number,),
         )
         surah = cur.fetchone()
-        cur.execute(
+        _run_query(
+            cur,
             """
             SELECT ayah_number, arabic, translation_en, translation_ur, transliteration
             FROM ayahs
@@ -1233,14 +1236,15 @@ def format_verse_range_answer(surah_number: int, start_ayah: int, end_ayah: int,
 
 def format_verse_answer(verse_key: str, lang: str) -> str:
     surah_number, ayah_number = (int(x) for x in verse_key.split(":"))
-    with get_conn() as conn:
-        cur = conn.cursor()
-        cur.execute(
+    with get_cursor() as cur:
+        _run_query(
+            cur,
             "SELECT name_en, name_en_translation FROM surahs WHERE number = ?",
             (surah_number,),
         )
         surah = cur.fetchone()
-        cur.execute(
+        _run_query(
+            cur,
             """
             SELECT arabic, translation_en, translation_ur, transliteration
             FROM ayahs WHERE surah_number = ? AND ayah_number = ?
@@ -1293,14 +1297,15 @@ def format_verse_answer(verse_key: str, lang: str) -> str:
 
 
 def format_surah_summary_answer(surah_number: int, lang: str, question: str = "") -> str:
-    with get_conn() as conn:
-        cur = conn.cursor()
-        cur.execute(
+    with get_cursor() as cur:
+        _run_query(
+            cur,
             "SELECT name_en, name_en_translation, ayah_count, revelation_type FROM surahs WHERE number = ?",
             (surah_number,),
         )
         surah = cur.fetchone()
-        cur.execute(
+        _run_query(
+            cur,
             """
             SELECT ayah_number, arabic, translation_en, translation_ur, transliteration
             FROM ayahs WHERE surah_number = ? ORDER BY ayah_number

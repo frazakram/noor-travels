@@ -17,8 +17,21 @@ def use_local_embeddings() -> bool:
     return get_settings().embedding_provider.lower() == "local"
 
 
+def _local_runtime_available() -> bool:
+    if not use_local_embeddings():
+        return False
+    try:
+        import importlib.util
+
+        return importlib.util.find_spec("sentence_transformers") is not None
+    except Exception:
+        return False
+
+
 @lru_cache(maxsize=1)
 def _load_local_model():
+    if not _local_runtime_available():
+        raise RuntimeError("sentence-transformers not available in this runtime")
     from sentence_transformers import SentenceTransformer
 
     settings = get_settings()
