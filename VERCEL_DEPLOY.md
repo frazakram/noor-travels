@@ -30,7 +30,11 @@ Important production settings:
 - `POSTGRES_URL` must point to your hosted Supabase/Postgres database.
 - `EMBEDDING_PROVIDER=openai` avoids installing local ML models in serverless.
 
-If deploy fails with a bundle size error (~5 GB), confirm Vercel is **not** using a custom backend `installCommand`, and that `backend/requirements.txt` does **not** list `sentence-transformers`.
+If deploy fails with a bundle size error (~5 GB):
+
+1. Redeploy the **latest** commit (must include slim `backend/requirements.txt` without `sentence-transformers`).
+2. In Vercel → Project Settings → Build, clear any custom **Install Command** for the backend.
+3. Confirm `excludeFiles` lives under the `backend` service in `vercel.json` (top-level `functions` is ignored in Services mode).
 
 ## 3. Python dependencies
 

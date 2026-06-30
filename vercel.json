@@ -7,7 +7,12 @@
     },
     "backend": {
       "root": "backend/",
-      "entrypoint": "app.main:app"
+      "entrypoint": "app.main:app",
+      "functions": {
+        "app/**/*.py": {
+          "excludeFiles": "{../frontend/**,../node_modules/**,../data/**,../scripts/**,ingestion/**,data/**,migrations/**,**/.venv/**,**/venv/**,**/__pycache__/**,**/*.pyc,**/*.db,**/*.sqlite*,**/.huggingface/**,**/.cache/**}"
+        }
+      }
     }
   },
   "rewrites": [
@@ -23,10 +28,5 @@
         "service": "frontend"
       }
     }
-  ],
-  "functions": {
-    "backend/**/*.py": {
-      "excludeFiles": "{frontend/**,node_modules/**,data/**,scripts/**,**/.venv/**,**/venv/**,**/__pycache__/**,**/*.pyc,**/*.db,**/*.sqlite*,backend/ingestion/**,backend/data/**,**/.huggingface/**,**/.cache/**,**/.git/**}"
-    }
-  }
+  ]
 }
