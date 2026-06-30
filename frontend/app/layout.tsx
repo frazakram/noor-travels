@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { AppShellDetect } from "@/components/AppShellDetect";
 import { ChatProvider } from "@/components/ChatProvider";
 import { ChatWidget } from "@/components/ChatWidget";
 import { Footer } from "@/components/Footer";
@@ -20,7 +21,18 @@ export const metadata: Metadata = {
   },
 };
 
-const themeScript = `(function(){try{var t=localStorage.getItem("noor-theme");if(t==="dark")document.documentElement.classList.add("dark")}catch(e){}})();`;
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#255a4e" },
+    { media: "(prefers-color-scheme: dark)", color: "#0d221f" },
+  ],
+};
+
+const themeScript = `(function(){try{var t=localStorage.getItem("noor-theme");if(t==="dark")document.documentElement.classList.add("dark");var ua=navigator.userAgent||"";if(/NoorSafarAndroid/i.test(ua)||/; wv\\)/i.test(ua)||window.matchMedia("(display-mode: standalone)").matches)document.documentElement.classList.add("app-shell")}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -33,13 +45,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body
-        className={`${inter.variable} min-h-screen bg-sand-50 font-sans text-noor-900 antialiased transition-colors duration-300 dark:bg-noor-950 dark:text-noor-50`}
+        className={`${inter.variable} min-h-screen bg-sand-50 pl-safe pr-safe font-sans text-noor-900 antialiased transition-colors duration-300 dark:bg-noor-950 dark:text-noor-50`}
       >
         <ThemeProvider>
           <LangProvider>
             <ChatProvider>
+              <AppShellDetect />
               <Nav />
-              <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
+              <main className="mx-auto max-w-5xl px-4 py-4 pb-safe sm:py-6">{children}</main>
               <Footer />
               <RegisterServiceWorker />
               <ChatWidget />

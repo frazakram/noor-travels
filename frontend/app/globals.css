@@ -5,10 +5,90 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
   }
 
   body {
-    @apply bg-sand-50 text-noor-900 transition-colors duration-300 dark:bg-noor-950 dark:text-noor-50;
+    @apply overflow-x-hidden bg-sand-50 text-noor-900 transition-colors duration-300 dark:bg-noor-950 dark:text-noor-50;
+  }
+}
+
+/* Safe areas for notched phones / Android WebView APK shells */
+@layer utilities {
+  .pt-safe {
+    padding-top: max(env(safe-area-inset-top, 0px), 8px);
+  }
+
+  @media (max-width: 767px) {
+    .pt-safe {
+      padding-top: max(env(safe-area-inset-top, 0px), 2rem);
+    }
+  }
+
+  html.app-shell .pt-safe {
+    padding-top: max(env(safe-area-inset-top, 0px), 2.25rem);
+  }
+
+  html.app-shell .top-safe-header {
+    top: calc(max(env(safe-area-inset-top, 0px), 2.25rem) + 3.5rem);
+  }
+
+  html.app-shell .sticky-below-header {
+    top: calc(max(env(safe-area-inset-top, 0px), 2.25rem) + 3.5rem + 0.25rem);
+  }
+
+  .pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
+  }
+
+  .pl-safe {
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+
+  .pr-safe {
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  .top-safe-header {
+    top: calc(max(env(safe-area-inset-top, 0px), 2rem) + 3.5rem);
+  }
+
+  @media (min-width: 768px) {
+    .top-safe-header {
+      top: calc(max(env(safe-area-inset-top, 0px), 8px) + 3.5rem);
+    }
+  }
+
+  .sticky-below-header {
+    position: sticky;
+    top: calc(max(env(safe-area-inset-top, 0px), 2rem) + 3.5rem + 0.25rem);
+    z-index: 10;
+  }
+
+  @media (min-width: 768px) {
+    .sticky-below-header {
+      top: calc(max(env(safe-area-inset-top, 0px), 8px) + 3.5rem + 0.25rem);
+    }
+  }
+
+  .h-below-safe-header {
+    height: calc(100dvh - max(env(safe-area-inset-top, 0px), 8px) - 3.5rem);
+  }
+
+  .bottom-safe-5 {
+    bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .bottom-safe-20 {
+    bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .bottom-safe-24 {
+    bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .touch-target {
+    @apply min-h-11 min-w-11;
   }
 }
 

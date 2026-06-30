@@ -23,7 +23,7 @@ export function Tooltip({ label, side = "top", children, className = "" }: Props
       {children}
       <span
         role="tooltip"
-        className={`pointer-events-none absolute z-[60] whitespace-nowrap rounded-md bg-noor-900 px-2 py-1 text-[10px] font-medium text-white opacity-0 shadow-md transition-opacity duration-75 group-hover/tip:opacity-100 group-focus-within/tip:opacity-100 dark:bg-noor-700 ${sideClass[side]}`}
+        className={`pointer-events-none absolute z-[60] hidden whitespace-nowrap rounded-md bg-noor-900 px-2 py-1 text-[10px] font-medium text-white opacity-0 shadow-md transition-opacity duration-75 [@media(hover:hover)]:block [@media(hover:hover)]:group-hover/tip:opacity-100 [@media(hover:hover)]:group-focus-visible/tip:opacity-100 dark:bg-noor-700 ${sideClass[side]}`}
       >
         {label}
       </span>

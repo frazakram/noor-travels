@@ -37,9 +37,9 @@ export function SalahSettingsPanel({ settings, onSettings, onManualLocation, onU
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <form onSubmit={searchCity} className="space-y-2">
             <label className="text-xs font-medium text-muted">City / area override</label>
-            <div className="flex gap-2">
-              <input className="input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search city or local area" />
-              <button className="btn-primary shrink-0 px-3" type="submit">Find</button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input className="input min-w-0" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search city or local area" />
+              <button className="btn-primary min-h-11 shrink-0 px-4 sm:min-h-0" type="submit">Find</button>
             </div>
             <button type="button" onClick={onUseGps} className="text-xs text-accent hover:underline">Use precise GPS again</button>
             {results.length > 0 && (

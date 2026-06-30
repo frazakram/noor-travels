@@ -82,9 +82,9 @@ export default function QuranPage() {
         <p className="mt-1 text-sm text-muted">{t(lang, "audiobookDesc")}</p>
       </div>
 
-      <form onSubmit={handleSearch} className="flex gap-2">
+      <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row">
         <input
-          className="input"
+          className="input min-w-0"
           placeholder={t(lang, "search")}
           value={query}
           onChange={(e) => {
@@ -93,7 +93,7 @@ export default function QuranPage() {
             setResults([]);
           }}
         />
-        <button type="submit" className="btn-primary shrink-0">{t(lang, "search")}</button>
+        <button type="submit" className="btn-primary min-h-11 shrink-0 sm:min-h-0">{t(lang, "search")}</button>
       </form>
 
       {searching && <p className="text-sm text-muted">{t(lang, "loading")}</p>}

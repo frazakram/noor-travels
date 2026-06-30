@@ -131,7 +131,7 @@ export function ChatWidget() {
 
   return (
     <>
-      <div className={`fixed bottom-5 right-5 z-50 transition-opacity duration-300 ${isOpen ? "pointer-events-none opacity-0" : "opacity-100"}`}>
+      <div className={`bottom-safe-5 fixed right-5 z-50 transition-opacity duration-300 ${isOpen ? "pointer-events-none opacity-0" : "opacity-100"}`}>
         <Tooltip label={t(lang, "chat")} side="top">
           <button
             type="button"
@@ -156,8 +156,9 @@ export function ChatWidget() {
       <div
         ref={panelRef}
         className={`fixed z-50 flex flex-col bg-white shadow-2xl transition-all duration-300 ease-out dark:bg-noor-900 dark:shadow-black/40
-          bottom-0 right-0 w-full h-[85vh] rounded-t-2xl
-          md:bottom-5 md:right-5 md:w-[400px] md:h-[560px] md:rounded-2xl md:border md:border-subtle
+          bottom-0 right-0 w-full rounded-t-2xl pb-safe
+          h-[calc(85dvh-env(safe-area-inset-bottom,0px))]
+          md:bottom-5 md:right-5 md:h-[560px] md:w-[400px] md:rounded-2xl md:border md:border-subtle md:pb-0
           ${isOpen ? "translate-y-0 opacity-100 pointer-events-auto" : "translate-y-8 opacity-0 pointer-events-none"}`}
       >
         <div className="flex items-center justify-between border-b border-subtle px-4 py-3">
@@ -302,7 +303,7 @@ export function ChatWidget() {
             e.preventDefault();
             sendMessage(input);
           }}
-          className="flex gap-2 border-t border-subtle p-3"
+          className="flex flex-col gap-2 border-t border-subtle p-3 pb-safe sm:flex-row sm:pb-3"
         >
           <input
             className="input flex-1 text-sm"
@@ -312,7 +313,7 @@ export function ChatWidget() {
             disabled={loading}
             dir="auto"
           />
-          <button type="submit" className="btn-primary shrink-0 px-3 text-sm" disabled={loading || !input.trim()}>
+          <button type="submit" className="btn-primary min-h-11 shrink-0 px-4 text-sm sm:min-h-0 sm:px-3" disabled={loading || !input.trim()}>
             {t(lang, "send")}
           </button>
         </form>

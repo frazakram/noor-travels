@@ -133,14 +133,14 @@ export default function HadithPage() {
         <p className="text-sm text-muted">{t(lang, "hadithSubtitle")}</p>
       </div>
 
-      <form onSubmit={handleSearch} className="flex gap-2">
+      <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row">
         <input
-          className="input"
+          className="input min-w-0"
           placeholder={t(lang, "search")}
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
         />
-        <button type="submit" className="btn-primary shrink-0" disabled={searching}>
+        <button type="submit" className="btn-primary min-h-11 shrink-0 sm:min-h-0" disabled={searching}>
           {searching ? "…" : t(lang, "search")}
         </button>
       </form>

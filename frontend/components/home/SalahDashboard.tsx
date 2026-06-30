@@ -166,8 +166,8 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
   return (
     <div className="space-y-3">
       {/* Location + streak row */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-sm text-white/90">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-2 text-sm text-white/90">
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/15 text-sm">📍</span>
           <div>
             <p
@@ -186,7 +186,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
           {missedToday > 0 && (
             <div className="rounded-xl bg-red-500/20 px-3 py-1.5 text-center backdrop-blur-sm">
               <p className="text-lg font-bold text-red-100">{missedToday}</p>
@@ -293,6 +293,8 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                   if (canMark && prayerId) handleToggle(prayerId);
                 }}
                 className={`group relative rounded-xl border p-2.5 text-left transition-all duration-200 hover:-translate-y-0.5 sm:p-3 ${
+                  isCurrent ? "pt-7" : ""
+                } ${
                   isSunrise
                     ? "border-amber-200/40 bg-amber-200/10"
                     : isCurrent
@@ -327,7 +329,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                             void toggleNotification(prayerId, p.start);
                           }
                         }}
-                        className={`rounded-full px-1.5 py-0.5 text-[10px] ${notifySet[prayerId] ? "bg-gold-400 text-noor-950" : "bg-white/10 text-white/60"}`}
+                        className={`touch-target inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] ${notifySet[prayerId] ? "bg-gold-400 text-noor-950" : "bg-white/10 text-white/60"}`}
                         title="Notify me at adhan"
                       >
                         🔔
@@ -353,7 +355,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
 
       {weekLogs.length > 0 && (
         <div className="rounded-2xl bg-white/10 p-3 backdrop-blur-md sm:p-4">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm font-semibold text-white">Weekly prayer history</p>
             <p className="text-xs text-white/60">Qada reminder: make up missed prayers</p>
           </div>

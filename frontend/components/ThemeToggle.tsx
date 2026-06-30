@@ -31,7 +31,7 @@ export function ThemeToggle({ variant = "fixed" }: Props) {
   );
 
   const btnInline =
-    "flex h-8 w-8 items-center justify-center rounded-lg border border-noor-200 bg-white text-noor-700 transition-all duration-150 hover:scale-105 active:scale-95 dark:border-noor-600 dark:bg-noor-800 dark:text-gold-400 dark:hover:bg-noor-700";
+    "flex h-10 w-10 min-h-11 min-w-11 items-center justify-center rounded-lg border border-noor-200 bg-white text-noor-700 transition-all duration-150 hover:scale-105 active:scale-95 dark:border-noor-600 dark:bg-noor-800 dark:text-gold-400 dark:hover:bg-noor-700 sm:h-8 sm:w-8 sm:min-h-0 sm:min-w-0";
   const btnFixed =
     "flex h-14 w-14 items-center justify-center rounded-full border border-noor-200 bg-white text-noor-700 shadow-lg transition-all duration-150 hover:scale-105 hover:shadow-xl active:scale-95 dark:border-noor-600 dark:bg-noor-800 dark:text-gold-400 dark:hover:bg-noor-700";
 
@@ -46,7 +46,7 @@ export function ThemeToggle({ variant = "fixed" }: Props) {
   }
 
   return (
-    <div className="fixed bottom-5 left-5 z-50">
+    <div className="bottom-safe-5 fixed left-5 z-50">
       <Tooltip label={label} side="top">
         <button type="button" onClick={toggleTheme} aria-label={label} className={btnFixed}>
           {icon}

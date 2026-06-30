@@ -219,7 +219,7 @@ export default function SurahClient() {
         {Icons.back} {t(lang, "backToQuran")}
       </Link>
 
-      <div className="card sticky top-[5.25rem] z-10 space-y-3 sticky-toolbar py-3 md:top-16">
+      <div className="card sticky-below-header space-y-3 sticky-toolbar py-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-xl font-bold text-heading">
             {surahNumber}. {surahName}

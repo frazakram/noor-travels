@@ -26,7 +26,7 @@ const variants = {
 };
 
 const baseClass =
-  "inline-flex h-9 min-w-9 items-center justify-center rounded-lg border px-2 text-base leading-none transition-all duration-150 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100";
+  "inline-flex h-11 min-h-11 min-w-11 items-center justify-center rounded-lg border px-2.5 text-base leading-none transition-all duration-150 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100 sm:h-9 sm:min-h-0 sm:min-w-9 sm:px-2";
 
 export function IconButton({
   icon,

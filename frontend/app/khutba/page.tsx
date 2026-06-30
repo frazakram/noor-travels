@@ -123,7 +123,7 @@ export default function KhutbaPage() {
 
         <button
           onClick={active ? stop : start}
-          className={`btn-primary ${active ? "bg-red-700 hover:bg-red-800" : ""}`}
+          className={`btn-primary min-h-11 w-full sm:w-auto ${active ? "bg-red-700 hover:bg-red-800" : ""}`}
         >
           {active ? t(lang, "stopKhutba") : t(lang, "startKhutba")}
         </button>
@@ -149,7 +149,7 @@ export default function KhutbaPage() {
       {active && lines.length > 0 && (
         <section className="space-y-4">
           {lines.map((line, i) => (
-            <div key={i} className="card grid gap-3 md:grid-cols-3">
+            <div key={i} className="card grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div>
                 <p className="text-xs font-medium text-accent">{t(lang, "arabic")}</p>
                 <p className="font-arabic mt-1 text-right" dir="rtl">{line.arabic}</p>
