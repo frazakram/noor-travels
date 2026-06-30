@@ -9,10 +9,11 @@ let _pipe: any = null;
 
 async function getPipeline() {
   if (_pipe) return _pipe;
-  const { pipeline, env } = await import("@xenova/transformers");
-  env.cacheDir = "/tmp/xenova";
+  const { pipeline, env } = await import("@huggingface/transformers");
+  env.cacheDir = "/tmp/hf-cache";
   env.allowLocalModels = false;
-  _pipe = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", { quantized: true });
+  // q8 = int8 quantized ONNX model (~22 MB)
+  _pipe = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", { dtype: "q8" });
   return _pipe;
 }
 
