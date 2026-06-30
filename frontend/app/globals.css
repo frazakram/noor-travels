@@ -21,20 +21,20 @@
 
   @media (max-width: 767px) {
     .pt-safe {
-      padding-top: max(env(safe-area-inset-top, 0px), 2rem);
+      padding-top: max(env(safe-area-inset-top, 0px), 2.75rem);
     }
   }
 
   html.app-shell .pt-safe {
-    padding-top: max(env(safe-area-inset-top, 0px), 2.25rem);
+    padding-top: max(env(safe-area-inset-top, 0px), 3rem);
   }
 
   html.app-shell .top-safe-header {
-    top: calc(max(env(safe-area-inset-top, 0px), 2.25rem) + 3.5rem);
+    top: calc(max(env(safe-area-inset-top, 0px), 3rem) + 3.5rem);
   }
 
   html.app-shell .sticky-below-header {
-    top: calc(max(env(safe-area-inset-top, 0px), 2.25rem) + 3.5rem + 0.25rem);
+    top: calc(max(env(safe-area-inset-top, 0px), 3rem) + 3.5rem + 0.25rem);
   }
 
   .pb-safe {
@@ -50,7 +50,7 @@
   }
 
   .top-safe-header {
-    top: calc(max(env(safe-area-inset-top, 0px), 2rem) + 3.5rem);
+    top: calc(max(env(safe-area-inset-top, 0px), 2.75rem) + 3.5rem);
   }
 
   @media (min-width: 768px) {
@@ -61,7 +61,7 @@
 
   .sticky-below-header {
     position: sticky;
-    top: calc(max(env(safe-area-inset-top, 0px), 2rem) + 3.5rem + 0.25rem);
+    top: calc(max(env(safe-area-inset-top, 0px), 2.75rem) + 3.5rem + 0.25rem);
     z-index: 10;
   }
 

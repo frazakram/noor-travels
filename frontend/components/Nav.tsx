@@ -56,9 +56,9 @@ export function Nav() {
       }`}
     >
       <div className="mx-auto flex min-h-14 max-w-5xl items-center justify-between gap-2 px-3 py-2 sm:gap-4 sm:px-4 sm:py-3">
-        <Link href="/" className="flex min-h-11 min-w-11 shrink-0 items-center gap-2.5 font-semibold text-heading">
+        <Link href="/" className="flex min-h-11 shrink-0 items-center gap-2 font-semibold text-heading" aria-label={t(lang, "appName")}>
           <AppLogo />
-          <span className="hidden sm:inline">{t(lang, "appName")}</span>
+          <span className="max-w-[7rem] truncate text-sm leading-tight sm:max-w-none sm:text-base">{t(lang, "appName")}</span>
         </Link>
         <nav className="hidden gap-1 md:flex">
           {links.map((l) => (
