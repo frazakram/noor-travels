@@ -123,6 +123,11 @@ SURAH_ALIASES: dict[str, int] = {
     "quraysh": 106,
     "maun": 107,
     "kawthar": 108,
+    # Common misspellings / speech-to-text
+    "nafl": 114,
+    "alnafl": 114,
+    "annas": 114,
+    "alnas": 114,
 }
 
 CHAPTER_SURAH_NUM = re.compile(
@@ -139,6 +144,11 @@ CHAPTER_SURAH_NUM = re.compile(
 )
 
 SURAH_NAME_HINT = re.compile(r"\b(name|called|title|naam|kya\s+naam)\b", re.I)
+SURAH_NUMBER_HINT = re.compile(r"\b(number|no\.?)\b", re.I)
+SURAH_REVERSE_NUMBER_HINT = re.compile(
+    r"(?:surah|sura|chapter)\s+(?:number|no\.?)\s+(?:of|for)\b",
+    re.I,
+)
 SURAH_SUMMARY_HINT = re.compile(
     r"\b(summary|summarize|summarise|overview|teachings|about|explain|meaning|main\s+theme)\b",
     re.I,
@@ -193,8 +203,85 @@ SUMMARY_HINTS = re.compile(
 def _normalize_name(name: str) -> str:
     n = name.lower().strip()
     for _ in range(2):
-        n = re.sub(r"^(?:al|aal|ale|ar|as|at|ad)[\s'-]+", "", n)
+        n = re.sub(r"^(?:al|aal|ale|ar|as|at|ad|an)[\s'-]+", "", n)
     return re.sub(r"[^a-z0-9]", "", n)
+
+
+def _extract_surah_name_phrase(question: str) -> str | None:
+    """Extract surah name from 'surah number of X' style questions."""
+    patterns = [
+        r"(?:surah|sura|chapter)\s+(?:number|no\.?)\s+(?:of|for)\s+(.+?)(?:\?|$)",
+        r"(?:number|no\.?)\s+(?:of|for)\s+(?:the\s+)?(?:surah|sura|chapter)\s+(.+?)(?:\?|$)",
+    ]
+    q = question.strip()
+    for pat in patterns:
+        m = re.search(pat, q, re.I)
+        if m:
+            return m.group(1).strip().rstrip("?.!")
+    return None
+
+
+def lookup_surah_by_name_phrase(phrase: str) -> int | None:
+    """Map a surah name phrase (possibly misspelled) to surah number."""
+    if not phrase:
+        return None
+
+    direct = detect_surah_number(f"surah {phrase}")
+    if direct:
+        return direct
+
+    norm_phrase = _normalize_name(phrase)
+    if len(norm_phrase) < 3:
+        return None
+
+    with get_cursor() as cur:
+        cur.execute("SELECT number, name_en, name_en_translation FROM surahs")
+        rows = cur.fetchall()
+
+    exact: int | None = None
+    contains: tuple[int, int] | None = None
+    fuzzy_candidates: list[tuple[str, int]] = []
+
+    for row in rows:
+        if use_sqlite():
+            num, name_en, name_tr = row
+        else:
+            num, name_en, name_tr = row["number"], row["name_en"], row["name_en_translation"]
+        for name in (name_en, name_tr or ""):
+            norm_name = _normalize_name(name)
+            if len(norm_name) < 3:
+                continue
+            fuzzy_candidates.append((norm_name, int(num)))
+            if norm_name == norm_phrase:
+                exact = int(num)
+            elif norm_phrase in norm_name or norm_name in norm_phrase:
+                if not contains or len(norm_name) > contains[1]:
+                    contains = (int(num), len(norm_name))
+
+    if exact:
+        return exact
+    if contains:
+        return contains[0]
+
+    import difflib
+
+    names = [n for n, _ in fuzzy_candidates]
+    close = difflib.get_close_matches(norm_phrase, names, n=1, cutoff=0.68)
+    if close:
+        return next(num for n, num in fuzzy_candidates if n == close[0])
+
+    return None
+
+
+def detect_surah_number_lookup(question: str) -> int | None:
+    if not SURAH_REVERSE_NUMBER_HINT.search(question) and not re.search(
+        r"\bnumber\b.*\b(?:surah|sura|chapter)\b", question, re.I
+    ):
+        return None
+    phrase = _extract_surah_name_phrase(question)
+    if phrase:
+        return lookup_surah_by_name_phrase(phrase)
+    return None
 
 
 def _has_surah_context(question: str) -> bool:
@@ -382,8 +469,36 @@ def analyze_keyword_query(question: str, lang: str = "en") -> dict[str, Any]:
             "standalone_question": question,
         }
 
+    reverse_surah = detect_surah_number_lookup(question)
+    if reverse_surah:
+        return {
+            "search_terms": [],
+            "source_filter": ["quran"],
+            "verse_keys": [],
+            "surah_number": reverse_surah,
+            "topic": "surah_number_lookup",
+            "detected_language": lang,
+            "intent": "surah_number_lookup",
+            "wants_period": False,
+            "standalone_question": question,
+        }
+
     surah_number = detect_surah_number(question)
     if surah_number:
+        if SURAH_REVERSE_NUMBER_HINT.search(question) or (
+            SURAH_NUMBER_HINT.search(question) and _extract_surah_name_phrase(question)
+        ):
+            return {
+                "search_terms": [],
+                "source_filter": ["quran"],
+                "verse_keys": [],
+                "surah_number": surah_number,
+                "topic": "surah_number_lookup",
+                "detected_language": lang,
+                "intent": "surah_number_lookup",
+                "wants_period": False,
+                "standalone_question": question,
+            }
         return {
             "search_terms": [],
             "source_filter": ["quran", "tafsir"],
@@ -843,6 +958,9 @@ def keyword_retrieve_smart(question: str, lang: str = "en") -> tuple[list[dict],
     if analysis.get("intent") == "verse_lookup" and analysis.get("verse_keys"):
         return _fetch_verse_lookup_chunks(analysis["verse_keys"][0]), analysis
 
+    if analysis.get("intent") == "surah_number_lookup" and analysis.get("surah_number"):
+        return _fetch_surah_summary_chunks(analysis["surah_number"]), analysis
+
     if analysis.get("intent") == "surah_summary" and analysis.get("surah_number"):
         return _fetch_surah_summary_chunks(analysis["surah_number"]), analysis
 
@@ -969,6 +1087,35 @@ def format_surah_name_answer(surah_number: int, lang: str) -> str:
     return (
         f"Surah {surah_number} is {name_en}{tr} — {ayah_count} ayahs, {rev} revelation."
     )
+
+
+def format_surah_number_answer(surah_number: int, lang: str) -> str:
+    with get_cursor() as cur:
+        _run_query(
+            cur,
+            "SELECT name_en, name_en_translation, name_ar, ayah_count, revelation_type FROM surahs WHERE number = ?",
+            (surah_number,),
+        )
+        row = cur.fetchone()
+    if not row:
+        return f"Surah {surah_number} not found."
+
+    if use_sqlite():
+        name_en, name_tr, name_ar, ayah_count, rev = row
+    else:
+        name_en = row["name_en"]
+        name_tr = row["name_en_translation"]
+        name_ar = row["name_ar"]
+        ayah_count = row["ayah_count"]
+        rev = row["revelation_type"]
+
+    if lang == "ur":
+        tr = name_tr or name_en
+        return f"{name_ar} ({name_en}) سورہ نمبر {surah_number} ہے — {ayah_count} آیات، {rev}۔"
+    if lang == "hi":
+        return f"{name_en} सूरह संख्या {surah_number} है — {ayah_count} आयतें, {rev}।"
+    tr = f" ({name_tr})" if name_tr else ""
+    return f"{name_en}{tr} is Surah {surah_number} — {ayah_count} ayahs, {rev} revelation."
 
 
 def _curated_intro(themes: list[str], lang: str, question: str) -> str:

@@ -8,12 +8,19 @@ from app.services.keyword_search import (
     extract_search_terms,
     format_curated_answer,
     format_dua_answer,
+    format_surah_number_answer,
     format_surah_summary_answer,
     format_verse_answer,
     format_verse_range_answer,
     keyword_retrieve_smart,
 )
 from app.services.query_expansion import DUA_HINT, build_analysis, get_theme_summary
+
+
+def _is_surah_number_question(question: str) -> bool:
+    from app.services.keyword_search import detect_surah_number_lookup
+
+    return detect_surah_number_lookup(question) is not None
 
 
 def _embedding_chunk_count() -> int:
@@ -36,6 +43,9 @@ def retrieve_for_question(question: str, lang: str = "en") -> tuple[list[dict], 
     from app.services.keyword_search import _has_surah_context, detect_surah_number, is_verse_query
 
     if is_verse_query(question):
+        return keyword_retrieve_smart(question, lang)
+
+    if _is_surah_number_question(question):
         return keyword_retrieve_smart(question, lang)
 
     surah_num = detect_surah_number(question)
@@ -95,6 +105,9 @@ def format_short_answer(
 
     if analysis.get("intent") == "verse_lookup" and analysis.get("verse_keys"):
         return format_verse_answer(analysis["verse_keys"][0], lang)
+
+    if analysis.get("intent") == "surah_number_lookup" and analysis.get("surah_number"):
+        return format_surah_number_answer(analysis["surah_number"], lang)
 
     if analysis.get("intent") == "surah_summary" and analysis.get("surah_number"):
         return format_surah_summary_answer(analysis["surah_number"], lang, question)
