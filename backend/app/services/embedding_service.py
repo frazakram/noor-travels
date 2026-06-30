@@ -36,7 +36,7 @@ def _load_local_model():
 
     settings = get_settings()
     print(f"Loading local embedding model: {settings.local_embedding_model} …")
-    return SentenceTransformer(settings.local_embedding_model)
+    return SentenceTransformer(settings.local_embedding_model, device="cpu")
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
