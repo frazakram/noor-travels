@@ -1,8 +1,11 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 
 from app.db import get_cursor
 
 router = APIRouter()
+
+_CACHE_1H = "public, max-age=3600, stale-while-revalidate=86400"
 
 
 @router.get("/")
@@ -15,7 +18,8 @@ def list_duas():
             FROM duas ORDER BY id
             """
         )
-        return {"duas": cur.fetchall()}
+        data = cur.fetchall()
+    return JSONResponse({"duas": data}, headers={"Cache-Control": _CACHE_1H})
 
 
 @router.get("/travel")
@@ -28,7 +32,8 @@ def travel_duas():
             FROM duas WHERE category = 'travel' ORDER BY id
             """
         )
-        return {"duas": cur.fetchall()}
+        data = cur.fetchall()
+    return JSONResponse({"duas": data}, headers={"Cache-Control": _CACHE_1H})
 
 
 @router.get("/{dua_id}")

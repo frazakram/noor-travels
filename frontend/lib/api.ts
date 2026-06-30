@@ -1,12 +1,11 @@
 const API = process.env.NEXT_PUBLIC_API_URL || "";
 
-export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+async function _fetch<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${API}${path}`, {
+      headers: { "Content-Type": "application/json" },
       ...init,
-      headers: { "Content-Type": "application/json", ...init?.headers },
-      cache: "no-store",
     });
   } catch {
     throw new Error("We could not connect right now. Please check your internet and try again.");
@@ -22,6 +21,16 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(detail);
   }
   return res.json();
+}
+
+/** Dynamic data: always fetch fresh (chat, search results, salah times). */
+export function api<T>(path: string, init?: RequestInit): Promise<T> {
+  return _fetch<T>(path, { cache: "no-store", ...init });
+}
+
+/** Static data: respect server Cache-Control headers (surahs list, duas, hadith chapters). */
+export function apiStatic<T>(path: string, init?: RequestInit): Promise<T> {
+  return _fetch<T>(path, init);
 }
 
 function looksTechnical(message: string): boolean {

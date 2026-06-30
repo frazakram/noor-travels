@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
-import { api } from "@/lib/api";
+import { apiStatic } from "@/lib/api";
 import { t } from "@/lib/i18n";
 
 type Dua = {
@@ -23,7 +23,7 @@ export default function DuasPage() {
   const [duas, setDuas] = useState<Dua[]>([]);
 
   useEffect(() => {
-    api<{ duas: Dua[] }>("/api/duas/travel").then((d) => setDuas(d.duas));
+    apiStatic<{ duas: Dua[] }>("/api/duas/travel").then((d) => setDuas(d.duas));
   }, []);
 
   function title(d: Dua) {

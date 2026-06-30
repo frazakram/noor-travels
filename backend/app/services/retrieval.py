@@ -1,4 +1,5 @@
 """Unified retrieval: local embeddings + keyword fallback."""
+import re
 from typing import Any
 
 from app.core.config import get_settings
@@ -142,11 +143,91 @@ def format_short_answer(
             "See the sources below for related Quran and Hadith passages."
         )
 
+    # Always try to surface real content from chunks — never leave users with a generic pointer.
+    built = _build_answer_from_chunks(chunks, lang)
+    if built:
+        return built
+
     if lang == "ur":
         return "ذیل میں آپ کے سوال سے متعلقہ قرآن، حدیث اور دعاؤں کے حوالے ہیں۔"
     if lang == "hi":
         return "नीचे आपके प्रश्न से संबंधित कुरान, हदीस और दुआ के स्रोत हैं।"
     return "See the sources below for relevant Quran, Hadith, and dua passages related to your question."
+
+
+def _extract_chunk_field(content: str, field: str) -> str:
+    """Extract a named field from structured chunk content like 'Field: value. Next: ...'"""
+    key = f"{field}: "
+    idx = content.find(key)
+    if idx < 0:
+        return ""
+    start = idx + len(key)
+    m = re.search(r"\.\s+[A-Z][a-z]+:", content[start:])
+    if m:
+        return content[start : start + m.start()].strip().rstrip(".")
+    return content[start:].strip().rstrip(".")
+
+
+def _build_answer_from_chunks(chunks: list[dict], lang: str) -> str:
+    """Build a concrete answer from top retrieved chunks when no specific formatter matches.
+
+    Ensures users always see actual Quran/Hadith/dua text, not just a navigation hint.
+    """
+    if not chunks:
+        return ""
+
+    intros = {
+        "en": "Here is what the Quran, Hadith, and duas say:",
+        "ur": "قرآن، حدیث اور دعاؤں سے:",
+        "hi": "कुरान, हदीस और दुआओं से:",
+    }
+
+    parts: list[str] = []
+
+    # Dua chunks → use the dedicated formatter (it already knows the content format)
+    dua_chunks = [c for c in chunks[:6] if c.get("source_type") == "dua"]
+    if dua_chunks:
+        dua_text = format_dua_answer(dua_chunks, lang)
+        if dua_text:
+            parts.append(dua_text)
+
+    # Quran and hadith chunks → extract the translation text
+    for chunk in chunks[:8]:
+        if len(parts) >= 3:
+            break
+        stype = chunk.get("source_type", "")
+        content = chunk.get("content", "")
+        ref = chunk.get("source_ref", "")
+
+        if stype == "dua":
+            continue  # already handled above
+
+        if stype == "quran":
+            if lang == "ur":
+                text = _extract_chunk_field(content, "Urdu")
+            else:
+                text = _extract_chunk_field(content, "English")
+            if text and len(text) > 10:
+                parts.append(f"• {ref}\n{text[:320]}")
+
+        elif stype == "hadith":
+            text = _extract_chunk_field(content, "English")
+            if text and len(text) > 15:
+                parts.append(f"• {ref}\n{text[:320]}")
+
+        elif stype == "tafsir":
+            # Strip the "Tafsir src key: " prefix and take the first sentence(s)
+            body = re.sub(r"^Tafsir\s+\S+\s+[\d:]+\s*:\s*", "", content, count=1)
+            sentences = re.split(r"(?<=[.!?])\s+", body.strip())
+            text = " ".join(sentences[:2]).strip()[:280]
+            if len(text) > 30:
+                parts.append(f"• {ref}\n{text}")
+
+    if not parts:
+        return ""
+
+    intro = intros.get(lang, intros["en"])
+    return intro + "\n\n" + "\n\n".join(parts)
 
 
 # Backward-compatible alias

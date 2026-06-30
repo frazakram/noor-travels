@@ -6,7 +6,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useLang } from "@/components/LangProvider";
 import { IconButton, Icons } from "@/components/IconButton";
 import { useSurahAudio, type RepeatScope } from "@/hooks/useSurahAudio";
-import { api } from "@/lib/api";
+import { api, apiStatic } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import { cleanQuranText, displaySurahName } from "@/lib/quran-display";
 import type { Ayah, TranslationLang } from "@/lib/quran-types";
@@ -138,7 +138,7 @@ export default function SurahClient() {
     const idx = Math.max(0, startAyah - 1);
     setViewIndex(idx);
     setRepeatCurrent(1);
-    api<{ surah: { name_en: string }; ayahs: Ayah[] }>(
+    apiStatic<{ surah: { name_en: string }; ayahs: Ayah[] }>(
       `/api/quran/surahs/${surahNumber}?translation=${translation}`
     ).then((d) => {
       setSurahName(displaySurahName(surahNumber, d.surah.name_en));

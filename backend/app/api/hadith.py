@@ -1,8 +1,11 @@
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import JSONResponse
 
 from app.db import get_cursor
 
 router = APIRouter()
+
+_CACHE_1H = "public, max-age=3600, stale-while-revalidate=86400"
 
 
 @router.get("/chapters")
@@ -16,7 +19,8 @@ def list_chapters():
             ORDER BY chapter_en
             """
         )
-        return {"chapters": cur.fetchall()}
+        data = cur.fetchall()
+    return JSONResponse({"chapters": data}, headers={"Cache-Control": _CACHE_1H})
 
 
 @router.get("/browse")

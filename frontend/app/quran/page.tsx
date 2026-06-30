@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { NoticeCard } from "@/components/NoticeCard";
-import { api } from "@/lib/api";
+import { api, apiStatic } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import { cleanQuranText, displaySurahName } from "@/lib/quran-display";
 
@@ -38,7 +38,7 @@ export default function QuranPage() {
   const [searched, setSearched] = useState(false);
 
   useEffect(() => {
-    api<{ surahs: Surah[] }>("/api/quran/surahs")
+    apiStatic<{ surahs: Surah[] }>("/api/quran/surahs")
       .then((d) => {
         setSurahs(d.surahs);
         setLoadError("");
@@ -113,7 +113,7 @@ export default function QuranPage() {
           onAction={() => {
             setLoading(true);
             setLoadError("");
-            api<{ surahs: Surah[] }>("/api/quran/surahs")
+            apiStatic<{ surahs: Surah[] }>("/api/quran/surahs")
               .then((d) => setSurahs(d.surahs))
               .catch((e: Error) => setLoadError(e.message))
               .finally(() => setLoading(false));

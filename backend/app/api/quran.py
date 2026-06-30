@@ -2,10 +2,13 @@ import re
 from html import unescape
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import JSONResponse
 
 from app.db import get_cursor
 
 router = APIRouter()
+
+_CACHE_1H = "public, max-age=3600, stale-while-revalidate=86400"
 
 TRANSLATION_FIELDS = {
     "en": "translation_en",
@@ -29,7 +32,8 @@ def list_surahs():
             FROM surahs ORDER BY number
             """
         )
-        return {"surahs": cur.fetchall()}
+        data = cur.fetchall()
+    return JSONResponse({"surahs": data}, headers={"Cache-Control": _CACHE_1H})
 
 
 @router.get("/surahs/{surah_number}")
@@ -53,7 +57,10 @@ def get_surah(
             (surah_number,),
         )
         ayahs = cur.fetchall()
-    return {"surah": surah, "ayahs": ayahs, "translation": translation}
+    return JSONResponse(
+        {"surah": surah, "ayahs": ayahs, "translation": translation},
+        headers={"Cache-Control": _CACHE_1H},
+    )
 
 
 @router.get("/ayahs/{verse_key}")
