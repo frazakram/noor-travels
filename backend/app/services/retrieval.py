@@ -7,6 +7,7 @@ from app.services.hybrid_retriever import hybrid_retrieve, rerank
 from app.services.keyword_search import (
     extract_search_terms,
     format_curated_answer,
+    format_dua_answer,
     format_surah_summary_answer,
     format_verse_answer,
     format_verse_range_answer,
@@ -106,6 +107,11 @@ def format_short_answer(
     curated = format_curated_answer(chunks, lang, analysis)
     if curated:
         return curated
+
+    if DUA_HINT.search(question):
+        dua_answer = format_dua_answer(chunks, lang)
+        if dua_answer:
+            return dua_answer
 
     if DUA_HINT.search(question) and not any(c["source_type"] == "dua" for c in chunks[:5]):
         if lang == "ur":

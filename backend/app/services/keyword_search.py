@@ -128,11 +128,19 @@ SURAH_ALIASES: dict[str, int] = {
 CHAPTER_SURAH_NUM = re.compile(
     r"(?:"
     r"(?:chapter|surah|sura)\s+(\d{1,3})\b"
+    r"|(?:chapter|surah|sura)\s+(?:number|no\.?)\s*(\d{1,3})\b"
+    r"|(?:name|nama)(?:\s+of)?\s+(?:the\s+)?(?:chapter|surah|sura)\s+(?:number\s+)?(\d{1,3})\b"
     r"|(?:chapter|surah)\s+(\d{1,3})\s+of\s+(?:the\s+)?quran"
     r"|(?:the\s+)?quran\s+(?:chapter|surah)\s+(\d{1,3})\b"
     r"|what(?:'s|s| is)\s+(?:the\s+)?(?:chapter|surah)\s+(\d{1,3})\b"
     r"|(\d{1,3})\s+of\s+(?:the\s+)?quran\b"
     r")",
+    re.I,
+)
+
+SURAH_NAME_HINT = re.compile(r"\b(name|called|title|naam|kya\s+naam)\b", re.I)
+SURAH_SUMMARY_HINT = re.compile(
+    r"\b(summary|summarize|summarise|overview|teachings|about|explain|meaning|main\s+theme)\b",
     re.I,
 )
 
@@ -875,6 +883,94 @@ def keyword_retrieve_smart(question: str, lang: str = "en") -> tuple[list[dict],
     return ranked[: settings.rag_retrieval_k], analysis
 
 
+def _parse_dua_fields(content: str) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    title_m = re.match(r"Dua [^:]+:\s*([^.]+)", content)
+    if title_m:
+        fields["title"] = title_m.group(1).strip()
+    for key in ("Arabic", "Transliteration", "English", "Urdu", "Source"):
+        m = re.search(
+            rf"{key}:\s*(.+?)(?=\s+(?:Transliteration|English|Urdu|Source|Arabic):|$)",
+            content,
+            re.S,
+        )
+        if m:
+            fields[key.lower()] = m.group(1).strip().rstrip(".")
+    return fields
+
+
+def format_dua_answer(chunks: list[dict], lang: str, max_duas: int = 2) -> str | None:
+    """Build a readable dua answer from retrieved dua chunks."""
+    duas = [c for c in chunks if c.get("source_type") == "dua"]
+    if not duas:
+        return None
+
+    intros = {
+        "en": "Here are relevant duas from our collection:",
+        "ur": "ہمارے مجموعے سے متعلقہ دعائیں:",
+        "hi": "हमारे संग्रह से संबंधित दुआएँ:",
+    }
+    lines = [intros.get(lang, intros["en"]), ""]
+
+    for d in duas[:max_duas]:
+        fields = _parse_dua_fields(d.get("content", ""))
+        title = fields.get("title") or d.get("source_ref", "Dua")
+        ref = d.get("source_ref", "")
+        lines.append(f"• {title} ({ref})")
+        if fields.get("arabic"):
+            lines.append(fields["arabic"])
+        if lang == "ur" and fields.get("urdu"):
+            lines.append(fields["urdu"])
+        elif lang == "hi":
+            if fields.get("english"):
+                lines.append(fields["english"])
+        else:
+            if fields.get("english"):
+                lines.append(fields["english"])
+        if fields.get("transliteration"):
+            lines.append(f"({fields['transliteration']})")
+        if fields.get("source"):
+            src_labels = {"en": "Source", "ur": "ماخذ", "hi": "स्रोत"}
+            lines.append(f"{src_labels.get(lang, 'Source')}: {fields['source']}")
+        lines.append("")
+
+    return "\n".join(lines).strip()
+
+
+def format_surah_name_answer(surah_number: int, lang: str) -> str:
+    with get_cursor() as cur:
+        _run_query(
+            cur,
+            "SELECT name_en, name_en_translation, name_ar, ayah_count, revelation_type FROM surahs WHERE number = ?",
+            (surah_number,),
+        )
+        row = cur.fetchone()
+    if not row:
+        return f"Surah {surah_number} not found."
+
+    if use_sqlite():
+        name_en, name_tr, name_ar, ayah_count, rev = row
+    else:
+        name_en = row["name_en"]
+        name_tr = row["name_en_translation"]
+        name_ar = row["name_ar"]
+        ayah_count = row["ayah_count"]
+        rev = row["revelation_type"]
+
+    if lang == "ur":
+        tr = name_tr or name_en
+        return f"سورہ نمبر {surah_number} کا نام {name_ar} ({name_en} — {tr}) ہے۔ یہ {ayah_count} آیات کی {rev} سورہ ہے۔"
+    if lang == "hi":
+        return (
+            f"सूरह संख्या {surah_number} का नाम {name_en} ({name_tr or name_en}) है। "
+            f"यह {ayah_count} आयतों की {rev} सूरह है।"
+        )
+    tr = f" ({name_tr})" if name_tr else ""
+    return (
+        f"Surah {surah_number} is {name_en}{tr} — {ayah_count} ayahs, {rev} revelation."
+    )
+
+
 def _curated_intro(themes: list[str], lang: str, question: str) -> str:
     is_dua = bool(DUA_HINT.search(question))
     if is_dua and "study" in themes:
@@ -1297,6 +1393,9 @@ def format_verse_answer(verse_key: str, lang: str) -> str:
 
 
 def format_surah_summary_answer(surah_number: int, lang: str, question: str = "") -> str:
+    if question and SURAH_NAME_HINT.search(question) and not SURAH_SUMMARY_HINT.search(question):
+        return format_surah_name_answer(surah_number, lang)
+
     with get_cursor() as cur:
         _run_query(
             cur,
