@@ -30,7 +30,22 @@ Important production settings:
 - `POSTGRES_URL` must point to your hosted Supabase/Postgres database.
 - `EMBEDDING_PROVIDER=openai` avoids installing local ML models in serverless.
 
-## 3. Deploy
+If deploy fails with a bundle size error (~5 GB), confirm Vercel is **not** using a custom backend `installCommand`, and that `backend/requirements.txt` does **not** list `sentence-transformers`.
+
+## 3. Python dependencies
+
+Vercel installs `backend/requirements.txt` (slim, no local ML models).
+
+For local development with local embeddings:
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+```
+
+Production must keep `EMBEDDING_PROVIDER=openai` so the backend does not need `sentence-transformers`.
+
+## 4. Deploy
 
 After importing env vars in Vercel, deploy from the dashboard.
 
@@ -43,7 +58,7 @@ vercel env pull
 vercel --prod
 ```
 
-## 4. Verify
+## 5. Verify
 
 After deploy, check:
 

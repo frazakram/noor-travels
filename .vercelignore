@@ -1,19 +1,37 @@
 .git
 .vercel
-node_modules
+.DS_Store
+*.log
+*.pyc
+__pycache__
+
+# Frontend build artifacts (backend service must not bundle these)
 frontend/node_modules
 frontend/.next
+frontend/out
+frontend/.turbo
+
+# Python local environments
 backend/.venv
 backend/venv
-__pycache__
-*.pyc
-*.log
+.venv
+venv
+
+# Local databases and generated data
+backend/data
 *.db
 *.sqlite
 *.sqlite3
-backend/data
-data/raw
-data/processed
+
+# Source data (loaded into Postgres locally; not needed at runtime on Vercel)
+data
+
+# Dev-only ingestion scripts and large offline assets
+backend/ingestion
 .cache
 .huggingface
-.DS_Store
+
+# Docs / misc
+PLAN.md
+*.png
+VERCEL_DEPLOY.md

@@ -1,0 +1,4 @@
+# Local development dependencies (includes local embedding models).
+# Vercel uses requirements.txt / pyproject.toml instead (no sentence-transformers).
+-r requirements.txt
+sentence-transformers==3.3.1

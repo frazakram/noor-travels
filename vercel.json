@@ -1,4 +1,5 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "services": {
     "frontend": {
       "root": "frontend/",
@@ -6,8 +7,7 @@
     },
     "backend": {
       "root": "backend/",
-      "entrypoint": "app.main:app",
-      "installCommand": "pip install -r requirements-vercel.txt"
+      "entrypoint": "app.main:app"
     }
   },
   "rewrites": [
@@ -23,5 +23,10 @@
         "service": "frontend"
       }
     }
-  ]
+  ],
+  "functions": {
+    "backend/**/*.py": {
+      "excludeFiles": "{frontend/**,node_modules/**,data/**,scripts/**,**/.venv/**,**/venv/**,**/__pycache__/**,**/*.pyc,**/*.db,**/*.sqlite*,backend/ingestion/**,backend/data/**,**/.huggingface/**,**/.cache/**,**/.git/**}"
+    }
+  }
 }
