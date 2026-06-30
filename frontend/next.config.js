@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   // Keep @xenova/transformers as a Node.js external — don't bundle ONNX/WASM through Turbopack
-  serverExternalPackages: ["@huggingface/transformers", "onnxruntime-node"],
+  serverExternalPackages: ["@huggingface/transformers", "onnxruntime-web"],
   // Acknowledge Turbopack (Next.js 16 default); no custom rules needed since
   // serverExternalPackages already excludes the package from bundling.
   turbopack: {},

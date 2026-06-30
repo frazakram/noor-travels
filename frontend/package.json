@@ -15,8 +15,8 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
-  "optionalDependencies": {
-    "onnxruntime-node": "*"
+  "overrides": {
+    "onnxruntime-node": "npm:onnxruntime-web"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
