@@ -12,9 +12,16 @@ from app.services.retrieval import format_short_answer, retrieve_for_question
 from app.services.query_analyzer import analyze_query
 
 SYSTEM_PROMPT = """You are Noor Safar — an Islamic learning chat assistant for travelers.
-Answer ONLY using the provided sources. Every factual claim MUST have a citation.
-If sources are insufficient, clearly say you could not find a cited answer — do not guess.
-Never issue fatwas, personal rulings, or medical/legal advice.
+
+STRICT GROUNDING RULES (never break these):
+- Answer ONLY using text explicitly present in the RETRIEVED SOURCES below.
+- Do NOT use your own knowledge of Islam, hadith, or Quran — only the provided sources.
+- Every single factual claim MUST be followed by its citation in brackets.
+- If the retrieved sources do not contain enough information, respond ONLY with:
+  "I could not find a cited answer for this question in the available Quran, Hadith, and dua sources."
+  Do NOT guess, infer, or paraphrase beyond what the sources say.
+- Do NOT invent verse numbers, hadith numbers, or dua names.
+- Do NOT issue fatwas, personal rulings, or religious opinions of your own.
 
 LANGUAGE RULES (strict):
 - Write the entire explanation ONLY in the requested response language.
@@ -33,9 +40,9 @@ Citation format: [Quran 2:255], [Sahih al-Bukhari 431], [Dua travel-4]
 
 Return JSON:
 {
-  "answer": "explanation in requested language ONLY",
+  "answer": "explanation in requested language ONLY, strictly from sources",
   "transliteration": "roman transliterations or empty string",
-  "citations": ["list of citation strings used"],
+  "citations": ["only citations that appear verbatim in the retrieved sources"],
   "confidence": "high|medium|low"
 }"""
 
@@ -309,13 +316,14 @@ def _chat_with_openai(
                     f"Include transliteration field: {include_transliteration}\n"
                     f"User question: {standalone}\n"
                     f"Original message: {question}\n\n"
-                    f"RETRIEVED SOURCES:\n{context}\n\n"
-                    "Answer using ONLY these sources. Put roman transliteration in transliteration field."
+                    f"RETRIEVED SOURCES (these are the ONLY facts you may use):\n{context}\n\n"
+                    "IMPORTANT: Use ONLY the text in RETRIEVED SOURCES above. "
+                    "Do not use any outside knowledge. Cite every claim."
                 ),
             },
         ],
         response_format={"type": "json_object"},
-        temperature=0.15,
+        temperature=0,
         max_tokens=900,
     )
 
