@@ -108,7 +108,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
     window.setTimeout(() => {
       new Notification(`${prayerLabel(prayer)} time`, {
         body: "It is time for salah. May Allah accept your prayer.",
-        icon: "/logo.png",
+        icon: "/logo-sm.png",
       });
     }, Math.min(ms, 2_147_000_000));
   }

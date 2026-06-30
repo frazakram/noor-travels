@@ -1,5 +1,5 @@
-const CACHE = "noor-safar-v1";
-const ASSETS = ["/", "/quran", "/duas", "/hadith", "/khutba", "/logo.png", "/logo-sm.png"];
+const CACHE = "noor-safar-v2";
+const ASSETS = ["/", "/quran", "/duas", "/hadith", "/khutba", "/logo.png", "/logo-sm.png", "/logo-192.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));

@@ -16,8 +16,8 @@ export const metadata: Metadata = {
   title: "Noor Safar — Remember Allah while travelling",
   description: "Quran, Hadith, travel duas, live khutba, and precise Salah times for your area",
   icons: {
-    icon: "/logo.png",
-    apple: "/logo.png",
+    icon: "/logo-sm.png",
+    apple: "/logo-192.png",
   },
 };
 
