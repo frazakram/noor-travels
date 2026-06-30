@@ -174,6 +174,21 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "hadith_refs": ["Sahih al-Bukhari 6014"],
     },
     {
+        "id": "jihad",
+        "priority": 75,
+        "pattern": (
+            r"jihad|jihaad|qital|قتال|جہاد|جهاد|kill(?:ing)?.{0,30}quran|"
+            r"(?:quran|islam).{0,40}(?:kill|fight|war|violence|sword)|"
+            r"(?:kill|fight|war|violence).{0,40}(?:quran|islam|surah)|"
+            r"why.{0,30}(?:kill|fight|war)|context.{0,30}(?:kill|fight|jihad)|"
+            r"surah.{0,20}(?:kill|fight|jihad|war)"
+        ),
+        "terms": ["jihad", "qital", "fight", "killed", "path of Allah", "cause", "believers", "martyrs", "steadfast", "enemy", "war", "forbidden", "oppression"],
+        "dua_categories": [],
+        "verse_keys": ["3:169", "3:195", "3:157", "3:13", "2:190", "2:216", "4:74", "9:5", "8:39"],
+        "hadith_refs": [],
+    },
+    {
         "id": "riba",
         "priority": 80,
         "pattern": (

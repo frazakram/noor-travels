@@ -69,7 +69,13 @@ def chat(
         from app.services.keyword_search import extract_search_terms
         from app.services.query_expansion import build_analysis
         _la = build_analysis(question, out_lang, extract_search_terms(question))
-        local_analysis = {**_la, "search_queries_en": _la.get("search_terms", [question])}
+        # If this is a follow-up (short pronoun-heavy question), prepend last assistant context
+        _standalone = question
+        if history and len(question.split()) < 12:
+            _last = next((m["content"] for m in reversed(history) if m.get("role") == "user"), "")
+            if _last and _last != question:
+                _standalone = f"{_last} — {question}"
+        local_analysis = {**_la, "search_queries_en": _la.get("search_terms", [question]), "standalone_question": _standalone}
         client = OpenAI(
             api_key=settings.groq_api_key,
             base_url="https://api.groq.com/openai/v1",
@@ -311,22 +317,30 @@ def _chat_with_openai(
 
     lang_name = {"en": "English", "ur": "Urdu", "hi": "Hindi"}.get(out_lang, "English")
 
+    # Build conversation turns: include last 6 history turns for context
+    prior_turns: list[dict] = []
+    for h in (history or [])[-6:]:
+        if h.get("role") in ("user", "assistant") and h.get("content"):
+            prior_turns.append({"role": h["role"], "content": str(h["content"])[:600]})
+
+    llm_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    llm_messages.extend(prior_turns)
+    llm_messages.append({
+        "role": "user",
+        "content": (
+            f"Response language: {lang_name} ONLY\n"
+            f"Include transliteration field: {include_transliteration}\n"
+            f"User question: {standalone}\n"
+            f"Original message: {question}\n\n"
+            f"RETRIEVED SOURCES (these are the ONLY facts you may use):\n{context}\n\n"
+            "IMPORTANT: Use ONLY the text in RETRIEVED SOURCES above. "
+            "Do not use any outside knowledge. Cite every claim."
+        ),
+    })
+
     response = client.chat.completions.create(
         model=model or get_settings().chat_model,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": (
-                    f"Response language: {lang_name} ONLY\n"
-                    f"Include transliteration field: {include_transliteration}\n"
-                    f"User question: {standalone}\n"
-                    f"Original message: {question}\n\n"
-                    f"RETRIEVED SOURCES (these are the ONLY facts you may use):\n{context}\n\n"
-                    "IMPORTANT: Use ONLY the text in RETRIEVED SOURCES above. "
-                    "Do not use any outside knowledge. Cite every claim."
-                ),
-            },
+        messages=llm_messages,
         ],
         response_format={"type": "json_object"},
         temperature=0,

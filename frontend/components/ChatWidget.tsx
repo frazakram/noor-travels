@@ -83,6 +83,7 @@ export function ChatWidget() {
   const [showTransliteration, setShowTransliteration] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("noor-output-lang") as Lang | null;
@@ -333,13 +334,27 @@ export function ChatWidget() {
             e.preventDefault();
             sendMessage(input);
           }}
-          className="flex flex-col gap-2 border-t border-subtle p-3 pb-safe sm:flex-row sm:pb-3"
+          className="flex flex-col gap-2 border-t border-subtle p-3 pb-safe sm:flex-row sm:items-end sm:pb-3"
         >
-          <input
-            className="input flex-1 text-sm"
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            className="input flex-1 resize-none overflow-hidden text-sm leading-relaxed"
             placeholder={t(lang, "chatPlaceholder")}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value);
+              const el = e.target;
+              el.style.height = "auto";
+              el.style.height = Math.min(el.scrollHeight, 120) + "px";
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage(input);
+                if (textareaRef.current) textareaRef.current.style.height = "auto";
+              }
+            }}
             disabled={loading}
             dir="auto"
           />
