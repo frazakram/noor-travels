@@ -17,6 +17,12 @@
   },
   "rewrites": [
     {
+      "source": "/api/embed",
+      "destination": {
+        "service": "frontend"
+      }
+    },
+    {
       "source": "/api/(.*)",
       "destination": {
         "service": "backend"

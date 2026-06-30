@@ -15,17 +15,30 @@ class Settings(BaseSettings):
 
     # Chat: "local" (free, retrieval + theme summaries) or "openai" (paid LLM rephrasing)
     chat_provider: str = "local"
-    # Embeddings: "local" (bge-m3, free) or "openai"
+    # Embeddings: "local" (bge-m3), "openai", or "xenova" (calls /api/embed on Next.js)
     embedding_provider: str = "local"
     local_embedding_model: str = "BAAI/bge-m3"
     embedding_batch_size: int = 16
     embedding_model: str = "text-embedding-3-small"
     chat_model: str = "gpt-4o-mini"
     embedding_dimensions: int = 1024
+    # URL of the Next.js /api/embed endpoint (auto-derived from VERCEL_URL when empty)
+    embed_api_url: str = ""
     rag_min_similarity: float = 0.42
     rag_retrieval_k: int = 20
     rag_final_k: int = 5
     rag_cache_ttl_hours: int = 168
+
+    @property
+    def embed_url(self) -> str:
+        """Resolved URL for the Xenova /api/embed endpoint."""
+        if self.embed_api_url:
+            return self.embed_api_url.rstrip("/")
+        import os
+        vercel_url = os.environ.get("VERCEL_URL", "")
+        if vercel_url:
+            return f"https://{vercel_url}/api/embed"
+        return "http://localhost:3000/api/embed"
 
     # Legacy alias
     @property
