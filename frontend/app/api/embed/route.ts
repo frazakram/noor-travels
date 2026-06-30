@@ -1,28 +1,19 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Must run in Node.js runtime — Edge runtime can't cache models to /tmp
 export const runtime = "nodejs";
-// Keep the Lambda warm between requests (Vercel Pro feature)
 export const maxDuration = 30;
 
-// Module-level singleton — survives across warm Lambda invocations
-let _pipe: ((text: string, opts: Record<string, unknown>) => Promise<{ data: Float32Array }>) | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _pipe: any = null;
 
 async function getPipeline() {
   if (_pipe) return _pipe;
-
-  // Cache models in /tmp so they survive across warm invocations
   const { pipeline, env } = await import("@xenova/transformers");
   env.cacheDir = "/tmp/xenova";
   env.allowLocalModels = false;
-
-  // quantized=true → uses the int8 ONNX model (~22 MB vs ~86 MB)
-  _pipe = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", {
-    quantized: true,
-  }) as typeof _pipe;
-
-  return _pipe!;
+  _pipe = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", { quantized: true });
+  return _pipe;
 }
 
 export async function POST(req: NextRequest) {
@@ -44,23 +35,16 @@ export async function POST(req: NextRequest) {
   try {
     const pipe = await getPipeline();
     const embeddings: number[][] = [];
-
     for (const text of texts) {
-      const out = await pipe(String(text).slice(0, 2000), {
-        pooling: "mean",
-        normalize: true,
-      });
-      embeddings.push(Array.from(out.data));
+      const out = await pipe(String(text).slice(0, 2000), { pooling: "mean", normalize: true });
+      embeddings.push(Array.from(out.data as Float32Array));
     }
-
     return NextResponse.json({ embeddings, dims: 384 });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }
 
-// Health-check / warm-up via GET
 export async function GET() {
   try {
     await getPipeline();
