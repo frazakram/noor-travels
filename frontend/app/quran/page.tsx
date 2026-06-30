@@ -36,6 +36,7 @@ export default function QuranPage() {
   const [loadError, setLoadError] = useState("");
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [activeSurah, setActiveSurah] = useState<number | null>(null);
 
   useEffect(() => {
     apiStatic<{ surahs: Surah[] }>("/api/quran/surahs")
@@ -146,13 +147,22 @@ export default function QuranPage() {
           <Link
             key={s.number}
             href={`/quran/${s.number}`}
-            className="card flex items-center justify-between transition hover:border-noor-300 dark:hover:border-noor-500"
+            onClick={() => setActiveSurah(s.number)}
+            className={`card flex items-center justify-between transition hover:border-noor-300 dark:hover:border-noor-500 ${
+              activeSurah === s.number ? "border-noor-400 bg-noor-50 dark:border-noor-500 dark:bg-noor-800/60" : ""
+            }`}
           >
-            <div>
+            <div className="min-w-0">
               <p className="font-medium text-heading">{s.number}. {displaySurahName(s.number, s.name_en)}</p>
               <p className="text-xs text-faint">{s.name_en_translation} · {s.ayah_count} {t(lang, "ayahs")}</p>
             </div>
-            <p className="font-arabic text-body" dir="rtl">{s.name_ar}</p>
+            <div className="flex shrink-0 items-center gap-2">
+              {activeSurah === s.number ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-noor-200 border-t-noor-600 dark:border-noor-700 dark:border-t-noor-300" />
+              ) : (
+                <p className="font-arabic text-body" dir="rtl">{s.name_ar}</p>
+              )}
+            </div>
           </Link>
         ))}
       </div>

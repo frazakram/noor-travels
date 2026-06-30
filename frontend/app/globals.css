@@ -104,6 +104,15 @@
       dark:border-noor-700 dark:bg-noor-900 dark:shadow-black/20;
   }
 
+  /* Clickable cards (Link / button wrappers) get press feedback */
+  a.card, button.card {
+    @apply active:scale-[0.97] active:opacity-75;
+  }
+
+  .page-enter {
+    animation: pageEnter 0.22s ease-out both;
+  }
+
   .btn-primary {
     @apply rounded-xl bg-noor-700 px-5 py-2.5 text-sm font-medium text-white transition-all duration-150
       hover:bg-noor-800 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100
@@ -470,6 +479,17 @@
 
   .minaret-right {
     @apply right-[12%];
+  }
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

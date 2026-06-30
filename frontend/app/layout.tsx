@@ -6,6 +6,8 @@ import { ChatWidget } from "@/components/ChatWidget";
 import { Footer } from "@/components/Footer";
 import { LangProvider } from "@/components/LangProvider";
 import { Nav } from "@/components/Nav";
+import { NavigationProgress } from "@/components/NavigationProgress";
+import { PageWrapper } from "@/components/PageWrapper";
 import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
@@ -50,9 +52,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <LangProvider>
             <ChatProvider>
+              <NavigationProgress />
               <AppShellDetect />
               <Nav />
-              <main className="mx-auto max-w-5xl px-4 py-4 pb-safe sm:py-6">{children}</main>
+              <main className="mx-auto max-w-5xl px-4 py-4 pb-safe sm:py-6">
+                <PageWrapper>{children}</PageWrapper>
+              </main>
               <Footer />
               <RegisterServiceWorker />
               <ChatWidget />
