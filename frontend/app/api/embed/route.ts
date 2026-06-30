@@ -4,20 +4,16 @@ import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _pipe: any = null;
 
 async function getPipeline() {
   if (_pipe) return _pipe;
+  // The onnxruntime-node → onnxruntime-web stub (scripts/patch-onnx.js postinstall)
+  // intercepts the CDN wasmPaths assignment and keeps a local file:// path.
   const { pipeline, env } = await import("@huggingface/transformers");
   env.cacheDir = "/tmp/hf-cache";
   env.allowLocalModels = false;
-  // device:"wasm" forces onnxruntime-web (pure WASM) — onnxruntime-node
-  // dynamically links libonnxruntime.so which isn't available on Vercel Lambda.
-  _pipe = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", {
-    dtype: "q8",
-    device: "wasm",
-  });
+  _pipe = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", { dtype: "q8" });
   return _pipe;
 }
 
@@ -28,7 +24,6 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
-
   const texts = body.texts;
   if (!Array.isArray(texts) || texts.length === 0) {
     return NextResponse.json({ error: "texts must be a non-empty array" }, { status: 400 });
@@ -36,7 +31,6 @@ export async function POST(req: NextRequest) {
   if (texts.length > 64) {
     return NextResponse.json({ error: "max 64 texts per request" }, { status: 400 });
   }
-
   try {
     const pipe = await getPipeline();
     const embeddings: number[][] = [];
