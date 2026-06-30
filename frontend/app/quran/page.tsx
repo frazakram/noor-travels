@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
+import { NoticeCard } from "@/components/NoticeCard";
 import { api } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import { cleanQuranText, displaySurahName } from "@/lib/quran-display";
@@ -32,14 +33,21 @@ export default function QuranPage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
 
   useEffect(() => {
-    api<{ surahs: Surah[] }>("/api/quran/surahs").then((d) => {
-      setSurahs(d.surahs);
-      setLoading(false);
-    });
+    api<{ surahs: Surah[] }>("/api/quran/surahs")
+      .then((d) => {
+        setSurahs(d.surahs);
+        setLoadError("");
+      })
+      .catch((e: Error) => {
+        setLoadError(e.message || "Could not load Quran. The server may need database setup.");
+        setSurahs([]);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   async function handleSearch(e: React.FormEvent) {
@@ -95,6 +103,23 @@ export default function QuranPage() {
         />
         <button type="submit" className="btn-primary min-h-11 shrink-0 sm:min-h-0">{t(lang, "search")}</button>
       </form>
+
+      {loadError && (
+        <NoticeCard
+          tone="warning"
+          title="Quran could not load"
+          message={loadError}
+          actionLabel="Try again"
+          onAction={() => {
+            setLoading(true);
+            setLoadError("");
+            api<{ surahs: Surah[] }>("/api/quran/surahs")
+              .then((d) => setSurahs(d.surahs))
+              .catch((e: Error) => setLoadError(e.message))
+              .finally(() => setLoading(false));
+          }}
+        />
+      )}
 
       {searching && <p className="text-sm text-muted">{t(lang, "loading")}</p>}
 

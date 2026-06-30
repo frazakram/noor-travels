@@ -17,11 +17,51 @@ The root `vercel.json` defines both services and routes `/api/*` to the backend.
 
 ## 2. Environment Variables
 
-Use `.vercel.env` for Vercel's environment import. It is generated locally and gitignored:
+See `.env.vercel.example` for the full list. **Minimum required for Quran, Hadith, and Chat:**
+
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `POSTGRES_URL` | **Yes** | Supabase Postgres URI |
+| `FORCE_SQLITE` | **Yes** | Must be `0` |
+| `CORS_ORIGINS` | **Yes** | Include `https://noor-travels-chi.vercel.app` |
+| `NEXT_PUBLIC_API_URL` | **Yes** | Leave **empty** |
+| `EMBEDDING_PROVIDER` | **Yes** | `openai` |
+| `OPENAI_API_KEY` | For chat | Set `CHAT_PROVIDER=openai` for best answers |
+| `DEEPGRAM_API_KEY` | Optional | Khutba live transcription only |
+
+Generate from local `.env` files:
 
 ```bash
 python3 scripts/prepare_vercel_env.py
 ```
+
+Import `.vercel.env` in Vercel → Settings → Environment Variables, then **Redeploy**.
+
+### Database setup (one-time — without this Quran stays on "Loading")
+
+Vercel has **no SQLite file**. You must use **Supabase Postgres** and seed it from your laptop:
+
+```bash
+cd backend
+export POSTGRES_URL="postgresql://postgres.[ref]:[password]@...pooler.supabase.com:6543/postgres"
+export FORCE_SQLITE=0
+
+# 1. Create tables
+python ingestion/migrate.py
+
+# 2. Load Quran, Hadith, Duas (takes a few minutes)
+python ingestion/fetch_quran.py
+python ingestion/fetch_hadith.py
+python ingestion/seed_duas.py
+python ingestion/fetch_khutbahs.py --from-json
+
+# 3. Embeddings for chat (needs OPENAI_API_KEY in backend/.env)
+export EMBEDDING_PROVIDER=openai
+python ingestion/embed_index.py
+```
+
+Verify: open `https://noor-travels-chi.vercel.app/api/health` — should return `"status":"ok"`.
+Then open `/api/quran/surahs` — should return a JSON list of surahs.
 
 Important production settings:
 

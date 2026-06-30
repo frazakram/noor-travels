@@ -13,9 +13,8 @@ function readCompassHeading(e: DeviceOrientationEvent): number | null {
   if (typeof withWebkit.webkitCompassHeading === "number") {
     return withWebkit.webkitCompassHeading;
   }
-  const absolute = e as DeviceOrientationEvent & { webkitCompassAccuracy?: number };
-  if (typeof absolute.alpha === "number" && e.absolute) {
-    return (360 - absolute.alpha) % 360;
+  if (typeof e.alpha === "number" && e.absolute) {
+    return (360 - e.alpha) % 360;
   }
   if (typeof e.alpha === "number") {
     return (360 - e.alpha) % 360;
@@ -24,12 +23,14 @@ function readCompassHeading(e: DeviceOrientationEvent): number | null {
 }
 
 export function QiblaHijriWidget({ coords, times }: Props) {
-  const [heading, setHeading] = useState(0);
+  const [heading, setHeading] = useState<number | null>(null);
+  const [compassLive, setCompassLive] = useState(false);
   const bearing = coords ? qiblaBearing(coords.lat, coords.lng) : 0;
-  const rotation = bearing - heading;
+  const needleRotation = heading !== null ? bearing - heading : bearing;
   const hijri = times?.hijri;
   const distanceKm = coords ? Math.round(distanceToMecca(coords.lat, coords.lng)) : null;
   const cardinal = cardinalDirection(bearing);
+  const aligned = heading !== null && Math.abs(((bearing - heading + 540) % 360) - 180) < 12;
 
   useEffect(() => {
     async function enableOrientation() {
@@ -49,7 +50,10 @@ export function QiblaHijriWidget({ coords, times }: Props) {
 
     function onOrientation(e: DeviceOrientationEvent) {
       const next = readCompassHeading(e);
-      if (next !== null) setHeading(next);
+      if (next !== null) {
+        setHeading(next);
+        setCompassLive(true);
+      }
     }
 
     window.addEventListener("deviceorientationabsolute", onOrientation, true);
@@ -64,37 +68,63 @@ export function QiblaHijriWidget({ coords, times }: Props) {
     <section className="grid gap-3 md:grid-cols-2">
       <article className="rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:p-5">
         <div className="flex items-center gap-4">
-          <div className="relative mx-auto h-16 w-16 shrink-0 sm:mx-0 sm:h-16 sm:w-16">
+          <div className="relative mx-auto h-20 w-20 shrink-0 sm:mx-0">
             <svg viewBox="0 0 64 64" className="absolute inset-0 h-full w-full text-slate-400 dark:text-slate-500">
               <circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" strokeWidth="2" />
-              <text x="32" y="14" textAnchor="middle" fontSize="8" fill="currentColor">
+              <text x="32" y="12" textAnchor="middle" fontSize="8" fill="currentColor">
                 N
               </text>
-              <text x="50" y="36" textAnchor="middle" fontSize="7" fill="currentColor">
-                E
-              </text>
-              <text x="32" y="54" textAnchor="middle" fontSize="7" fill="currentColor">
-                S
-              </text>
-              <text x="14" y="36" textAnchor="middle" fontSize="7" fill="currentColor">
-                W
-              </text>
             </svg>
+            {/* Kaaba marker — fixed qibla direction from your location */}
+            {coords && (
+              <span
+                className="absolute left-1/2 top-1/2 text-sm"
+                style={{
+                  transform: `translate(-50%, -50%) rotate(${bearing}deg) translateY(-1.35rem)`,
+                }}
+                aria-hidden
+              >
+                🕋
+              </span>
+            )}
+            {/* Your location at center */}
+            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs" aria-hidden>
+              📍
+            </span>
+            {/* Phone heading arrow */}
             <div
-              className="absolute left-1/2 top-3 h-9 w-1 -translate-x-1/2 origin-bottom rounded-full bg-teal-600 shadow-lg transition-transform duration-300"
-              style={{ transform: `translateX(-50%) rotate(${rotation}deg)` }}
+              className={`absolute left-1/2 top-3 h-10 w-1 -translate-x-1/2 origin-bottom rounded-full shadow-lg transition-transform duration-300 ${
+                aligned ? "bg-emerald-500" : "bg-teal-600"
+              }`}
+              style={{ transform: `translateX(-50%) rotate(${needleRotation}deg)` }}
             />
-            <div className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold-400" />
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-slate-400">Qibla Direction</p>
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Qibla compass</p>
             <p className="text-xl font-bold text-slate-800 dark:text-white sm:text-2xl">
               {coords ? `${Math.round(bearing)}° ${cardinal}` : "—"}
             </p>
             <p className="text-sm text-slate-500">
               {distanceKm ? `${distanceKm.toLocaleString()} km to Mecca` : "Allow location to calculate Qibla"}
             </p>
-            <p className="mt-1 text-[11px] text-slate-400">Hold phone flat and rotate slowly for live compass</p>
+            {coords && (
+              <p className="text-xs text-slate-500">
+                <span className="font-medium text-slate-600 dark:text-slate-300">📍 Your Qibla:</span> {Math.round(bearing)}°
+                {heading !== null && (
+                  <>
+                    {" · "}
+                    <span className="font-medium text-slate-600 dark:text-slate-300">🧭 Phone:</span> {Math.round(heading)}°
+                  </>
+                )}
+              </p>
+            )}
+            <p className="text-[11px] text-slate-400">
+              {compassLive
+                ? aligned
+                  ? "Facing Qibla — hold steady"
+                  : "Rotate phone until the arrow points to 🕋"
+                : "Hold phone flat and rotate slowly to activate compass"}
+            </p>
           </div>
         </div>
       </article>

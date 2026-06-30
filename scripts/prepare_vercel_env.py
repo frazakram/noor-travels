@@ -42,7 +42,7 @@ PRODUCTION_DEFAULTS = {
     "NEXT_PUBLIC_API_URL": "",
     # Vercel production must use hosted Postgres/Supabase, not local SQLite.
     "FORCE_SQLITE": "0",
-    "CORS_ORIGINS": "https://noor-travels.vercel.app,http://localhost:3000",
+    "CORS_ORIGINS": "https://noor-travels-chi.vercel.app,https://noor-travels.vercel.app,http://localhost:3000",
     # Avoid installing/running local ML models in serverless.
     "EMBEDDING_PROVIDER": "openai",
     "EMBEDDING_MODEL": "text-embedding-3-small",
