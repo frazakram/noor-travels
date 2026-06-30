@@ -12,8 +12,12 @@ async function getPipeline() {
   const { pipeline, env } = await import("@huggingface/transformers");
   env.cacheDir = "/tmp/hf-cache";
   env.allowLocalModels = false;
-  // q8 = int8 quantized ONNX model (~22 MB)
-  _pipe = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", { dtype: "q8" });
+  // device:"wasm" forces onnxruntime-web (pure WASM) — onnxruntime-node
+  // dynamically links libonnxruntime.so which isn't available on Vercel Lambda.
+  _pipe = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", {
+    dtype: "q8",
+    device: "wasm",
+  });
   return _pipe;
 }
 
