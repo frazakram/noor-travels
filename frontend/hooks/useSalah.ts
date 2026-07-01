@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { DEFAULT_SALAH_SETTINGS, type LocationResponse, type SalahSettings, type SalahTimesResponse } from "@/lib/salah";
+import { applyAllNotificationSchedules } from "@/lib/notification-schedule";
+import { loadNotificationPrefs } from "@/lib/notification-prefs";
+import { DEFAULT_SALAH_SETTINGS, type LocationResponse, type PrayerId, type SalahSettings, type SalahTimesResponse } from "@/lib/salah";
 
 export type SalahState = {
   loading: boolean;
@@ -110,6 +112,11 @@ export function useSalah(): SalahState {
       ]);
       setLocationLabel(loc.label);
       setTimes(prayerTimes);
+      const starts: Partial<Record<PrayerId, string>> = {};
+      prayerTimes.prayers.forEach((p) => {
+        starts[p.id] = p.start;
+      });
+      applyAllNotificationSchedules(loadNotificationPrefs(), starts);
       localStorage.setItem(COORDS_KEY, JSON.stringify({ lat, lng }));
       localStorage.setItem(LABEL_KEY, loc.label);
     } catch (e) {

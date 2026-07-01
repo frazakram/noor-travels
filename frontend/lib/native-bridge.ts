@@ -11,6 +11,8 @@ type NoorAndroidBridge = {
   setQuranPlaying?: (playing: boolean) => void;
   playQuranQueue?: (playlistJson: string) => void;
   stopQuranPlayback?: () => void;
+  schedulePrayerAlarm?: (prayerName: string, hour: number, minute: number, enabled: boolean) => void;
+  scheduleHadithNotification?: (hour: number, minute: number, enabled: boolean) => void;
 };
 
 function bridge(): NoorAndroidBridge | null {
@@ -57,6 +59,27 @@ export function nativeUpdateQuranNotification(title: string, artist: string): vo
   try {
     const b = bridge() as NoorAndroidBridge & { updateQuranNotification?: (t: string, a: string) => void };
     b?.updateQuranNotification?.(title, artist);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function nativeSchedulePrayerAlarm(
+  prayerName: string,
+  hour: number,
+  minute: number,
+  enabled: boolean,
+): void {
+  try {
+    bridge()?.schedulePrayerAlarm?.(prayerName, hour, minute, enabled);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function nativeScheduleHadithNotification(hour: number, minute: number, enabled: boolean): void {
+  try {
+    bridge()?.scheduleHadithNotification?.(hour, minute, enabled);
   } catch {
     /* ignore */
   }

@@ -5,6 +5,7 @@ import { DailyReflection } from "@/components/home/DailyReflection";
 import { FeaturedKhutba } from "@/components/home/FeaturedKhutba";
 import { QiblaHijriWidget } from "@/components/home/QiblaHijriWidget";
 import { SalahDashboard } from "@/components/home/SalahDashboard";
+import { NotificationSettings } from "@/components/home/NotificationSettings";
 import { SalahSettingsPanel } from "@/components/home/SalahSettingsPanel";
 import { TasbeehWidget } from "@/components/home/TasbeehWidget";
 import { TimeOfDayHero } from "@/components/home/TimeOfDayHero";
@@ -109,6 +110,8 @@ export default function HomePage() {
           onManualLocation={salah.setManualLocation}
           onUseGps={salah.useGpsLocation}
         />
+
+        <NotificationSettings times={salah.times} />
 
         <FeaturedKhutba />
       </div>

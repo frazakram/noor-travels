@@ -67,6 +67,33 @@ def search_hadith(q: str = Query(min_length=2)):
         return {"results": cur.fetchall()}
 
 
+@router.get("/daily")
+def daily_hadith():
+    from datetime import datetime, timezone
+
+    day_index = int(datetime.now(timezone.utc).strftime("%j"))
+    with get_cursor() as cur:
+        cur.execute("SELECT COUNT(*) AS total FROM hadiths")
+        total_row = cur.fetchone()
+        total = int(total_row["total"] if total_row else 0)
+        if not total:
+            raise HTTPException(404, "Hadith collection not loaded")
+        offset = day_index % total
+        cur.execute(
+            """
+            SELECT id, collection, chapter_en, hadith_number, arabic, english, reference
+            FROM hadiths
+            ORDER BY id
+            LIMIT 1 OFFSET %s
+            """,
+            (offset,),
+        )
+        row = cur.fetchone()
+    if not row:
+        raise HTTPException(404, "Hadith not found")
+    return JSONResponse(row, headers={"Cache-Control": _CACHE_1H})
+
+
 @router.get("/{hadith_id}")
 def get_hadith(hadith_id: int):
     with get_cursor() as cur:

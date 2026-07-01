@@ -23,6 +23,12 @@ import {
   type SalahTimesResponse,
 } from "@/lib/salah";
 import { t } from "@/lib/i18n";
+import { isNativeApp } from "@/lib/native-bridge";
+import {
+  ensureNotificationPermission,
+  scheduleAdhan,
+} from "@/lib/notification-schedule";
+import { loadNotificationPrefs, saveNotificationPrefs } from "@/lib/notification-prefs";
 
 const PRAYER_ICONS: Record<PrayerId, string> = {
   fajr: "🌅",
@@ -64,18 +70,14 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
   const { lang } = useLang();
   const [now, setNow] = useState<Date | null>(null);
   const [streak, setStreak] = useState<StreakStore>({ currentStreak: 0, longestStreak: 0, logs: {} });
-  const [notifySet, setNotifySet] = useState<Record<string, boolean>>({});
+  const [notifySet, setNotifySet] = useState<Record<string, boolean>>(() => loadNotificationPrefs().adhan);
   const [shareStatus, setShareStatus] = useState("");
   const tz = times?.timezone ?? "UTC";
 
   useEffect(() => {
     setNow(new Date());
     setStreak(loadStreak());
-    try {
-      setNotifySet(JSON.parse(localStorage.getItem("noor-salah-notify") || "{}"));
-    } catch {
-      setNotifySet({});
-    }
+    setNotifySet(loadNotificationPrefs().adhan);
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
@@ -98,20 +100,13 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
   }
 
   async function toggleNotification(prayer: PrayerId, start: string) {
-    if (!("Notification" in window)) return;
-    const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
-    if (permission !== "granted") return;
-    const next = { ...notifySet, [prayer]: !notifySet[prayer] };
-    setNotifySet(next);
-    localStorage.setItem("noor-salah-notify", JSON.stringify(next));
-    if (!next[prayer]) return;
-    const ms = Math.max(0, (parseMinutes(start) - nowMinutes + (parseMinutes(start) <= nowMinutes ? 24 * 60 : 0)) * 60_000);
-    window.setTimeout(() => {
-      new Notification(`${prayerLabel(prayer)} time`, {
-        body: "It is time for salah. May Allah accept your prayer.",
-        icon: "/logo-sm.png",
-      });
-    }, Math.min(ms, 2_147_000_000));
+    const enabled = !notifySet[prayer];
+    if (!isNativeApp()) await ensureNotificationPermission();
+    const prefs = loadNotificationPrefs();
+    const nextAdhan = { ...prefs.adhan, [prayer]: enabled };
+    saveNotificationPrefs({ ...prefs, adhan: nextAdhan });
+    setNotifySet(nextAdhan);
+    scheduleAdhan(prayer, start, enabled);
   }
 
   const prayerLabel = (id: PrayerId) => t(lang, PRAYER_LABEL_KEYS[id]);
