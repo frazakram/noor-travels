@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLang } from "@/components/LangProvider";
+import { t } from "@/lib/i18n";
 
 export function TasbeehWidget() {
+  const { lang } = useLang();
   const [count, setCount] = useState(0);
   const [burst, setBurst] = useState(false);
 
@@ -28,8 +31,8 @@ export function TasbeehWidget() {
     <section>
       <div className="relative flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:p-5">
         <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-slate-400">Tasbeeh Counter</p>
-          <p className="text-xs text-slate-600 dark:text-slate-300 sm:text-sm">SubhanAllah · Alhamdulillah · Allahu Akbar</p>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-slate-400">{t(lang, "tasbeehCounter")}</p>
+          <p className="text-xs text-slate-600 dark:text-slate-300 sm:text-sm">{t(lang, "tasbeehHint")}</p>
         </div>
         <div className="flex items-center gap-3 sm:gap-4">
           <span className="font-mono text-3xl font-bold text-teal-700 dark:text-teal-400 sm:text-4xl">{count}</span>

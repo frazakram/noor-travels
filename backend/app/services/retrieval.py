@@ -37,6 +37,69 @@ def _embedding_chunk_count() -> int:
         return 0
 
 
+def _retrieve_by_themes(
+    question: str,
+    lang: str,
+    clusters: list[dict],
+    analysis: dict[str, Any],
+    *,
+    wants_tafsir: bool = False,
+) -> list[dict] | None:
+    """Fast path: fetch only curated theme pins (skips slow broad keyword scan)."""
+    if not clusters:
+        return None
+
+    from app.services.keyword_search import (
+        _fetch_ayah_chunks,
+        _fetch_hadith_by_refs,
+        _search_duas,
+    )
+
+    candidates: list[dict] = []
+    all_keys: list[str] = []
+    all_refs: list[str] = []
+    dua_cats: list[str] = []
+    search_terms: list[str] = list(analysis.get("search_terms") or [])
+
+    for cluster in clusters:
+        all_keys.extend(cluster.get("verse_keys") or [])
+        all_refs.extend(cluster.get("hadith_refs") or [])
+        dua_cats.extend(cluster.get("dua_categories") or [])
+        search_terms.extend(cluster.get("terms") or [])
+
+    all_keys = list(dict.fromkeys(all_keys))
+    all_refs = list(dict.fromkeys(all_refs))
+    dua_cats = list(dict.fromkeys(dua_cats))
+    search_terms = list(dict.fromkeys(search_terms))[:6]
+
+    if all_keys:
+        candidates.extend(_fetch_ayah_chunks(all_keys))
+    if all_refs:
+        candidates.extend(_fetch_hadith_by_refs(all_refs))
+    if dua_cats:
+        candidates.extend(_search_duas(search_terms, 6, dua_cats))
+
+    if not candidates:
+        return None
+
+    if wants_tafsir:
+        verse_keys = list(dict.fromkeys(
+            vk for cluster in clusters for vk in (cluster.get("verse_keys") or [])
+        ))
+        if verse_keys:
+            tafsir_chunks = _fetch_tafsir_chunks(verse_keys)
+            for t in tafsir_chunks:
+                t["final_score"] = 0.80
+            candidates.extend(tafsir_chunks)
+
+    for p in candidates:
+        p.setdefault("metadata", {})["theme_pinned"] = True
+        p["final_score"] = 0.85
+
+    merged = rerank(" ".join(analysis.get("search_terms", [question])), candidates, get_settings().rag_retrieval_k)
+    return _filter_dua_by_theme(merged, analysis)
+
+
 def retrieve_for_question(question: str, lang: str = "en") -> tuple[list[dict], dict[str, Any]]:
     """Retrieve relevant chunks: semantic (bge-m3) when indexed, plus keyword expansion."""
     settings = get_settings()
@@ -64,25 +127,26 @@ def retrieve_for_question(question: str, lang: str = "en") -> tuple[list[dict], 
             return chunks, analysis
 
     analysis = build_analysis(question, lang, extract_search_terms(question))
-    search_queries = list(dict.fromkeys([question, *analysis["search_terms"][:6]]))
     source_filter = analysis["source_filter"]
-    candidates: list[dict] = []
-
-    if _embedding_chunk_count() > 50:
-        try:
-            candidates.extend(hybrid_retrieve(search_queries, source_filter))
-        except Exception:
-            pass
-
     matched_clusters = match_themes(question)
 
+    themed = _retrieve_by_themes(
+        question,
+        lang,
+        matched_clusters,
+        analysis,
+        wants_tafsir=is_explanation
+        or bool(re.search(r"\b(context|why|meaning|background|story|teach)\b", question, re.I)),
+    )
+    if themed:
+        return themed, analysis
+
+    candidates: list[dict] = []
     kw_chunks, kw_analysis = keyword_retrieve_smart(question, lang)
-    # Generic surah opener ayahs (3:1–3:3) drown out theme pins — skip when a theme matches.
     if not (matched_clusters and kw_analysis.get("intent") == "surah_summary"):
         candidates.extend(kw_chunks)
     analysis = {**kw_analysis, **analysis, "search_terms": analysis["search_terms"]}
 
-    # Pin cluster-specific verse keys so theme questions always surface the right ayahs
     from app.services.keyword_search import _fetch_ayah_chunks
     for cluster in matched_clusters:
         pinned = _fetch_ayah_chunks(cluster.get("verse_keys") or [])
@@ -94,7 +158,6 @@ def retrieve_for_question(question: str, lang: str = "en") -> tuple[list[dict], 
     wants_context = is_explanation or bool(
         re.search(r"\b(context|why|meaning|background|story|teach)\b", question, re.I)
     )
-    # Pin tafsir for explanation/context questions and thematic fiqh topics
     if matched_clusters and wants_context:
         all_verse_keys = []
         for cluster in matched_clusters:
@@ -104,6 +167,25 @@ def retrieve_for_question(question: str, lang: str = "en") -> tuple[list[dict], 
             for t in tafsir_chunks:
                 t["final_score"] = 0.80
             candidates.extend(tafsir_chunks)
+
+    structured_intent = analysis.get("intent") in (
+        "surah_summary",
+        "verse_lookup",
+        "verse_range_lookup",
+        "surah_number_lookup",
+    )
+    # Semantic embed is slow on Vercel (HTTP to /api/embed) — skip when keyword/theme already suffices.
+    need_semantic = (
+        _embedding_chunk_count() > 50
+        and not structured_intent
+        and not matched_clusters
+        and len(candidates) < 5
+    )
+    if need_semantic:
+        try:
+            candidates.extend(hybrid_retrieve([question], source_filter))
+        except Exception:
+            pass
 
     merged = rerank(" ".join(analysis["search_terms"]), candidates, settings.rag_retrieval_k)
     merged = _filter_dua_by_theme(merged, analysis)

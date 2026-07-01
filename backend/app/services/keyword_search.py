@@ -585,9 +585,11 @@ def _fetch_ayah_chunks(verse_keys: list[str]) -> list[dict]:
     if not verse_keys:
         return []
     results = []
+    keys = list(dict.fromkeys(verse_keys))
     with get_cursor() as cur:
-        for vk in verse_keys:
-            if use_sqlite():
+        if use_sqlite():
+            rows = []
+            for vk in keys:
                 cur.execute(
                     """
                     SELECT verse_key, arabic, transliteration, translation_en, translation_ur
@@ -595,17 +597,21 @@ def _fetch_ayah_chunks(verse_keys: list[str]) -> list[dict]:
                     """,
                     (vk,),
                 )
-            else:
-                cur.execute(
-                    """
-                    SELECT verse_key, arabic, transliteration, translation_en, translation_ur
-                    FROM ayahs WHERE verse_key = %s
-                    """,
-                    (vk,),
-                )
-            row = cur.fetchone()
-            if not row:
-                continue
+                row = cur.fetchone()
+                if row:
+                    rows.append(row)
+        else:
+            cur.execute(
+                """
+                SELECT verse_key, arabic, transliteration, translation_en, translation_ur
+                FROM ayahs WHERE verse_key = ANY(%s)
+                """,
+                (keys,),
+            )
+            rows = cur.fetchall()
+
+        by_key = {}
+        for row in rows:
             if use_sqlite():
                 vk, ar, tr, en, ur = row
             else:
@@ -616,6 +622,12 @@ def _fetch_ayah_chunks(verse_keys: list[str]) -> list[dict]:
                     row["translation_en"],
                     row["translation_ur"],
                 )
+            by_key[vk] = (ar, tr, en, ur)
+
+        for vk in keys:
+            if vk not in by_key:
+                continue
+            ar, tr, en, ur = by_key[vk]
             content = f"Quran {vk}. Arabic: {ar}. English: {en}. Urdu: {ur}."
             results.append(
                 {

@@ -1,3 +1,4 @@
+import type { Lang } from "@/lib/i18n";
 import type { PrayerId } from "@/lib/salah";
 
 const STORAGE_KEY = "noor-salah-streak";
@@ -89,14 +90,18 @@ export function getTodayLog(tz: string): DayLog {
   return loadStreak().logs[todayKey(tz)] ?? {};
 }
 
-export function getWeekLogs(tz: string): Array<{ key: string; label: string; log: DayLog; prayed: number; missed: number }> {
+export function getWeekLogs(
+  tz: string,
+  lang: Lang = "en",
+): Array<{ key: string; label: string; log: DayLog; prayed: number; missed: number }> {
   const store = loadStreak();
+  const locale = lang === "ur" ? "ur-PK" : lang === "hi" ? "hi-IN" : "en-US";
   const days = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const key = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
-    const label = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short" }).format(d);
+    const label = new Intl.DateTimeFormat(locale, { timeZone: tz, weekday: "short" }).format(d);
     const log = store.logs[key] ?? {};
     const prayed = countToday(log);
     days.push({ key, label, log, prayed, missed: 5 - prayed });

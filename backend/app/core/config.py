@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     rag_retrieval_k: int = 20
     rag_final_k: int = 5
     rag_cache_ttl_hours: int = 168
+    groq_chat_model: str = "llama-3.1-8b-instant"
 
     @property
     def embed_url(self) -> str:

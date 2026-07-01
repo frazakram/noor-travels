@@ -88,7 +88,7 @@ def chat(
                 include_transliteration,
                 analysis=local_analysis,
                 cache_key=cache_key,
-                model="llama-3.3-70b-versatile",
+                model=get_settings().groq_chat_model,
                 mode="groq",
             )
             return _apply_validation(question, result)
@@ -277,6 +277,82 @@ def _format_keyword_answer(chunks: list[dict], lang: str) -> str:
     return "\n".join(lines)
 
 
+def _chunk_sources(chunks: list[dict]) -> list[dict]:
+    return [
+        {
+            "ref": c["source_ref"],
+            "type": c["source_type"],
+            "snippet": c["content"][:280],
+            "score": round(float(c.get("final_score", c.get("similarity", 0))), 3),
+        }
+        for c in chunks
+    ]
+
+
+def _top_chunk_score(chunks: list[dict]) -> float:
+    return max((float(c.get("final_score", c.get("similarity", 0))) for c in chunks), default=0.0)
+
+
+def _is_generic_pointer(answer: str) -> bool:
+    lower = answer.lower()
+    return any(
+        p in lower
+        for p in (
+            "see the sources below",
+            "ذیل میں",
+            "नीचे",
+            "could not find",
+        )
+    )
+
+
+def _try_fast_local_answer(
+    question: str,
+    standalone: str,
+    out_lang: str,
+    chunks: list[dict],
+    merged_analysis: dict[str, Any],
+    cache_key: str,
+    mode: str,
+) -> dict[str, Any] | None:
+    """Return a grounded local answer without calling the LLM when retrieval is confident."""
+    if not chunks:
+        return None
+
+    answer = format_short_answer(standalone or question, chunks, merged_analysis, out_lang)
+    if not answer or len(answer.strip()) < 20 or _is_refusal_answer(answer):
+        return None
+
+    intent = merged_analysis.get("intent", "")
+    themes = merged_analysis.get("themes") or []
+    top_score = _top_chunk_score(chunks)
+
+    from app.services.query_expansion import get_theme_summary
+
+    fast_intents = {"surah_summary", "verse_lookup", "verse_range_lookup", "surah_number_lookup"}
+    if intent in fast_intents or get_theme_summary(themes, out_lang):
+        confidence = "high"
+    elif top_score >= 0.32 and not _is_generic_pointer(answer):
+        confidence = "medium" if top_score < 0.55 else "high"
+    elif len(answer.strip()) > 90 and not _is_generic_pointer(answer) and top_score >= 0.22:
+        confidence = "medium"
+    else:
+        return None
+
+    result = {
+        "answer": answer,
+        "transliteration": "",
+        "citations": [_ref_from_chunk(c) for c in chunks[:4]],
+        "confidence": confidence,
+        "sources": _chunk_sources(chunks),
+        "analysis": _public_analysis(merged_analysis),
+        "from_cache": False,
+        "mode": f"{mode}_local",
+    }
+    set_cached(cache_key, result)
+    return result
+
+
 def _chat_with_openai(
     client: OpenAI,
     question: str,
@@ -298,35 +374,17 @@ def _chat_with_openai(
     chunks = rerank(standalone, chunks, get_settings().rag_final_k)
 
     from app.services.keyword_search import extract_search_terms
-    from app.services.query_expansion import build_analysis, get_theme_summary
+    from app.services.query_expansion import build_analysis
 
     merged_analysis = {
         **build_analysis(standalone or question, out_lang, extract_search_terms(standalone or question)),
         **(analysis or {}),
     }
-    if get_theme_summary(merged_analysis.get("themes") or [], out_lang):
-        themed_answer = format_short_answer(standalone or question, chunks, merged_analysis, out_lang)
-        if themed_answer and len(themed_answer.strip()) > 30:
-            result = {
-                "answer": themed_answer,
-                "transliteration": "",
-                "citations": [_ref_from_chunk(c) for c in chunks[:4]],
-                "confidence": "high",
-                "sources": [
-                    {
-                        "ref": c["source_ref"],
-                        "type": c["source_type"],
-                        "snippet": c["content"][:280],
-                        "score": round(float(c.get("final_score", c.get("similarity", 0))), 3),
-                    }
-                    for c in chunks
-                ],
-                "analysis": _public_analysis(merged_analysis),
-                "from_cache": False,
-                "mode": mode,
-            }
-            set_cached(cache_key, result)
-            return result
+    fast = _try_fast_local_answer(
+        question, standalone or question, out_lang, chunks, merged_analysis, cache_key, mode
+    )
+    if fast:
+        return fast
 
     if not chunks:
         result = {
@@ -341,8 +399,8 @@ def _chat_with_openai(
         return result
 
     context = "\n\n---\n\n".join(
-        f"SOURCE: [{c['source_ref']}] ({c['source_type']})\n{c['content'][:1200]}"
-        for c in chunks
+        f"SOURCE: [{c['source_ref']}] ({c['source_type']})\n{c['content'][:700]}"
+        for c in chunks[:4]
     )
 
     lang_name = {"en": "English", "ur": "Urdu", "hi": "Hindi"}.get(out_lang, "English")
@@ -375,7 +433,7 @@ def _chat_with_openai(
         messages=llm_messages,
         response_format={"type": "json_object"},
         temperature=0,
-        max_tokens=900,
+        max_tokens=450,
     )
 
     parsed = json.loads(response.choices[0].message.content or "{}")
@@ -399,15 +457,7 @@ def _chat_with_openai(
         "transliteration": transliteration,
         "citations": citations,
         "confidence": parsed.get("confidence", "medium"),
-        "sources": [
-            {
-                "ref": c["source_ref"],
-                "type": c["source_type"],
-                "snippet": c["content"][:280],
-                "score": round(float(c.get("final_score", c.get("similarity", 0))), 3),
-            }
-            for c in chunks
-        ],
+        "sources": _chunk_sources(chunks),
         "analysis": _public_analysis(analysis),
         "from_cache": False,
         "mode": mode,

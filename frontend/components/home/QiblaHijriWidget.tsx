@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLang } from "@/components/LangProvider";
 import { qiblaBearing, upcomingHijriEvent, type SalahTimesResponse } from "@/lib/salah";
+import { t } from "@/lib/i18n";
 
 type Props = {
   coords: { lat: number; lng: number } | null;
@@ -23,6 +25,7 @@ function readCompassHeading(e: DeviceOrientationEvent): number | null {
 }
 
 export function QiblaHijriWidget({ coords, times }: Props) {
+  const { lang } = useLang();
   const [heading, setHeading] = useState<number | null>(null);
   const [compassLive, setCompassLive] = useState(false);
   const bearing = coords ? qiblaBearing(coords.lat, coords.lng) : 0;
@@ -100,20 +103,20 @@ export function QiblaHijriWidget({ coords, times }: Props) {
             />
           </div>
           <div className="min-w-0 flex-1 space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Qibla compass</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">{t(lang, "qiblaCompass")}</p>
             <p className="text-xl font-bold text-slate-800 dark:text-white sm:text-2xl">
               {coords ? `${Math.round(bearing)}° ${cardinal}` : "—"}
             </p>
             <p className="text-sm text-slate-500">
-              {distanceKm ? `${distanceKm.toLocaleString()} km to Mecca` : "Allow location to calculate Qibla"}
+              {distanceKm ? `${distanceKm.toLocaleString()} ${t(lang, "qiblaKmToMecca")}` : t(lang, "qiblaAllowLocation")}
             </p>
             {coords && (
               <p className="text-xs text-slate-500">
-                <span className="font-medium text-slate-600 dark:text-slate-300">📍 Your Qibla:</span> {Math.round(bearing)}°
+                <span className="font-medium text-slate-600 dark:text-slate-300">📍 {t(lang, "qiblaYourQibla")}:</span> {Math.round(bearing)}°
                 {heading !== null && (
                   <>
                     {" · "}
-                    <span className="font-medium text-slate-600 dark:text-slate-300">🧭 Phone:</span> {Math.round(heading)}°
+                    <span className="font-medium text-slate-600 dark:text-slate-300">🧭 {t(lang, "qiblaPhoneHeading")}:</span> {Math.round(heading)}°
                   </>
                 )}
               </p>
@@ -121,15 +124,15 @@ export function QiblaHijriWidget({ coords, times }: Props) {
             <p className="text-[11px] text-slate-400">
               {compassLive
                 ? aligned
-                  ? "Facing Qibla — hold steady"
-                  : "Rotate phone until the arrow points to 🕋"
-                : "Hold phone flat and rotate slowly to activate compass"}
+                  ? t(lang, "qiblaFacing")
+                  : t(lang, "qiblaRotate")
+                : t(lang, "qiblaHoldFlat")}
             </p>
           </div>
         </div>
       </article>
       <article className="rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:p-5">
-        <h2 className="font-semibold text-heading">Hijri calendar</h2>
+        <h2 className="font-semibold text-heading">{t(lang, "hijriCalendar")}</h2>
         {hijri ? (
           <>
             <p className="mt-2 text-xl font-bold text-heading sm:text-2xl">
@@ -141,7 +144,7 @@ export function QiblaHijriWidget({ coords, times }: Props) {
             )}
           </>
         ) : (
-          <p className="mt-2 text-sm text-muted">Loading Hijri date…</p>
+          <p className="mt-2 text-sm text-muted">{t(lang, "loadingHijri")}</p>
         )}
       </article>
     </section>

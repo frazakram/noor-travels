@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useLang } from "@/components/LangProvider";
 import { api } from "@/lib/api";
 import { PRAYER_METHODS, type LocationSearchResult, type SalahSettings } from "@/lib/salah";
+import { t } from "@/lib/i18n";
 
 type Props = {
   settings: SalahSettings;
@@ -12,6 +14,7 @@ type Props = {
 };
 
 export function SalahSettingsPanel({ settings, onSettings, onManualLocation, onUseGps }: Props) {
+  const { lang } = useLang();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<LocationSearchResult[]>([]);
@@ -27,10 +30,10 @@ export function SalahSettingsPanel({ settings, onSettings, onManualLocation, onU
     <section className="card p-4 sm:p-5">
       <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between text-left">
         <div>
-          <h2 className="font-semibold text-heading">Prayer settings</h2>
-          <p className="text-xs text-muted sm:text-sm">Manual location, calculation method, and Asr madhab</p>
+          <h2 className="font-semibold text-heading">{t(lang, "prayerSettings")}</h2>
+          <p className="text-xs text-muted sm:text-sm">{t(lang, "prayerSettingsHint")}</p>
         </div>
-        <span className="text-accent">{open ? "Close" : "Edit"}</span>
+        <span className="text-accent">{open ? t(lang, "close") : t(lang, "edit")}</span>
       </button>
 
       {open && (

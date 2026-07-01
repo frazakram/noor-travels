@@ -90,7 +90,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
   const nextInfo = times && now ? getNextPrayer(times.prayers, tz, now) : null;
   const todayLog = now ? getTodayLog(tz) : {};
   const todayCount = countToday(todayLog);
-  const weekLogs = now ? getWeekLogs(tz) : [];
+  const weekLogs = now ? getWeekLogs(tz, lang) : [];
   const missedToday = now ? getMissedToday(tz) : 0;
 
   function handleToggle(prayer: PrayerId) {
