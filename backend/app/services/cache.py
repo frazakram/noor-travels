@@ -4,9 +4,8 @@ import re
 import time
 from typing import Any
 
+from app.core.config import get_settings
 from app.db import get_conn, use_sqlite
-
-_TTL_SECONDS = 168 * 3600  # 7 days
 
 
 def _normalize(text: str) -> str:
@@ -23,30 +22,54 @@ def make_cache_key(
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
+def _ttl_seconds() -> int:
+    return get_settings().rag_cache_ttl_hours * 3600
+
+
 def get_cached(key: str) -> dict[str, Any] | None:
-    if not use_sqlite():
-        return None
+    ttl = _ttl_seconds()
     with get_conn() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT response_json, created_at FROM rag_cache WHERE cache_key = ?", (key,))
+        if use_sqlite():
+            cur.execute("SELECT response_json, created_at FROM rag_cache WHERE cache_key = ?", (key,))
+        else:
+            cur.execute("SELECT response_json, created_at FROM rag_cache WHERE cache_key = %s", (key,))
         row = cur.fetchone()
         if not row:
             return None
-        if time.time() - row[1] > _TTL_SECONDS:
-            cur.execute("DELETE FROM rag_cache WHERE cache_key = ?", (key,))
+        created = row[1] if not isinstance(row, dict) else row["created_at"]
+        payload = row[0] if not isinstance(row, dict) else row["response_json"]
+        if time.time() - float(created) > ttl:
+            if use_sqlite():
+                cur.execute("DELETE FROM rag_cache WHERE cache_key = ?", (key,))
+            else:
+                cur.execute("DELETE FROM rag_cache WHERE cache_key = %s", (key,))
+            conn.commit()
             return None
-        return json.loads(row[0])
+        return json.loads(payload)
 
 
 def set_cached(key: str, response: dict[str, Any]) -> None:
-    if not use_sqlite():
-        return
+    now = time.time()
+    payload = json.dumps(response, ensure_ascii=False)
     with get_conn() as conn:
         cur = conn.cursor()
-        cur.execute(
-            """
-            INSERT OR REPLACE INTO rag_cache (cache_key, response_json, created_at)
-            VALUES (?, ?, ?)
-            """,
-            (key, json.dumps(response, ensure_ascii=False), time.time()),
-        )
+        if use_sqlite():
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO rag_cache (cache_key, response_json, created_at)
+                VALUES (?, ?, ?)
+                """,
+                (key, payload, now),
+            )
+        else:
+            cur.execute(
+                """
+                INSERT INTO rag_cache (cache_key, response_json, created_at)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (cache_key) DO UPDATE
+                SET response_json = EXCLUDED.response_json, created_at = EXCLUDED.created_at
+                """,
+                (key, payload, now),
+            )
+        conn.commit()

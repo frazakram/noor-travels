@@ -23,6 +23,7 @@ type ChatMessage = {
   sources?: SourceDetail[];
   notice?: string;
   confidence?: string;
+  responseLang?: Lang;
 };
 
 type ChatResponse = {
@@ -46,7 +47,7 @@ const SUGGESTIONS: Record<Lang, string[]> = {
   hi: ["सफ़र की दुआ क्या है?", "कुरान में सब्र", "सफ़र में नमाज़ की हदीस"],
 };
 
-function ConfidenceBadge({ confidence, sources }: { confidence: string; sources?: SourceDetail[] }) {
+function ConfidenceBadge({ confidence, sources, lang }: { confidence: string; sources?: SourceDetail[]; lang: Lang }) {
   const topScore = sources?.[0]?.score;
   const pct = topScore != null ? Math.round(topScore * 100) : null;
 
@@ -67,7 +68,7 @@ function ConfidenceBadge({ confidence, sources }: { confidence: string; sources?
   return (
     <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${colorClass}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
-      {pct != null ? `${pct}% match` : confidence.charAt(0).toUpperCase() + confidence.slice(1)}
+      {pct != null ? `${pct}% ${t(lang, "matchLabel")}` : confidence.charAt(0).toUpperCase() + confidence.slice(1)}
     </span>
   );
 }
@@ -79,18 +80,22 @@ export function ChatWidget() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [outputLang, setOutputLang] = useState<Lang>("en");
+  const [outputLang, setOutputLang] = useState<Lang>(lang);
   const [showTransliteration, setShowTransliteration] = useState(true);
+  const [retranslatePending, setRetranslatePending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem("noor-output-lang") as Lang | null;
-    if (saved && ["en", "ur", "hi"].includes(saved)) setOutputLang(saved);
     const tr = localStorage.getItem("noor-show-transliteration");
     if (tr !== null) setShowTransliteration(tr === "1");
   }, []);
+
+  useEffect(() => {
+    setOutputLang(lang);
+    localStorage.setItem("noor-output-lang", lang);
+  }, [lang]);
 
   useEffect(() => {
     localStorage.setItem("noor-output-lang", outputLang);
@@ -112,8 +117,9 @@ export function ChatWidget() {
     return () => document.removeEventListener("keydown", onKey);
   }, [isOpen, closeChat]);
 
-  async function sendMessage(text: string) {
+  async function sendMessage(text: string, langOverride?: Lang) {
     if (!text.trim() || loading) return;
+    const answerLang = langOverride ?? outputLang;
     setError("");
     const userMsg: ChatMessage = { role: "user", content: text.trim() };
     const nextHistory = [...messages, userMsg];
@@ -127,8 +133,8 @@ export function ChatWidget() {
         method: "POST",
         body: JSON.stringify({
           message: text.trim(),
-          lang: outputLang,
-          response_lang: outputLang,
+          lang: answerLang,
+          response_lang: answerLang,
           include_transliteration: showTransliteration,
           history,
         }),
@@ -143,6 +149,7 @@ export function ChatWidget() {
           sources: data.sources,
           notice: data.notice,
           confidence: data.confidence,
+          responseLang: answerLang,
         },
       ]);
     } catch (err) {
@@ -150,15 +157,32 @@ export function ChatWidget() {
       setMessages(messages);
     } finally {
       setLoading(false);
+      setRetranslatePending(false);
     }
   }
 
-  const suggestions = SUGGESTIONS[lang] ?? SUGGESTIONS.en;
-  const answerDir = outputLang === "ur" ? "rtl" : "ltr";
+  async function handleOutputLangChange(next: Lang) {
+    if (next === outputLang || loading) return;
+    setOutputLang(next);
+    localStorage.setItem("noor-output-lang", next);
+
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    const hasAssistant = messages.some((m) => m.role === "assistant");
+    if (lastUser && hasAssistant) {
+      setRetranslatePending(true);
+      const withoutLastAssistant = messages[messages.length - 1]?.role === "assistant"
+        ? messages.slice(0, -1)
+        : messages;
+      setMessages(withoutLastAssistant);
+      await sendMessage(lastUser.content, next);
+    }
+  }
+
+  const suggestions = SUGGESTIONS[outputLang] ?? SUGGESTIONS.en;
 
   return (
     <>
-      <div className={`bottom-safe-5 fixed right-5 z-50 transition-opacity duration-300 ${isOpen ? "pointer-events-none opacity-0" : "opacity-100"}`}>
+      <div className={`bottom-safe-5 fixed end-5 z-50 transition-opacity duration-300 ${isOpen ? "pointer-events-none opacity-0" : "opacity-100"}`}>
         <Tooltip label={t(lang, "chat")} side="top">
           <button
             type="button"
@@ -182,10 +206,11 @@ export function ChatWidget() {
 
       <div
         ref={panelRef}
+        dir="ltr"
         className={`fixed z-50 flex flex-col bg-white shadow-2xl transition-all duration-300 ease-out dark:bg-noor-900 dark:shadow-black/40
-          bottom-0 right-0 w-full rounded-t-2xl pb-safe
+          bottom-0 end-0 w-full rounded-t-2xl pb-safe
           h-[calc(85dvh-env(safe-area-inset-bottom,0px))]
-          md:bottom-5 md:right-5 md:h-[560px] md:w-[400px] md:rounded-2xl md:border md:border-subtle md:pb-0
+          md:bottom-5 md:end-5 md:h-[560px] md:w-[400px] md:rounded-2xl md:border md:border-subtle md:pb-0
           ${isOpen ? "translate-y-0 opacity-100 pointer-events-auto" : "translate-y-8 opacity-0 pointer-events-none"}`}
       >
         <div className="flex items-center justify-between border-b border-subtle px-4 py-3">
@@ -205,11 +230,13 @@ export function ChatWidget() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 border-b border-subtle bg-surface-muted px-3 py-2">
-          <span className="text-[10px] font-medium uppercase text-faint">{t(lang, "answerIn")}:</span>
+          <span className="shrink-0 text-[10px] font-medium uppercase text-faint">{t(lang, "answerIn")}:</span>
+          <div className="flex flex-row gap-1">
           {(["en", "ur", "hi"] as Lang[]).map((l) => (
             <button
               key={l}
-              onClick={() => setOutputLang(l)}
+              type="button"
+              onClick={() => void handleOutputLangChange(l)}
               className={`rounded-md px-2 py-0.5 text-xs font-medium uppercase ${
                 outputLang === l
                   ? "bg-noor-700 text-white dark:bg-noor-600"
@@ -219,7 +246,8 @@ export function ChatWidget() {
               {l}
             </button>
           ))}
-          <label className="ml-auto flex items-center gap-1.5 text-[10px] text-muted">
+          </div>
+          <label className="ms-auto flex items-center gap-1.5 text-[10px] text-muted">
             <input
               type="checkbox"
               checked={showTransliteration}
@@ -248,7 +276,13 @@ export function ChatWidget() {
             </div>
           )}
 
-          {messages.map((m, i) => (
+          {retranslatePending && (
+            <p className="px-3 py-1 text-[10px] text-faint">{t(lang, "retranslateHint")}</p>
+          )}
+
+          {messages.map((m, i) => {
+            const msgDir = m.role === "assistant" ? (m.responseLang === "ur" ? "rtl" : "ltr") : "auto";
+            return (
             <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
               <div
                 className={`max-w-[92%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
@@ -256,7 +290,7 @@ export function ChatWidget() {
                     ? "bg-noor-700 text-white dark:bg-noor-600"
                     : "border border-subtle bg-surface-muted text-noor-900 dark:text-noor-50"
                 }`}
-                dir={m.role === "assistant" ? answerDir : "auto"}
+                dir={msgDir}
               >
                 {m.role === "assistant" && m.notice && (
                   <p className="mb-2 text-[10px] italic text-faint">{m.notice}</p>
@@ -265,7 +299,7 @@ export function ChatWidget() {
                 <p className="whitespace-pre-wrap">{m.content}</p>
 
                 {m.role === "assistant" && m.confidence && (
-                  <ConfidenceBadge confidence={m.confidence} sources={m.sources} />
+                  <ConfidenceBadge confidence={m.confidence} sources={m.sources} lang={lang} />
                 )}
 
                 {m.role === "assistant" && m.transliteration && (
@@ -302,7 +336,8 @@ export function ChatWidget() {
                 )}
               </div>
             </div>
-          ))}
+          );
+          })}
 
           {loading && (
             <div className="flex justify-start">
@@ -318,9 +353,9 @@ export function ChatWidget() {
           <div className="px-3 pb-2">
             <NoticeCard
               tone="warning"
-              title="Answer unavailable"
+              title={t(lang, "answerUnavailable")}
               message={error}
-              actionLabel="Try again"
+              actionLabel={t(lang, "tryAgain")}
               onAction={() => {
                 const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content;
                 if (lastUser) void sendMessage(lastUser);

@@ -74,21 +74,28 @@ def retrieve_for_question(question: str, lang: str = "en") -> tuple[list[dict], 
         except Exception:
             pass
 
+    matched_clusters = match_themes(question)
+
     kw_chunks, kw_analysis = keyword_retrieve_smart(question, lang)
-    candidates.extend(kw_chunks)
+    # Generic surah opener ayahs (3:1–3:3) drown out theme pins — skip when a theme matches.
+    if not (matched_clusters and kw_analysis.get("intent") == "surah_summary"):
+        candidates.extend(kw_chunks)
     analysis = {**kw_analysis, **analysis, "search_terms": analysis["search_terms"]}
 
     # Pin cluster-specific verse keys so theme questions always surface the right ayahs
     from app.services.keyword_search import _fetch_ayah_chunks
-    matched_clusters = match_themes(question)
     for cluster in matched_clusters:
         pinned = _fetch_ayah_chunks(cluster.get("verse_keys") or [])
         for p in pinned:
             p["final_score"] = 0.85
+            p.setdefault("metadata", {})["theme_pinned"] = True
         candidates.extend(pinned)
 
-    # For explanation/context questions, also pin tafsir for matched cluster verse keys
-    if is_explanation and matched_clusters:
+    wants_context = is_explanation or bool(
+        re.search(r"\b(context|why|meaning|background|story|teach)\b", question, re.I)
+    )
+    # Pin tafsir for explanation/context questions and thematic fiqh topics
+    if matched_clusters and wants_context:
         all_verse_keys = []
         for cluster in matched_clusters:
             all_verse_keys.extend(cluster.get("verse_keys") or [])
@@ -292,6 +299,8 @@ def _build_answer_from_chunks(chunks: list[dict], lang: str) -> str:
         if stype == "quran":
             if lang == "ur":
                 text = _extract_chunk_field(content, "Urdu")
+            elif lang == "hi":
+                text = _extract_chunk_field(content, "Hindi") or _extract_chunk_field(content, "English")
             else:
                 text = _extract_chunk_field(content, "English")
             if text and len(text) > 10:

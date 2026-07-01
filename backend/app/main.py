@@ -29,9 +29,15 @@ app.include_router(salah.router, prefix="/api/salah", tags=["salah"])
 @app.get("/api/health")
 def health():
     settings = get_settings()
+    if settings.use_groq_chat:
+        chat_provider = "groq"
+    elif settings.use_openai_chat:
+        chat_provider = "openai"
+    else:
+        chat_provider = "local"
     return {
         "status": "ok",
         "app": "Noor Safar",
-        "chat_provider": "local" if not settings.use_openai_chat else "openai",
+        "chat_provider": chat_provider,
         "embedding_provider": settings.embedding_provider,
     }

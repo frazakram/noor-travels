@@ -44,11 +44,12 @@ const PRAYER_LABEL_KEYS = {
   isha: "salahIsha",
 } as const;
 
-function formatPrayerClock(time: string): string {
+function formatPrayerClock(time: string, lang: "en" | "ur" | "hi"): string {
   const [h, m] = time.split(":").map(Number);
-  const suffix = h >= 12 ? "PM" : "AM";
-  const hour = h % 12 || 12;
-  return `${hour}:${String(m).padStart(2, "0")} ${suffix}`;
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  const locale = lang === "ur" ? "ur-PK" : lang === "hi" ? "hi-IN" : "en-US";
+  return new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit", hour12: true }).format(d);
 }
 
 type Props = {
@@ -143,11 +144,11 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
       } else {
         await navigator.clipboard.writeText(text);
       }
-      setShareStatus("Copied");
+      setShareStatus(t(lang, "copied"));
       window.setTimeout(() => setShareStatus(""), 1600);
     } catch {
       await navigator.clipboard?.writeText(text).catch(() => undefined);
-      setShareStatus("Copied");
+      setShareStatus(t(lang, "copied"));
       window.setTimeout(() => setShareStatus(""), 1600);
     }
   }
@@ -190,7 +191,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
           {missedToday > 0 && (
             <div className="rounded-xl bg-red-500/20 px-3 py-1.5 text-center backdrop-blur-sm">
               <p className="text-lg font-bold text-red-100">{missedToday}</p>
-              <p className="text-[10px] uppercase tracking-wide text-white/70">qada</p>
+              <p className="text-[10px] uppercase tracking-wide text-white/70">{t(lang, "qada")}</p>
             </div>
           )}
           <div className="rounded-xl bg-white/15 px-3 py-1.5 text-center backdrop-blur-sm">
@@ -225,7 +226,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
               </p>
               <p className="text-[10px] text-white/60">{t(lang, "salahUntilAdhan")}</p>
               <p className="mt-0.5 text-[10px] text-white/70">
-                {prayerLabel(nextInfo.next)} adhan at {formatPrayerClock(times.prayers.find((p) => p.id === nextInfo.next)?.start ?? times.timings[nextInfo.next])}
+                {prayerLabel(nextInfo.next)} {t(lang, "adhanAt")} {formatPrayerClock(times.prayers.find((p) => p.id === nextInfo.next)?.start ?? times.timings[nextInfo.next], lang)}
               </p>
             </div>
           </div>
@@ -235,7 +236,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
               onClick={() => void sharePrayerTimes()}
               className="rounded-lg bg-white/15 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/25"
             >
-              Share prayer times
+              {t(lang, "sharePrayerTimes")}
             </button>
             {shareStatus && <span className="text-xs text-gold-300">{shareStatus}</span>}
           </div>
@@ -288,7 +289,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                 key={p.id}
                 type="button"
                 aria-disabled={isSunrise || !canMark}
-                title={isSunrise ? "Fajr ends at sunrise" : !canMark ? "This prayer time has not started yet" : undefined}
+                title={isSunrise ? t(lang, "fajrEndsAtSunrise") : !canMark ? t(lang, "prayerNotStarted") : undefined}
                 onClick={() => {
                   if (canMark && prayerId) handleToggle(prayerId);
                 }}
@@ -306,7 +307,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
               >
                 {isCurrent && (
                   <span className="absolute left-2 top-2 rounded-full bg-amber-400 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-noor-950">
-                    Active
+                    {t(lang, "salahActive")}
                   </span>
                 )}
                 <div className="flex items-center justify-between">
@@ -330,7 +331,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                           }
                         }}
                         className={`touch-target inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] ${notifySet[prayerId] ? "bg-gold-400 text-noor-950" : "bg-white/10 text-white/60"}`}
-                        title="Notify me at adhan"
+                        title={t(lang, "notifyAtAdhan")}
                       >
                         🔔
                       </span>
@@ -342,10 +343,10 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                     )}
                   </div>
                 </div>
-                <p className="mt-1.5 font-semibold capitalize text-white">{isSunrise ? "Sunrise" : prayerLabel(prayerId!)}</p>
+                <p className="mt-1.5 font-semibold text-white">{isSunrise ? t(lang, "sunrise") : prayerLabel(prayerId!)}</p>
                 <p className={`mt-1 font-mono text-sm text-gold-300 ${isPast ? "grayscale-[30%] opacity-60" : ""}`}>{p.start}</p>
                 <p className="text-[10px] text-white/50">
-                  {isSunrise ? "Fajr window ends" : `${t(lang, "salahUntil")} ${p.end}`}
+                  {isSunrise ? t(lang, "fajrWindowEnds") : `${t(lang, "salahUntil")} ${p.end}`}
                 </p>
               </button>
             );
@@ -356,8 +357,8 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
       {weekLogs.length > 0 && (
         <div className="rounded-2xl bg-white/10 p-3 backdrop-blur-md sm:p-4">
           <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm font-semibold text-white">Weekly prayer history</p>
-            <p className="text-xs text-white/60">Qada reminder: make up missed prayers</p>
+            <p className="text-sm font-semibold text-white">{t(lang, "weeklyPrayerHistory")}</p>
+            <p className="text-xs text-white/60">{t(lang, "qadaReminder")}</p>
           </div>
           <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
             {weekLogs.map((d) => (

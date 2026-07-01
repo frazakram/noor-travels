@@ -57,7 +57,7 @@ export default function HomePage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4 pb-4">
       <TimeOfDayHero phase={phase}>
-        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between" dir="ltr">
           <div className="flex min-w-0 items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-xl bg-white/10 shadow-lg ring-1 ring-white/20 backdrop-blur-sm sm:h-12 sm:w-12">
               <svg viewBox="0 0 64 64" className="h-6 w-6 text-white sm:h-7 sm:w-7" aria-hidden="true">

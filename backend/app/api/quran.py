@@ -95,9 +95,27 @@ def get_tafsir(
             (verse_key, source),
         )
         row = cur.fetchone()
-        if not row:
-            raise HTTPException(404, "Tafsir not found for this ayah")
-    return row
+        if row:
+            return row
+
+    # Fallback: Ibn Kathir ingested into document_chunks (production path)
+    if source == "ibn_kathir_en":
+        ref = f"Tafsir Ibn Kathir {verse_key}"
+        with get_cursor() as cur:
+            cur.execute(
+                "SELECT content FROM document_chunks WHERE source_ref = %s AND source_type = 'tafsir'",
+                (ref,),
+            )
+            chunk = cur.fetchone()
+        if chunk:
+            content = chunk["content"] if isinstance(chunk, dict) else chunk[0]
+            text = re.sub(r"^Tafsir Ibn Kathir\s+[\d:]+\s*\n?", "", content, count=1).strip()
+            text = unescape(re.sub(r"<[^>]+>", " ", text))
+            text = re.sub(r"\s{2,}", " ", text).strip()
+            if text:
+                return {"verse_key": verse_key, "source": source, "text": text}
+
+    raise HTTPException(404, "Tafsir not found for this ayah")
 
 
 @router.get("/search")

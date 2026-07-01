@@ -15,6 +15,18 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "hadith_refs": ["Sahih al-Bukhari 1451", "Sahih al-Bukhari 1452", "Sahih al-Bukhari 1453"],
     },
     {
+        "id": "zakat_general",
+        "priority": 87,
+        "pattern": (
+            r"what\s+is\s+zakat|what\s+is\s+zakah|define\s+zakat|meaning\s+of\s+zakat|"
+            r"zakat\s+mean|explain\s+zakat|زکوٰة\s+کیا|ज़कात\s+क्या"
+        ),
+        "terms": ["zakat", "zakah", "charity", "wealth", "poor", "obligation", "pillar", "purify"],
+        "dua_categories": [],
+        "verse_keys": ["9:60", "2:267", "2:110", "2:43"],
+        "hadith_refs": ["Sahih al-Bukhari 1405"],
+    },
+    {
         "id": "zakat_rate",
         "priority": 85,
         "pattern": (
@@ -181,11 +193,53 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
             r"(?:quran|islam).{0,40}(?:kill|fight|war|violence|sword)|"
             r"(?:kill|fight|war|violence).{0,40}(?:quran|islam|surah)|"
             r"why.{0,30}(?:kill|fight|war)|context.{0,30}(?:kill|fight|jihad)|"
-            r"surah.{0,20}(?:kill|fight|jihad|war)"
+            r"surah.{0,20}(?:kill|fight|jihad|war)|"
+            r"(?:imran|ale.?imran|aal.?imran).{0,40}(?:kill|fight|jihad|war|context)"
         ),
-        "terms": ["jihad", "qital", "fight", "killed", "path of Allah", "cause", "believers", "martyrs", "steadfast", "enemy", "war", "forbidden", "oppression"],
+        "terms": ["jihad", "qital", "fight", "killed", "path of Allah", "cause", "believers", "martyrs", "steadfast", "enemy", "war", "forbidden", "oppression", "context"],
         "dua_categories": [],
-        "verse_keys": ["3:169", "3:195", "3:157", "3:13", "2:190", "2:216", "4:74", "9:5", "8:39"],
+        "verse_keys": ["3:169", "3:195", "3:157", "3:13", "2:190", "2:216", "4:74", "2:256", "60:8"],
+        "hadith_refs": [],
+    },
+    {
+        "id": "inheritance",
+        "priority": 78,
+        "pattern": (
+            r"inherit|mirath|وراثت|miras|विरासत|"
+            r"(?:property|estate|wealth|assets?).{0,40}(?:son|daughter|child|children|parent|divid|share|between)|"
+            r"(?:son|daughter|child|children).{0,40}(?:property|share|inherit|parent)|"
+            r"divid(?:e|ing).{0,30}(?:property|estate|inherit)"
+        ),
+        "terms": ["inherit", "inheritance", "share", "children", "sons", "daughters", "parents", "estate", "property", "will", "division", "mirath"],
+        "dua_categories": [],
+        "verse_keys": ["4:11", "4:12", "4:176", "2:180"],
+        "hadith_refs": [],
+    },
+    {
+        "id": "yusuf",
+        "priority": 70,
+        "pattern": (
+            r"yusuf|yousef|yoseph|joseph|یوسف|यूसुफ|"
+            r"story.{0,30}(?:yusuf|yousef|joseph|surah\s*12)|"
+            r"surah.{0,15}(?:yusuf|yousef|joseph)|"
+            r"what.{0,20}(?:yusuf|yousef|joseph).{0,20}teach"
+        ),
+        "terms": ["yusuf", "joseph", "patience", "trust", "forgiveness", "trial", "brothers", "story", "lesson"],
+        "dua_categories": [],
+        "verse_keys": ["12:111", "12:6", "12:100", "12:101", "12:83"],
+        "hadith_refs": [],
+    },
+    {
+        "id": "revelation_period",
+        "priority": 65,
+        "pattern": (
+            r"meccan|medinan|makki|madani|makkah|madinah|mecca|medina|"
+            r"how\s+many\s+surah.{0,30}(?:mecc|medin|makki|madani|origin|revealed)|"
+            r"(?:mecc|medin|makki|madani).{0,30}(?:how\s+many|number|count|surah)"
+        ),
+        "terms": ["meccan", "medinan", "makki", "madani", "makkah", "madinah", "revelation", "revealed", "hijrah"],
+        "dua_categories": [],
+        "verse_keys": ["3:3", "5:3", "17:1"],
         "hadith_refs": [],
     },
     {
@@ -233,6 +287,27 @@ THEME_SUMMARIES: dict[str, dict[str, str]] = {
             "नबी ﷺ ने प्रति व्यक्ति एक साअ खजूर या जौ का हुक्म दिया, ईदुल फ़ित्र की नमाज़ से पहले "
             "(सहीह बुखारी 1451–1453)। कई समुदाय नकद राशि देते हैं — अपने इलाके की मस्जिद या आलिम से "
             "दर जानें।"
+        ),
+    },
+    "zakat_general": {
+        "en": (
+            "Zakat is the obligatory charity on qualifying wealth — one of the five pillars of Islam. "
+            "The Quran commands believers to spend from what Allah has provided (2:267) and describes "
+            "the categories of people who may receive it (9:60). The rate on savings held for one lunar year "
+            "at nisab is 2.5% (one-fortieth), as stated in Sahih al-Bukhari 1405. "
+            "Zakat al-Fitr (Fitrana) is a separate end-of-Ramadan obligation — ask specifically if you mean Fitrana."
+        ),
+        "ur": (
+            "زکوٰة قابلِ مال پر واجب صدقہ ہے — اسلام کے پانچ ارکان میں سے ایک۔ "
+            "قرآن مومنوں کو حکم دیتا ہے کہ اللہ نے جو دیا اس میں سے خرچ کریں (2:267) اور "
+            "وصول کنندگان کی صفات بیان کرتا ہے (9:60)۔ نصاب پر ایک قمری سال بعد شرح 2.5% ہے "
+            "(صحیح بخاری 1405)۔ زکوٰۃُ الفطر (فطرانہ) الگ واجب ہے — اگر فطرانہ پوچھیں تو علیحدہ بتائیں۔"
+        ),
+        "hi": (
+            "ज़कात क़ाबिल धन पर वाजिब सदक़ा है — इस्लाम के पाँच स्तंभों में से एक। "
+            "कुरान मोमिनों को हुक्म देता है कि अल्लाह ने जो दिया उसमें से खर्च करें (2:267) और "
+            "पाने वालों की सूची बताता है (9:60)। निसाब पर एक क़मरी साल बाद दर 2.5% है "
+            "(सहीह बुखारी 1405)। ज़कातुल फ़ित्र (फ़ितराना) अलग वाजिब है।"
         ),
     },
     "zakat_rate": {
@@ -476,6 +551,81 @@ THEME_SUMMARIES: dict[str, dict[str, str]] = {
             "हराम किया है' (2:275)। रिबा खाने वालों को सख्त वेद है: 'ऐ ईमान वालो! कई गुना बढ़ाकर रिबा मत खाओ' (3:130)। "
             "कुरान हुक्म देता है: 'जो रिबा बाकी रह गया हो उसे छोड़ दो अगर तुम मोमिन हो' (2:278)। "
             "बैंक ब्याज, कर्ज़ पर ब्याज — अधिकांश उलमा के अनुसार ये सब रिबा में शामिल हैं। अपने मामले के लिए किसी योग्य आलिम से मार्गदर्शन लें।"
+        ),
+    },
+    "jihad": {
+        "en": (
+            "The Quran addresses fighting (qital) in specific contexts — not as unrestricted violence. "
+            "Allah says: 'Fight in the cause of Allah those who fight you, but do not transgress' (2:190). "
+            "In Surah Al Imran, believers are told that those who fight in Allah's cause and are killed or victorious "
+            "receive a great reward (3:157, 3:169, 3:195). Scholars explain these verses with their historical context "
+            "in tafsir — see the cited ayahs and Ibn Kathir commentary below."
+        ),
+        "ur": (
+            "قرآن میں قتال مخصوص سیاق و سباق میں بیان ہوا ہے — بے قابو تشدد کے طور پر نہیں۔ "
+            "اللہ فرماتا ہے: 'اللہ کی راہ میں ان سے لڑو جو تم سے لڑیں، لیکن حد سے تجاوز نہ کرو' (2:190)۔ "
+            "سورہ آل عمران میں مومنوں کو بتایا گیا کہ جو اللہ کی راہ میں لڑتے ہیں اور شہید ہوتے ہیں یا فتح پاتے ہیں "
+            "ان کے لیے بڑا اجر ہے (3:157، 3:169، 3:195)۔ علماء ان آیات کی تاریخی تفسیر بیان کرتے ہیں — ذیل میں حوالے دیکھیں۔"
+        ),
+        "hi": (
+            "कुरान में क़िताल विशेष संदर्भ में बताया गया है — अनियंत्रित हिंसा के रूप में नहीं। "
+            "अल्लाह फरमाता है: 'अल्लाह की राह में उनसे लड़ो जो तुमसे लड़ें, पर सीमा से आगे न बढ़ो' (2:190)। "
+            "सूरह आल-इमरान में मोमिनों को बताया गया कि जो अल्लाह की राह में लड़ते हैं और शहीद होते हैं या विजय पाते हैं "
+            "उनके लिए बड़ा अज्र है (3:157, 3:169, 3:195)। उलमा इन आयतों की ऐतिहासिक तफ़सीर बताते हैं — नीचे स्रोत देखें।"
+        ),
+    },
+    "inheritance": {
+        "en": (
+            "Islamic inheritance (mirath) is detailed in Surah An-Nisa. Allah commands: 'Allah instructs you concerning "
+            "your children: for the male, what is equal to the share of two females' (4:11). The shares of parents, "
+            "spouses, and other relatives are also specified in 4:11–4:12 and 4:176. Making a will for heirs beyond "
+            "one-third is restricted (2:180). See the cited verses for the full division rules."
+        ),
+        "ur": (
+            "اسلامی وراثت (میراث) سورہ النساء میں تفصیل سے بیان ہے۔ اللہ فرماتا ہے: 'اللہ تمہیں تمہاری اولاد کے بارے میں "
+            "حکم دیتا ہے: لڑکے کا حصہ دو لڑکیوں کے برابر' (4:11)۔ والدین، شریک حیات اور دیگر رشتہ داروں کے حصے "
+            "4:11–4:12 اور 4:176 میں ہیں۔ وارثوں کے لیے ایک تہائی سے زیادہ وصیت محدود ہے (2:180)۔ مکمل تقسیم کے لیے حوالے دیکھیں۔"
+        ),
+        "hi": (
+            "इस्लामी विरासत (मीरास) सूरह अन-निसा में विस्तार से है। अल्लाह फरमाता है: 'अल्लाह तुम्हें तुम्हारी औलाद के बारे में "
+            "हुक्म देता है: लड़के का हिस्सा दो लड़कियों के बराबर' (4:11)। माता-पिता, जीवनसाथी और अन्य रिश्तेदारों के हिस्से "
+            "4:11–4:12 और 4:176 में हैं। वारिसों के लिए एक-तिहाई से अधिक वसीयत सीमित है (2:180)। पूर्ण विभाजन के लिए स्रोत देखें।"
+        ),
+    },
+    "yusuf": {
+        "en": (
+            "The story of Prophet Yusuf (Joseph) teaches patience through severe trials — betrayal by brothers, slavery, "
+            "false accusation, and imprisonment — yet trust in Allah. He said: 'Indeed, he who fears Allah and is patient, "
+            "then indeed, Allah does not allow to be lost the reward of those who do good' (12:90). The surah concludes: "
+            "'There was certainly in their stories a lesson for those of understanding' (12:111). See sources for key ayahs."
+        ),
+        "ur": (
+            "حضرت یوسفؑ کی کہانی سخت آزمائشوں میں صبر سکھاتی ہے — بھائیوں کی سازش، غلامی، بہتان اور قید — مگر اللہ پر بھروسہ۔ "
+            "انہوں نے فرمایا: 'جو اللہ سے ڈرتا ہے اور صبر کرتا ہے تو اللہ نیکی کرنے والوں کا اجر ضائع نہیں کرتا' (12:90)۔ "
+            "سورہ کا خاتمہ: 'ان کی کہانیوں میں عقل والوں کے لیے عبرت ہے' (12:111)۔ اہم آیات کے لیے ذرائع دیکھیں۔"
+        ),
+        "hi": (
+            "हज़रत यूसुफ़ अलैहिस्सलाम की कहानी कठिन आज़माइशों में सब्र सिखाती है — भाइयों की साज़िश, गुलामी, झूठा इल्ज़ाम और क़ैद — "
+            "फिर भी अल्लाह पर भरोसा। उन्होंने कहा: 'जो अल्लाह से डरता है और सब्र करता है तो अल्लाह नेकी करने वालों का अज्र ज़ाया नहीं करता' (12:90)। "
+            "सूरह का अंत: 'उनकी कहानियों में अक्ल वालों के लिए इबरत है' (12:111)। मुख्य आयतों के लिए स्रोत देखें।"
+        ),
+    },
+    "revelation_period": {
+        "en": (
+            "Scholars classify the 114 surahs by where they were first revealed: approximately **86 surahs are Meccan** "
+            "(revealed before Hijrah in Makkah) and **28 are Medinan** (revealed after Hijrah in Madinah). "
+            "Meccan surahs often focus on faith, tawhid, and the Hereafter; Medinan surahs often address law, "
+            "community, and governance. Individual surah pages show each surah's revelation type."
+        ),
+        "ur": (
+            "علماء 114 سورتوں کو نزول کی جگہ کے مطابق تقسیم کرتے ہیں: تقریباً **86 مکی** (ہجرت سے پہلے مکہ میں) "
+            "اور **28 مدنی** (ہجرت کے بعد مدینہ میں)۔ مکی سورتیں ایمان، توحید اور آخرت پر مرکوز؛ مدنی سورتیں "
+            "اکثر شریعت، معاشرہ اور حکومت سے متعلق۔ ہر سورہ کے صفحے پر نزول کی قسم دکھائی جاتی ہے۔"
+        ),
+        "hi": (
+            "उलमा 114 सूरतों को नज़ूल की जगह के अनुसार वर्गीकृत करते हैं: लगभग **86 मक्की** (हिजरत से पहले मक्का में) "
+            "और **28 मदनी** (हिजरत के बाद मदीना में)। मक्की सूरतें ईमान, तौहीद और आख़िरत पर केंद्रित; मदनी सूरतें "
+            "अक्सर शरीअत, समाज और शासन से संबंधित। प्रत्येक सूरह के पृष्ठ पर नज़ूल का प्रकार दिखाया जाता है।"
         ),
     },
 }

@@ -304,6 +304,8 @@ def rerank(query: str, chunks: list[dict], final_k: int) -> list[dict]:
         sem = float(c.get("similarity", c.get("rrf_score", 0)))
         rrf = float(c.get("rrf_score", 0))
         boost = 0.35 if c.get("metadata", {}).get("curated") else 0.0
+        if c.get("metadata", {}).get("theme_pinned"):
+            boost += 0.55
         c["final_score"] = 0.45 * sem + 0.35 * rrf + 0.20 * lex + boost
 
     ranked = sorted(chunks, key=lambda x: x["final_score"], reverse=True)

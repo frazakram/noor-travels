@@ -18,7 +18,9 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem("noor-lang", lang);
     document.documentElement.lang = lang === "ur" ? "ur" : lang === "hi" ? "hi" : "en";
-    document.documentElement.dir = lang === "ur" ? "rtl" : "ltr";
+    document.documentElement.dataset.uiLang = lang;
+    // Keep layout chrome LTR — Urdu text blocks set dir="rtl" locally
+    document.documentElement.dir = "ltr";
   }, [lang]);
 
   return <LangContext.Provider value={{ lang, setLang }}>{children}</LangContext.Provider>;

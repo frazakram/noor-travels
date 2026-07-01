@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { cleanQuranText } from "@/lib/quran-display";
+import { t, type Lang } from "@/lib/i18n";
 
 type Ayah = {
   verse_key: string;
@@ -26,7 +27,7 @@ function dayOfYear(): number {
   return Math.floor((now.getTime() - start.getTime()) / 86_400_000);
 }
 
-export function DailyReflection({ lang }: { lang: "en" | "ur" | "hi" }) {
+export function DailyReflection({ lang }: { lang: Lang }) {
   const [ayah, setAyah] = useState<Ayah | null>(null);
 
   useEffect(() => {
@@ -53,7 +54,7 @@ export function DailyReflection({ lang }: { lang: "en" | "ur" | "hi" }) {
   return (
     <section>
       <article className="rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 to-emerald-50 p-4 dark:border-teal-800 dark:from-teal-900/20 dark:to-emerald-900/20 sm:p-5">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-600">Ayah of the Day</p>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-600">{t(lang, "ayahOfTheDay")}</p>
         {ayah ? (
           <>
             <p className="font-arabic mb-3 text-right text-xl leading-loose text-slate-800 dark:text-white sm:text-2xl" dir="rtl">{ayah.arabic}</p>
@@ -62,7 +63,7 @@ export function DailyReflection({ lang }: { lang: "en" | "ur" | "hi" }) {
             <p className="mt-3 text-xs font-medium text-teal-600">{ayah.name_en ?? "Quran"} · {ayah.verse_key}</p>
           </>
         ) : (
-          <p className="mt-3 text-sm text-muted">Loading today&apos;s ayah…</p>
+          <p className="mt-3 text-sm text-muted">{t(lang, "loadingAyah")}</p>
         )}
       </article>
     </section>

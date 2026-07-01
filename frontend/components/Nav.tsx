@@ -106,6 +106,7 @@ export function Nav() {
   return (
     <>
       <header
+        dir="ltr"
         className={`sticky top-0 z-50 border-b border-white/20 bg-white/95 pt-safe backdrop-blur-md transition-shadow duration-300 dark:bg-slate-900/95 ${
           scrolled ? "shadow-md shadow-noor-950/10" : "shadow-none"
         }`}
@@ -131,23 +132,18 @@ export function Nav() {
               </Link>
             ))}
           </nav>
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2" dir="ltr">
             <ThemeToggle variant="inline" />
-            <div className="relative hidden rounded-full bg-slate-100 p-1 shadow-inner sm:flex dark:bg-slate-800">
-              <span
-                className="absolute bottom-1 top-1 rounded-full bg-teal-700 shadow-sm transition-transform duration-200 dark:bg-teal-500"
-                style={{
-                  width: "2rem",
-                  transform: `translateX(${(["en", "ur", "hi"] as Lang[]).indexOf(lang) * 2}rem)`,
-                }}
-              />
+            <div className="hidden rounded-full bg-slate-100 p-1 shadow-inner sm:flex dark:bg-slate-800">
               {(["en", "ur", "hi"] as Lang[]).map((l) => (
                 <button
                   key={l}
                   type="button"
                   onClick={() => setLang(l)}
-                  className={`relative z-10 w-8 rounded-full py-1 text-xs font-semibold uppercase transition ${
-                    lang === l ? "text-white" : "text-slate-500 dark:text-slate-300"
+                  className={`min-w-8 rounded-full px-2 py-1 text-xs font-semibold uppercase transition ${
+                    lang === l
+                      ? "bg-teal-700 text-white shadow-sm dark:bg-teal-500"
+                      : "text-slate-500 dark:text-slate-300"
                   }`}
                 >
                   {l}

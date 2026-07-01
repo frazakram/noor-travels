@@ -17,8 +17,7 @@ STRICT GROUNDING RULES (never break these):
 - Answer ONLY using text explicitly present in the RETRIEVED SOURCES below.
 - Do NOT use your own knowledge of Islam, hadith, or Quran — only the provided sources.
 - Every single factual claim MUST be followed by its citation in brackets.
-- If the retrieved sources do not contain enough information, respond ONLY with:
-  "I could not find a cited answer for this question in the available Quran, Hadith, and dua sources."
+- If the retrieved sources do not contain enough information, respond ONLY with the localized refusal phrase given in the user message (in the requested response language).
   Do NOT guess, infer, or paraphrase beyond what the sources say.
 - Do NOT invent verse numbers, hadith numbers, or dua names.
 - Do NOT issue fatwas, personal rulings, or religious opinions of your own.
@@ -298,6 +297,37 @@ def _chat_with_openai(
     chunks, _ = retrieve_for_question(standalone or question, out_lang)
     chunks = rerank(standalone, chunks, get_settings().rag_final_k)
 
+    from app.services.keyword_search import extract_search_terms
+    from app.services.query_expansion import build_analysis, get_theme_summary
+
+    merged_analysis = {
+        **build_analysis(standalone or question, out_lang, extract_search_terms(standalone or question)),
+        **(analysis or {}),
+    }
+    if get_theme_summary(merged_analysis.get("themes") or [], out_lang):
+        themed_answer = format_short_answer(standalone or question, chunks, merged_analysis, out_lang)
+        if themed_answer and len(themed_answer.strip()) > 30:
+            result = {
+                "answer": themed_answer,
+                "transliteration": "",
+                "citations": [_ref_from_chunk(c) for c in chunks[:4]],
+                "confidence": "high",
+                "sources": [
+                    {
+                        "ref": c["source_ref"],
+                        "type": c["source_type"],
+                        "snippet": c["content"][:280],
+                        "score": round(float(c.get("final_score", c.get("similarity", 0))), 3),
+                    }
+                    for c in chunks
+                ],
+                "analysis": _public_analysis(merged_analysis),
+                "from_cache": False,
+                "mode": mode,
+            }
+            set_cached(cache_key, result)
+            return result
+
     if not chunks:
         result = {
             "answer": _no_result_message(out_lang),
@@ -316,6 +346,7 @@ def _chat_with_openai(
     )
 
     lang_name = {"en": "English", "ur": "Urdu", "hi": "Hindi"}.get(out_lang, "English")
+    refusal_phrase = _localized_refusal(out_lang)
 
     # Build conversation turns: include last 6 history turns for context
     prior_turns: list[dict] = []
@@ -329,6 +360,7 @@ def _chat_with_openai(
         "role": "user",
         "content": (
             f"Response language: {lang_name} ONLY\n"
+            f"Refusal phrase (use exactly if sources are insufficient): {refusal_phrase}\n"
             f"Include transliteration field: {include_transliteration}\n"
             f"User question: {standalone}\n"
             f"Original message: {question}\n\n"
@@ -347,11 +379,23 @@ def _chat_with_openai(
     )
 
     parsed = json.loads(response.choices[0].message.content or "{}")
+    answer = parsed.get("answer", "")
+    if _is_refusal_answer(answer) and chunks:
+        from app.services.keyword_search import extract_search_terms
+        from app.services.query_expansion import build_analysis
+
+        fallback_analysis = analysis or build_analysis(
+            question, out_lang, extract_search_terms(question)
+        )
+        fallback = format_short_answer(question, chunks, fallback_analysis, out_lang)
+        if fallback and not _is_refusal_answer(fallback):
+            answer = fallback
+
     citations = _validate_citations(parsed.get("citations", []), chunks)
     transliteration = parsed.get("transliteration", "") if include_transliteration else ""
 
     result = {
-        "answer": parsed.get("answer", ""),
+        "answer": answer,
         "transliteration": transliteration,
         "citations": citations,
         "confidence": parsed.get("confidence", "medium"),
@@ -400,6 +444,29 @@ def _clean_source_snippet(content: str, max_len: int) -> str:
 
 def _ref_from_chunk(c: dict) -> str:
     return c["source_ref"]
+
+
+def _refusal_phrases() -> tuple[str, ...]:
+    return (
+        "could not find a cited answer",
+        "could not find a cited answer for this question",
+        "میں قرآن",
+        "मैं कुरान",
+    )
+
+
+def _is_refusal_answer(answer: str) -> bool:
+    lower = (answer or "").lower()
+    return any(p in lower for p in _refusal_phrases())
+
+
+def _localized_refusal(lang: str) -> str:
+    messages = {
+        "en": "I could not find a cited answer for this question in the available Quran, Hadith, and dua sources.",
+        "ur": "میں قرآن، حدیث اور دعاؤں میں اس سوال کا حوالہ شدہ جواب نہیں ڈھونڈ سکا۔",
+        "hi": "मैं कुरान, हदीस और दुआओं में इस प्रश्न का उद्धृत उत्तर नहीं ढूंढ सका।",
+    }
+    return messages.get(lang, messages["en"])
 
 
 def _no_result_message(lang: str) -> str:
