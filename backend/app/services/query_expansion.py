@@ -482,7 +482,10 @@ THEME_SUMMARIES: dict[str, dict[str, str]] = {
 
 DUA_HINT = re.compile(r"\b(dua|duas|supplication|دعا|दुआ|prayer for)\b", re.I)
 HADITH_HINT = re.compile(r"\b(hadith|hadeeth|حدیث|हदीस|bukhari|sahih)\b", re.I)
-TAFSIR_HINT = re.compile(r"\b(tafsir|تفسیر|تفسير|commentary|explain)\b", re.I)
+TAFSIR_HINT = re.compile(
+    r"\b(tafsir|تفسیر|تفسير|commentary|explain|context|historical|background|meaning|scholar|interpretation|why does quran|why does allah)\b",
+    re.I,
+)
 TRAVEL_HINT = re.compile(r"\b(travel|journey|safar|سفر|trip)\b", re.I)
 
 _CLUSTER_BY_ID: dict[str, dict[str, Any]] = {c["id"]: c for c in THEMATIC_CLUSTERS}

@@ -15,7 +15,7 @@ from app.services.keyword_search import (
     format_verse_range_answer,
     keyword_retrieve_smart,
 )
-from app.services.query_expansion import DUA_HINT, build_analysis, get_theme_summary
+from app.services.query_expansion import DUA_HINT, TAFSIR_HINT, build_analysis, get_theme_summary
 
 
 def _is_surah_number_question(question: str) -> bool:
@@ -42,22 +42,26 @@ def retrieve_for_question(question: str, lang: str = "en") -> tuple[list[dict], 
     settings = get_settings()
 
     from app.services.keyword_search import _has_surah_context, detect_surah_number, is_verse_query
+    from app.services.query_expansion import match_themes
 
-    if is_verse_query(question):
-        return keyword_retrieve_smart(question, lang)
+    is_explanation = bool(TAFSIR_HINT.search(question))
 
-    if _is_surah_number_question(question):
-        return keyword_retrieve_smart(question, lang)
+    # Route direct verse/surah lookups through keyword_retrieve_smart, but if this is an
+    # explanation question augment with tafsir before returning.
+    if is_verse_query(question) or _is_surah_number_question(question):
+        chunks, analysis = keyword_retrieve_smart(question, lang)
+        if is_explanation:
+            chunks = _augment_with_tafsir(question, chunks, analysis)
+        return chunks, analysis
 
     surah_num = detect_surah_number(question)
     if surah_num and not (DUA_HINT.search(question) and not _has_surah_context(question)):
-        # If the question asks about a theme within a surah (e.g. "jihad in Surah Imran"),
-        # don't short-circuit to surah_summary — do full hybrid retrieval so theme-specific
-        # verses surface instead of returning the whole surah in order.
-        from app.services.query_expansion import match_themes
         has_theme = bool(match_themes(question))
         if not has_theme:
-            return keyword_retrieve_smart(question, lang)
+            chunks, analysis = keyword_retrieve_smart(question, lang)
+            if is_explanation:
+                chunks = _augment_with_tafsir(question, chunks, analysis)
+            return chunks, analysis
 
     analysis = build_analysis(question, lang, extract_search_terms(question))
     search_queries = list(dict.fromkeys([question, *analysis["search_terms"][:6]]))
@@ -76,16 +80,84 @@ def retrieve_for_question(question: str, lang: str = "en") -> tuple[list[dict], 
 
     # Pin cluster-specific verse keys so theme questions always surface the right ayahs
     from app.services.keyword_search import _fetch_ayah_chunks
-    from app.services.query_expansion import match_themes
-    for cluster in match_themes(question):
+    matched_clusters = match_themes(question)
+    for cluster in matched_clusters:
         pinned = _fetch_ayah_chunks(cluster.get("verse_keys") or [])
         for p in pinned:
             p["final_score"] = 0.85
         candidates.extend(pinned)
 
+    # For explanation/context questions, also pin tafsir for matched cluster verse keys
+    if is_explanation and matched_clusters:
+        all_verse_keys = []
+        for cluster in matched_clusters:
+            all_verse_keys.extend(cluster.get("verse_keys") or [])
+        if all_verse_keys:
+            tafsir_chunks = _fetch_tafsir_chunks(all_verse_keys)
+            for t in tafsir_chunks:
+                t["final_score"] = 0.80
+            candidates.extend(tafsir_chunks)
+
     merged = rerank(" ".join(analysis["search_terms"]), candidates, settings.rag_retrieval_k)
     merged = _filter_dua_by_theme(merged, analysis)
     return merged, analysis
+
+
+def _augment_with_tafsir(question: str, chunks: list[dict], analysis: dict) -> list[dict]:
+    """For explanation questions on direct verse lookups, append tafsir for those verses."""
+    verse_keys = analysis.get("verse_keys") or []
+    if not verse_keys:
+        # extract verse refs from already-retrieved quran chunks
+        for c in chunks:
+            if c.get("source_type") == "quran":
+                ref = c.get("source_ref", "")
+                parts = ref.replace("Quran ", "").split(":")
+                if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                    verse_keys.append(f"{parts[0]}:{parts[1]}")
+    if not verse_keys:
+        return chunks
+    tafsir_chunks = _fetch_tafsir_chunks(verse_keys[:6])
+    for t in tafsir_chunks:
+        t["final_score"] = 0.80
+    return chunks + tafsir_chunks
+
+
+def _fetch_tafsir_chunks(verse_keys: list[str]) -> list[dict]:
+    """Fetch tafsir chunks from document_chunks for given verse keys."""
+    if not verse_keys:
+        return []
+    results = []
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            for vk in verse_keys:
+                ref = f"Tafsir Ibn Kathir {vk}"
+                if use_sqlite():
+                    cur.execute(
+                        "SELECT source_ref, content, source_type FROM document_chunks WHERE source_ref = ?",
+                        (ref,),
+                    )
+                else:
+                    cur.execute(
+                        "SELECT source_ref, content, source_type FROM document_chunks WHERE source_ref = %s",
+                        (ref,),
+                    )
+                row = cur.fetchone()
+                if not row:
+                    continue
+                if isinstance(row, dict):
+                    ref_val, content, stype = row["source_ref"], row["content"], row["source_type"]
+                else:
+                    ref_val, content, stype = row[0], row[1], row[2]
+                results.append({
+                    "source_ref": ref_val,
+                    "content": content,
+                    "source_type": stype,
+                    "similarity": 0.80,
+                })
+    except Exception:
+        pass
+    return results
 
 
 def _filter_dua_by_theme(chunks: list[dict], analysis: dict[str, Any]) -> list[dict]:
