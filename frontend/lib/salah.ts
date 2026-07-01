@@ -114,9 +114,16 @@ export type NextPrayerInfo = {
   progress: number;
 };
 
+function isInPrayerWindow(startMin: number, endMin: number, nowMin: number): boolean {
+  if (endMin > startMin) {
+    return nowMin >= startMin && nowMin < endMin;
+  }
+  // Window crosses midnight (e.g. Isha 20:08 → 00:23)
+  return nowMin >= startMin || nowMin < endMin;
+}
+
 export function getNextPrayer(prayers: PrayerSlot[], tz: string, now = new Date()): NextPrayerInfo {
   const nowMin = minutesInTz(now, tz);
-  const fajrStart = parseMinutes(prayers.find((p) => p.id === "fajr")!.start);
 
   const slots = PRAYER_ORDER.map((id) => {
     const p = prayers.find((x) => x.id === id)!;
@@ -125,12 +132,9 @@ export function getNextPrayer(prayers: PrayerSlot[], tz: string, now = new Date(
 
   let current: PrayerId | null = null;
   for (const s of slots) {
-    if (s.id === "isha") {
-      const afterIsha = nowMin >= s.startMin;
-      const beforeFajr = nowMin < fajrStart;
-      if (afterIsha || beforeFajr) current = "isha";
-    } else if (nowMin >= s.startMin && nowMin < s.endMin) {
+    if (isInPrayerWindow(s.startMin, s.endMin, nowMin)) {
       current = s.id;
+      break;
     }
   }
 
@@ -146,18 +150,18 @@ export function getNextPrayer(prayers: PrayerSlot[], tz: string, now = new Date(
   }
 
   const currentSlot = current ? slots.find((s) => s.id === current)! : null;
-  const nextSlot = slots.find((s) => s.id === next)!;
-  let windowStart = currentSlot ? currentSlot.startMin : nowMin;
-  let windowEnd = nowMin < nextSlot.startMin ? nextSlot.startMin : nextSlot.startMin + 24 * 60;
-  if (current === "isha" && nowMin < fajrStart) {
-    windowStart = slots.find((s) => s.id === "isha")!.startMin;
-    windowEnd = fajrStart + 24 * 60;
+  let progress = 0;
+  if (currentSlot) {
+    let windowStart = currentSlot.startMin;
+    let windowEnd = currentSlot.endMin;
+    let n = nowMin;
+    if (windowEnd <= windowStart) {
+      windowEnd += 24 * 60;
+      if (n < windowStart) n += 24 * 60;
+    }
+    const total = Math.max(1, windowEnd - windowStart);
+    progress = Math.min(1, Math.max(0, (n - windowStart) / total));
   }
-  let n = nowMin;
-  if (current === "isha" && nowMin < fajrStart) n += 24 * 60;
-  if (n < windowStart && current) n += 24 * 60;
-  const total = Math.max(1, windowEnd - windowStart);
-  const progress = Math.min(1, Math.max(0, (n - windowStart) / total));
 
   return { current, next, countdownMs, progress };
 }
