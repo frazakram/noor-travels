@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { NoticeCard } from "@/components/NoticeCard";
+import { emitPageLoading } from "@/components/NavigationProgress";
 import { api, apiStatic } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import { cleanQuranText, displaySurahName } from "@/lib/quran-display";
@@ -50,6 +51,11 @@ export default function QuranPage() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    emitPageLoading(loading);
+    return () => emitPageLoading(false);
+  }, [loading]);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();

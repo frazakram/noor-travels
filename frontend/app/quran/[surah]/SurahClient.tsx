@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useLang } from "@/components/LangProvider";
 import { IconButton, Icons } from "@/components/IconButton";
+import { emitPageLoading } from "@/components/NavigationProgress";
 import { useSurahAudio, type RepeatScope } from "@/hooks/useSurahAudio";
 import { api, apiStatic } from "@/lib/api";
 import { t } from "@/lib/i18n";
@@ -173,6 +174,11 @@ export default function SurahClient() {
     observer.observe(node);
     return () => observer.disconnect();
   }, [studyMode, surahLoading, ayahs.length, renderLimit]);
+
+  useEffect(() => {
+    emitPageLoading(surahLoading);
+    return () => emitPageLoading(false);
+  }, [surahLoading]);
 
   async function toggleTafsir(verseKey: string) {
     if (expanded[verseKey]) {
