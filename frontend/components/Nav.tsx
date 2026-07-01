@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useEffect, useState } from "react";
 import { AppLogo } from "@/components/AppLogo";
+import { MobileNavDrawer } from "@/components/MobileNavDrawer";
 import { useLang } from "@/components/LangProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { t, type Lang } from "@/lib/i18n";
@@ -40,11 +40,26 @@ export function Nav() {
   }, []);
 
   useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
+    const root = document.documentElement;
+    if (open) {
+      root.classList.add("noor-nav-open");
+      document.body.style.overflow = "hidden";
+    } else {
+      root.classList.remove("noor-nav-open");
+      document.body.style.overflow = "";
+    }
     return () => {
+      root.classList.remove("noor-nav-open");
       document.body.style.overflow = "";
     };
   }, [open]);
+
+  const pickLang = useCallback(
+    (next: Lang) => {
+      if (next !== lang) setLang(next);
+    },
+    [lang, setLang],
+  );
 
   const linkClass = (href: string) =>
     `rounded-full px-3 py-1.5 text-sm transition ${
@@ -52,56 +67,6 @@ export function Nav() {
         ? "bg-teal-700 text-white shadow-sm dark:bg-teal-600"
         : "text-body hover:bg-white/70 dark:hover:bg-slate-800/80"
     }`;
-
-  const mobileMenu =
-    open && mounted
-      ? createPortal(
-          <div className="fixed inset-0 z-[200] md:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu">
-            <button
-              type="button"
-              className="absolute inset-0 bg-slate-900/55"
-              aria-label="Close menu"
-              onClick={() => setOpen(false)}
-            />
-            <div className="absolute inset-x-0 bottom-0 top-safe-header overflow-y-auto border-t border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-950">
-              <nav className="grid gap-2">
-                {links.map((l) => (
-                  <Link
-                    key={l.href}
-                    href={l.href}
-                    onClick={() => setOpen(false)}
-                    className={`relative z-[1] block min-h-12 rounded-2xl px-4 py-3.5 text-base font-semibold transition active:scale-[0.98] ${
-                      pathname === l.href
-                        ? "bg-teal-700 text-white dark:bg-teal-600"
-                        : "bg-slate-100 text-body dark:bg-slate-900"
-                    }`}
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      {t(lang, l.key)}
-                      {l.key === "khutba" && <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />}
-                    </span>
-                  </Link>
-                ))}
-              </nav>
-              <div className="relative z-[1] mt-5 flex rounded-full bg-slate-100 p-1 dark:bg-slate-800">
-                {(["en", "ur", "hi"] as Lang[]).map((l) => (
-                  <button
-                    key={l}
-                    type="button"
-                    onClick={() => setLang(l)}
-                    className={`min-h-11 flex-1 rounded-full py-2 text-xs font-semibold uppercase transition ${
-                      lang === l ? "bg-teal-700 text-white" : "text-slate-500 dark:text-slate-300"
-                    }`}
-                  >
-                    {l}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )
-      : null;
 
   return (
     <>
@@ -139,7 +104,7 @@ export function Nav() {
                 <button
                   key={l}
                   type="button"
-                  onClick={() => setLang(l)}
+                  onClick={() => pickLang(l)}
                   className={`min-w-8 rounded-full px-2 py-1 text-xs font-semibold uppercase transition ${
                     lang === l
                       ? "bg-teal-700 text-white shadow-sm dark:bg-teal-500"
@@ -173,7 +138,14 @@ export function Nav() {
           </div>
         </div>
       </header>
-      {mobileMenu}
+      <MobileNavDrawer
+        open={open}
+        mounted={mounted}
+        pathname={pathname}
+        lang={lang}
+        setLang={setLang}
+        onClose={() => setOpen(false)}
+      />
     </>
   );
 }

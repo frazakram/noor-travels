@@ -89,6 +89,9 @@ export function playAudioUrl(url: string, gen?: number): Promise<void> {
       if (w.__noorAudio === audio) w.__noorAudio = undefined;
       reject(new Error("Audio playback failed"));
     };
+    // Helps background playback on mobile WebViews
+    audio.setAttribute("playsinline", "true");
+    (audio as HTMLAudioElement & { webkitPlaysinline?: boolean }).webkitPlaysinline = true;
     audio.play().catch(reject);
   });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, startTransition } from "react";
 import type { Lang } from "@/lib/i18n";
 
 type LangContextType = { lang: Lang; setLang: (l: Lang) => void };
@@ -8,11 +8,11 @@ type LangContextType = { lang: Lang; setLang: (l: Lang) => void };
 const LangContext = createContext<LangContextType>({ lang: "en", setLang: () => {} });
 
 export function LangProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLang] = useState<Lang>("en");
+  const [lang, setLangState] = useState<Lang>("en");
 
   useEffect(() => {
     const saved = localStorage.getItem("noor-lang") as Lang | null;
-    if (saved && ["en", "ur", "hi"].includes(saved)) setLang(saved);
+    if (saved && ["en", "ur", "hi"].includes(saved)) setLangState(saved);
   }, []);
 
   useEffect(() => {
@@ -23,7 +23,13 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.dir = "ltr";
   }, [lang]);
 
-  return <LangContext.Provider value={{ lang, setLang }}>{children}</LangContext.Provider>;
+  const setLang = useCallback((next: Lang) => {
+    startTransition(() => setLangState(next));
+  }, []);
+
+  const value = useMemo(() => ({ lang, setLang }), [lang, setLang]);
+
+  return <LangContext.Provider value={value}>{children}</LangContext.Provider>;
 }
 
 export function useLang() {

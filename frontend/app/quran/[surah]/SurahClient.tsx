@@ -61,6 +61,7 @@ export default function SurahClient() {
 
   const audio = useSurahAudio({
     surahNumber,
+    surahName: surahName || `Surah ${surahNumber}`,
     translation,
     textAyahs: ayahs,
     reciter,

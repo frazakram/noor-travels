@@ -11,6 +11,11 @@
   body {
     @apply overflow-x-hidden bg-sand-50 text-noor-900 transition-colors duration-300 dark:bg-noor-950 dark:text-noor-50;
   }
+
+  html.noor-nav-open main,
+  html.noor-nav-open footer {
+    visibility: hidden;
+  }
 }
 
 /* Safe areas for notched phones / Android WebView APK shells */

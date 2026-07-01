@@ -3,6 +3,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import {
+  acquireWakeLock,
+  clearMediaSession,
+  releaseWakeLock,
+  setupMediaSession,
+  updateMediaSession,
+} from "@/lib/media-session";
+import {
+  isNativeApp,
+  nativePlayQuranQueue,
+  nativeSetQuranPlaying,
+  nativeStopQuranPlayback,
+  nativeUpdateQuranNotification,
+  type NativeQueueItem,
+} from "@/lib/native-bridge";
+import {
   beginPlaybackSession,
   invalidatePlaybackSession,
   playAudioUrl,
@@ -37,6 +52,7 @@ type TextAyah = {
 
 type Options = {
   surahNumber: number;
+  surahName?: string;
   translation: TranslationLang;
   textAyahs: TextAyah[];
   reciter: string;
@@ -50,6 +66,7 @@ type Options = {
 
 export function useSurahAudio({
   surahNumber,
+  surahName,
   translation,
   textAyahs,
   reciter,
@@ -71,6 +88,9 @@ export function useSurahAudio({
   const stopRef = useRef(false);
   const sessionRef = useRef(0);
   const loadGenRef = useRef(0);
+  const nativeModeRef = useRef(false);
+  const onPlayIndexRef = useRef(onPlayIndex);
+  onPlayIndexRef.current = onPlayIndex;
 
   useEffect(() => {
     api<{ reciters: Reciter[] }>("/api/quran/audio/editions")
@@ -111,18 +131,71 @@ export function useSurahAudio({
     }
   }, [audioReady, audioAyahs, includeTranslation, translation, surahNumber, reciter]);
 
-  // Invalidate cached audio when reciter or translation-audio settings change
   useEffect(() => {
     setAudioReady(false);
     setAudioAyahs([]);
   }, [surahNumber, reciter, translation, includeTranslation]);
 
+  const pause = useCallback(() => {
+    stopRef.current = true;
+    nativeModeRef.current = false;
+    invalidatePlaybackSession();
+    nativeStopQuranPlayback();
+    nativeSetQuranPlaying(false);
+    void releaseWakeLock();
+    clearMediaSession();
+    setPlaying(false);
+    setRepeatPass(1);
+    setStatus("");
+  }, []);
+
   useEffect(() => {
+    setupMediaSession({
+      onPause: () => pause(),
+      onStop: () => pause(),
+    });
+
+    if (isNativeApp()) {
+      (window as unknown as { noorOnAyahIndex?: (i: number) => void }).noorOnAyahIndex = (i: number) => {
+        if (!nativeModeRef.current) return;
+        setPlayIndex(i);
+        onPlayIndexRef.current?.(i);
+        const vk = textAyahs[i]?.verse_key ?? "";
+        setStatus(vk);
+        updateMediaSession({
+          title: vk || `Ayah ${i + 1}`,
+          artist: surahName ?? `Surah ${surahNumber}`,
+          playing: true,
+        });
+      };
+      (window as unknown as { noorOnPlaybackEnded?: () => void }).noorOnPlaybackEnded = () => {
+        if (!nativeModeRef.current) return;
+        pause();
+      };
+    }
+
     return () => {
       stopRef.current = true;
       invalidatePlaybackSession();
+      nativeStopQuranPlayback();
+      nativeSetQuranPlaying(false);
+      void releaseWakeLock();
+      clearMediaSession();
+      delete (window as unknown as { noorOnAyahIndex?: unknown }).noorOnAyahIndex;
+      delete (window as unknown as { noorOnPlaybackEnded?: unknown }).noorOnPlaybackEnded;
     };
-  }, []);
+  }, [pause, surahName, surahNumber, textAyahs]);
+
+  const updateNowPlaying = useCallback(
+    (title: string) => {
+      const artist = surahName ?? `Surah ${surahNumber}`;
+      updateMediaSession({ title, artist, playing: true });
+      if (isNativeApp() && !nativeModeRef.current) {
+        nativeUpdateQuranNotification(title, artist);
+      }
+    },
+    [surahName, surahNumber]
+  );
 
   async function fetchTafsirText(verseKey: string): Promise<string> {
     try {
@@ -133,6 +206,39 @@ export function useSurahAudio({
     } catch {
       return "";
     }
+  }
+
+  async function buildNativeQueue(
+    start: number,
+    audioList: AudioAyah[],
+    surahPasses: number,
+    ayahRepeats: number
+  ): Promise<NativeQueueItem[]> {
+    const items: NativeQueueItem[] = [];
+    for (let pass = 1; pass <= surahPasses; pass++) {
+      for (let i = start; i < audioList.length; i++) {
+        const audio = audioList[i];
+        const text = textAyahs[i];
+        if (!audio?.audio || !text) continue;
+        for (let r = 0; r < ayahRepeats; r++) {
+          items.push({
+            url: audio.audio,
+            title: text.verse_key,
+            ayahIndex: i,
+            kind: "arabic",
+          });
+          if (includeTranslation && audio.translation_audio) {
+            items.push({
+              url: audio.translation_audio,
+              title: `${text.verse_key} · translation`,
+              ayahIndex: i,
+              kind: "translation",
+            });
+          }
+        }
+      }
+    }
+    return items;
   }
 
   async function playSingleAyah(
@@ -152,7 +258,9 @@ export function useSurahAudio({
       includeTafsir && !stopRef.current ? fetchTafsirText(text.verse_key) : null;
 
     const prefix = passLabel ? `${passLabel} · ` : "";
-    setStatus(`${prefix}${text.verse_key}`);
+    const label = `${prefix}${text.verse_key}`;
+    setStatus(label);
+    updateNowPlaying(text.verse_key);
 
     stopAllPlayback();
     try {
@@ -187,14 +295,35 @@ export function useSurahAudio({
       if (!audioList.length) return;
 
       stopRef.current = false;
+      nativeModeRef.current = false;
       const gen = beginPlaybackSession();
       sessionRef.current = gen;
       setPlaying(true);
+      await acquireWakeLock();
+      nativeSetQuranPlaying(true);
 
       const surahPasses = repeatScope === "surah" ? Math.min(repeatCount, MAX_REPEAT) : 1;
       const ayahRepeats = repeatScope === "ayah" ? Math.min(repeatCount, MAX_REPEAT) : 1;
-      let idx = start;
 
+      // Native ExoPlayer queue: HTTP streams + lock-screen notification (Android APK)
+      const canNative =
+        isNativeApp() &&
+        (!includeTafsir) &&
+        (!includeTranslation || audioList.some((a) => a.translation_audio));
+
+      if (canNative) {
+        const queue = await buildNativeQueue(start, audioList, surahPasses, ayahRepeats);
+        if (queue.length && nativePlayQuranQueue(surahName ?? `Surah ${surahNumber}`, queue)) {
+          nativeModeRef.current = true;
+          setPlayIndex(start);
+          onPlayIndex?.(start);
+          setStatus(audioList[start] ? textAyahs[start]?.verse_key ?? "" : "");
+          updateNowPlaying(textAyahs[start]?.verse_key ?? `Ayah ${start + 1}`);
+          return;
+        }
+      }
+
+      let idx = start;
       for (let pass = 1; pass <= surahPasses; pass++) {
         if (stopRef.current || sessionRef.current !== gen) break;
         if (repeatScope === "surah" && surahPasses > 1) setRepeatPass(pass);
@@ -216,6 +345,9 @@ export function useSurahAudio({
       }
 
       if (sessionRef.current === gen) {
+        nativeSetQuranPlaying(false);
+        void releaseWakeLock();
+        clearMediaSession();
         setPlaying(false);
         setRepeatPass(1);
         setStatus("");
@@ -231,16 +363,11 @@ export function useSurahAudio({
       tafsirSource,
       textAyahs,
       onPlayIndex,
+      surahName,
+      surahNumber,
+      updateNowPlaying,
     ]
   );
-
-  function pause() {
-    stopRef.current = true;
-    invalidatePlaybackSession();
-    setPlaying(false);
-    setRepeatPass(1);
-    setStatus("");
-  }
 
   function togglePlay(index: number) {
     if (playing) {
