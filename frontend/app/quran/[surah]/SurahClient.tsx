@@ -14,6 +14,7 @@ import { sourcesForPref, type TafsirPref, type TafsirSource } from "@/lib/tafsir
 
 const MAX_REPEAT = 5;
 const MAX_SURAH = 114;
+const AYAH_RENDER_CHUNK = 18;
 
 type TafsirRow = { verse_key: string; source: string; text: string };
 
@@ -44,8 +45,11 @@ export default function SurahClient() {
   const [repeatScope, setRepeatScope] = useState<RepeatScope>("ayah");
   const [audioRepeatCount, setAudioRepeatCount] = useState(1);
   const [showAudioOpts, setShowAudioOpts] = useState(false);
+  const [surahLoading, setSurahLoading] = useState(true);
+  const [renderLimit, setRenderLimit] = useState(AYAH_RENDER_CHUNK);
 
   const ayahRefs = useRef<Record<string, HTMLElement | null>>({});
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToAyah = useCallback(
     (index: number) => {
@@ -139,14 +143,36 @@ export default function SurahClient() {
     const idx = Math.max(0, startAyah - 1);
     setViewIndex(idx);
     setRepeatCurrent(1);
+    setSurahLoading(true);
+    setAyahs([]);
+    setRenderLimit(AYAH_RENDER_CHUNK);
     apiStatic<{ surah: { name_en: string }; ayahs: Ayah[] }>(
       `/api/quran/surahs/${surahNumber}?translation=${translation}`
-    ).then((d) => {
-      setSurahName(displaySurahName(surahNumber, d.surah.name_en));
-      setAyahs(d.ayahs);
-      setViewIndex(Math.min(idx, Math.max(0, d.ayahs.length - 1)));
-    });
+    )
+      .then((d) => {
+        setSurahName(displaySurahName(surahNumber, d.surah.name_en));
+        setAyahs(d.ayahs);
+        const nextIndex = Math.min(idx, Math.max(0, d.ayahs.length - 1));
+        setViewIndex(nextIndex);
+        setRenderLimit(Math.min(d.ayahs.length, Math.max(AYAH_RENDER_CHUNK, nextIndex + 6)));
+      })
+      .finally(() => setSurahLoading(false));
   }, [surahNumber, translation, startAyah]);
+
+  useEffect(() => {
+    if (studyMode || surahLoading || ayahs.length === 0 || renderLimit >= ayahs.length) return;
+    const node = loadMoreRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return;
+        setRenderLimit((limit) => Math.min(ayahs.length, limit + AYAH_RENDER_CHUNK));
+      },
+      { rootMargin: "240px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [studyMode, surahLoading, ayahs.length, renderLimit]);
 
   async function toggleTafsir(verseKey: string) {
     if (expanded[verseKey]) {
@@ -209,7 +235,15 @@ export default function SurahClient() {
   }
 
   const activeIndex = audio.playing ? audio.playIndex : viewIndex;
-  const visibleAyahs = studyMode && ayahs.length ? [ayahs[viewIndex]] : ayahs;
+  const visibleAyahs = studyMode && ayahs.length ? [ayahs[viewIndex]] : ayahs.slice(0, renderLimit);
+
+  useEffect(() => {
+    if (studyMode || ayahs.length === 0) return;
+    setRenderLimit((limit) => {
+      const needed = Math.min(ayahs.length, Math.max(limit, activeIndex + 8));
+      return needed === limit ? limit : needed;
+    });
+  }, [activeIndex, ayahs.length, studyMode]);
 
   return (
     <div className="space-y-4">
@@ -479,8 +513,12 @@ export default function SurahClient() {
       </div>
 
       <div className="space-y-4">
-        {visibleAyahs.filter(Boolean).map((a) => {
-          const idx = ayahs.findIndex((x) => x.verse_key === a.verse_key);
+        {surahLoading && (
+          <p className="text-sm text-muted">{t(lang, "loading")}…</p>
+        )}
+        {!surahLoading &&
+          visibleAyahs.filter(Boolean).map((a, localIdx) => {
+          const idx = studyMode ? viewIndex : localIdx;
           const isActive = idx === activeIndex;
           const isPlaying = audio.playing && idx === audio.playIndex;
           return (
@@ -489,7 +527,7 @@ export default function SurahClient() {
               ref={(el) => {
                 ayahRefs.current[a.verse_key] = el;
               }}
-              className={`card scroll-mt-28 transition-all duration-300 md:scroll-mt-24 ${
+              className={`ayah-card card scroll-mt-28 transition-all duration-300 md:scroll-mt-24 ${
                 isActive
                   ? "scale-[1.008] ring-2 ring-gold-400 shadow-md dark:ring-gold-500"
                   : "hover:border-noor-200 dark:hover:border-noor-600"
@@ -573,6 +611,11 @@ export default function SurahClient() {
             </article>
           );
         })}
+        {!surahLoading && !studyMode && renderLimit < ayahs.length && (
+          <div ref={loadMoreRef} className="py-3 text-center text-xs text-faint">
+            {t(lang, "loading")}… ({renderLimit}/{ayahs.length})
+          </div>
+        )}
       </div>
     </div>
   );

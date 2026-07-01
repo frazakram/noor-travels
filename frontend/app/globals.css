@@ -118,6 +118,11 @@
     animation: pageEnter 0.22s ease-out both;
   }
 
+  .ayah-card {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 220px;
+  }
+
   .btn-primary {
     @apply rounded-xl bg-noor-700 px-5 py-2.5 text-sm font-medium text-white transition-all duration-150
       hover:bg-noor-800 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100

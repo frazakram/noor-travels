@@ -89,8 +89,12 @@ export function useSurahAudio({
   const sessionRef = useRef(0);
   const loadGenRef = useRef(0);
   const nativeModeRef = useRef(false);
+  const playingRef = useRef(false);
+  const textAyahsRef = useRef(textAyahs);
   const onPlayIndexRef = useRef(onPlayIndex);
   onPlayIndexRef.current = onPlayIndex;
+  textAyahsRef.current = textAyahs;
+  playingRef.current = playing;
 
   useEffect(() => {
     api<{ reciters: Reciter[] }>("/api/quran/audio/editions")
@@ -139,6 +143,7 @@ export function useSurahAudio({
   const pause = useCallback(() => {
     stopRef.current = true;
     nativeModeRef.current = false;
+    playingRef.current = false;
     invalidatePlaybackSession();
     nativeStopQuranPlayback();
     nativeSetQuranPlaying(false);
@@ -147,6 +152,14 @@ export function useSurahAudio({
     setPlaying(false);
     setRepeatPass(1);
     setStatus("");
+  }, []);
+
+  const releaseNativePlayback = useCallback(() => {
+    if (!playingRef.current && !nativeModeRef.current) return;
+    nativeStopQuranPlayback();
+    nativeSetQuranPlaying(false);
+    void releaseWakeLock();
+    clearMediaSession();
   }, []);
 
   useEffect(() => {
@@ -160,7 +173,7 @@ export function useSurahAudio({
         if (!nativeModeRef.current) return;
         setPlayIndex(i);
         onPlayIndexRef.current?.(i);
-        const vk = textAyahs[i]?.verse_key ?? "";
+        const vk = textAyahsRef.current[i]?.verse_key ?? "";
         setStatus(vk);
         updateMediaSession({
           title: vk || `Ayah ${i + 1}`,
@@ -177,14 +190,11 @@ export function useSurahAudio({
     return () => {
       stopRef.current = true;
       invalidatePlaybackSession();
-      nativeStopQuranPlayback();
-      nativeSetQuranPlaying(false);
-      void releaseWakeLock();
-      clearMediaSession();
+      releaseNativePlayback();
       delete (window as unknown as { noorOnAyahIndex?: unknown }).noorOnAyahIndex;
       delete (window as unknown as { noorOnPlaybackEnded?: unknown }).noorOnPlaybackEnded;
     };
-  }, [pause, surahName, surahNumber, textAyahs]);
+  }, [pause, releaseNativePlayback, surahName, surahNumber]);
 
   const updateNowPlaying = useCallback(
     (title: string) => {
@@ -299,6 +309,7 @@ export function useSurahAudio({
       const gen = beginPlaybackSession();
       sessionRef.current = gen;
       setPlaying(true);
+      playingRef.current = true;
       await acquireWakeLock();
       nativeSetQuranPlaying(true);
 
@@ -345,6 +356,7 @@ export function useSurahAudio({
       }
 
       if (sessionRef.current === gen) {
+        playingRef.current = false;
         nativeSetQuranPlaying(false);
         void releaseWakeLock();
         clearMediaSession();
