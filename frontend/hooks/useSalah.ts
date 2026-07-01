@@ -23,6 +23,25 @@ const LABEL_KEY = "noor-salah-label";
 const MANUAL_KEY = "noor-salah-manual-location";
 const SETTINGS_KEY = "noor-salah-settings";
 
+function localTodayDate(): string {
+  const d = new Date();
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+}
+
+function todayDateInTz(tz: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: tz,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  })
+    .format(new Date())
+    .replace(/\//g, "-");
+}
+
 function loadCachedCoords(): { lat: number; lng: number } | null {
   try {
     const raw = localStorage.getItem(COORDS_KEY);
@@ -77,13 +96,17 @@ export function useSalah(): SalahState {
     setSettingsState(loadSettings());
   }, []);
 
-  const fetchForCoords = useCallback(async (lat: number, lng: number, opts = settings) => {
+  const fetchForCoords = useCallback(async (lat: number, lng: number, opts = settings, tzHint?: string) => {
     setLoading(true);
     setError("");
     try {
+      const day = tzHint ? todayDateInTz(tzHint) : localTodayDate();
+      const tzParam = tzHint ? `&timezone=${encodeURIComponent(tzHint)}` : "";
       const [loc, prayerTimes] = await Promise.all([
         api<LocationResponse>(`/api/salah/location?lat=${lat}&lng=${lng}`),
-        api<SalahTimesResponse>(`/api/salah/times?lat=${lat}&lng=${lng}&method=${opts.method}&school=${opts.school}`),
+        api<SalahTimesResponse>(
+          `/api/salah/times?lat=${lat}&lng=${lng}&method=${opts.method}&school=${opts.school}&date=${day}${tzParam}`,
+        ),
       ]);
       setLocationLabel(loc.label);
       setTimes(prayerTimes);
@@ -170,14 +193,41 @@ export function useSalah(): SalahState {
     );
   }, [fetchForCoords, tick, settings]);
 
-  // Refresh times at midnight in user's timezone
+  // Refresh when the calendar day changes in the user's prayer timezone
   useEffect(() => {
-    if (!times?.timezone) return;
-    const id = setInterval(() => {
-      if (coords) void fetchForCoords(coords.lat, coords.lng);
+    if (!coords || !times?.timezone) return;
+
+    let midnightTimer: ReturnType<typeof setTimeout> | undefined;
+
+    function scheduleMidnightRefresh() {
+      const nowMin = (() => {
+        const s = new Intl.DateTimeFormat("en-GB", {
+          timeZone: times!.timezone,
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }).format(new Date());
+        const [h, m, sec] = s.split(":").map(Number);
+        return h * 3600 + m * 60 + sec;
+      })();
+      const secsUntilMidnight = 24 * 3600 - nowMin;
+      midnightTimer = setTimeout(() => {
+        void fetchForCoords(coords!.lat, coords!.lng, settings, times!.timezone);
+        scheduleMidnightRefresh();
+      }, secsUntilMidnight * 1000 + 1500);
+    }
+
+    scheduleMidnightRefresh();
+    const interval = setInterval(() => {
+      void fetchForCoords(coords.lat, coords.lng, settings, times.timezone);
     }, 30 * 60 * 1000);
-    return () => clearInterval(id);
-  }, [coords, times?.timezone, fetchForCoords]);
+
+    return () => {
+      clearInterval(interval);
+      if (midnightTimer) clearTimeout(midnightTimer);
+    };
+  }, [coords, times?.timezone, fetchForCoords, settings]);
 
   return {
     loading,

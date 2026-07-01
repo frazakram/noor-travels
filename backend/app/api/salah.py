@@ -14,7 +14,14 @@ DEFAULT_METHOD = 1
 DEFAULT_SCHOOL = 1  # Hanafi Asr
 
 
-def _today_aladhan_date() -> str:
+def _today_aladhan_date(tz: str | None = None) -> str:
+    if tz:
+        try:
+            from zoneinfo import ZoneInfo
+
+            return datetime.now(ZoneInfo(tz)).strftime("%d-%m-%Y")
+        except Exception:
+            pass
     return datetime.now(timezone.utc).strftime("%d-%m-%Y")
 
 
@@ -25,8 +32,9 @@ async def prayer_times(
     method: int = Query(default=DEFAULT_METHOD, ge=1, le=23),
     school: int = Query(default=DEFAULT_SCHOOL, ge=0, le=1),
     date: str | None = Query(default=None, description="DD-MM-YYYY"),
+    timezone: str | None = Query(default=None, description="IANA timezone for today's date"),
 ):
-    day = date or _today_aladhan_date()
+    day = date or _today_aladhan_date(timezone)
     url = f"https://api.aladhan.com/v1/timings/{day}"
     params = {
         "latitude": lat,
