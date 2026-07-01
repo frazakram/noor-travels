@@ -141,12 +141,15 @@ export function useSurahAudio({
   }, [surahNumber, reciter, translation, includeTranslation]);
 
   const pause = useCallback(() => {
+    const wasActive = playingRef.current || nativeModeRef.current;
     stopRef.current = true;
     nativeModeRef.current = false;
     playingRef.current = false;
     invalidatePlaybackSession();
-    nativeStopQuranPlayback();
-    nativeSetQuranPlaying(false);
+    if (wasActive) {
+      nativeStopQuranPlayback();
+      nativeSetQuranPlaying(false);
+    }
     void releaseWakeLock();
     clearMediaSession();
     setPlaying(false);
