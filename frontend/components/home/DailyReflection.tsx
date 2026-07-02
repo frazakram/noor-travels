@@ -29,6 +29,7 @@ function dayOfYear(): number {
 
 export function DailyReflection({ lang }: { lang: Lang }) {
   const [ayah, setAyah] = useState<Ayah | null>(null);
+  const [showTranslation, setShowTranslation] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -58,9 +59,22 @@ export function DailyReflection({ lang }: { lang: Lang }) {
         {ayah ? (
           <>
             <p className="font-arabic mb-3 text-right text-xl leading-loose text-slate-800 dark:text-white sm:text-2xl" dir="rtl">{ayah.arabic}</p>
-            {ayah.transliteration && <p className="mb-1 text-sm italic text-slate-600 dark:text-slate-300">{ayah.transliteration}</p>}
-            <p className="text-sm text-slate-700 dark:text-slate-200" dir={lang === "ur" ? "rtl" : "ltr"}>{ayahTranslation}</p>
-            <p className="mt-3 text-xs font-medium text-teal-600">{ayah.name_en ?? "Quran"} · {ayah.verse_key}</p>
+            {showTranslation && (
+              <div className="animate-fade-in">
+                {ayah.transliteration && <p className="mb-1 text-sm italic text-slate-600 dark:text-slate-300">{ayah.transliteration}</p>}
+                <p className="text-sm text-slate-700 dark:text-slate-200" dir={lang === "ur" ? "rtl" : "ltr"}>{ayahTranslation}</p>
+              </div>
+            )}
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <p className="text-xs font-medium text-teal-600">{ayah.name_en ?? "Quran"} · {ayah.verse_key}</p>
+              <button
+                type="button"
+                onClick={() => setShowTranslation((v) => !v)}
+                className="text-xs font-medium text-accent hover:underline"
+              >
+                {t(lang, showTranslation ? "hideTranslation" : "showTranslation")}
+              </button>
+            </div>
           </>
         ) : (
           <p className="mt-3 text-sm text-muted">{t(lang, "loadingAyah")}</p>
