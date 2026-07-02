@@ -6,6 +6,8 @@ from app.core.config import get_settings
 from app.db import get_conn, use_sqlite
 from app.services.hybrid_retriever import hybrid_retrieve, rerank
 from app.services.keyword_search import (
+    _hadith_topic_terms,
+    _search_hadiths,
     extract_search_terms,
     format_curated_answer,
     format_dua_answer,
@@ -219,6 +221,17 @@ def retrieve_for_question(
 
     merged = rerank(" ".join(analysis["search_terms"]), candidates, settings.rag_retrieval_k)
     merged = _filter_dua_by_theme(merged, analysis)
+
+    if (HADITH_HINT.search(question) or PROPHET_HINT.search(question)) and not any(
+        c.get("source_type") == "hadith" for c in merged
+    ):
+        topic_terms = _hadith_topic_terms(analysis.get("search_terms") or extract_search_terms(question))
+        hadith_hits = _search_hadiths(topic_terms or extract_search_terms(question), 6)
+        for h in hadith_hits:
+            h["final_score"] = 0.93
+        if hadith_hits:
+            merged = hadith_hits + merged
+
     return merged, analysis
 
 

@@ -6,7 +6,7 @@ import json
 import re
 from pathlib import Path
 
-TARGET_TOTAL = 3000
+TARGET_TOTAL = 6000
 OUT = Path(__file__).resolve().parents[1] / "data" / "eval_questions.json"
 
 # English surah names (1–114)
@@ -146,6 +146,106 @@ HADITH_TOPICS = [
     "clothing", "hygiene", "smiling", "friendship", "leadership", "justice",
 ]
 
+HADITH_TOPICS_EXT = [
+    "modesty", "envy", "boasting", "gossip", "gossiping", "visiting", "hospitality",
+    "orphans", "widows", "poor", "guests", "mosque", "congregation", "friday",
+    "eid", "fitr", "adha", "sacrifice", "halal", "haram", "interest", "riba",
+    "will", "inheritance", "testimony", "witness", "oath", "vows", "divorce",
+    "breastfeeding", "naming", "aqiqah", "circumcision", "funeral", "burial",
+]
+
+DUA_TOPICS = [
+    "exam", "anxiety", "marriage", "health", "forgiveness", "rizq", "sleep", "rain",
+    "new home", "travel", "protection", "guidance", "success", "sick", "debt",
+    "job", "pregnancy", "newborn", "stress", "fear", "morning", "evening",
+]
+
+DUA_TOPICS_EXT = [
+    "wedding", "interview", "flight", "moving", "graduation", "birthday", "loneliness",
+    "grief", "loss", "exam results", "studying", "wisdom", "strength", "hope",
+    "contentment", "family", "children", "parents", "friendship", "enemies",
+    "oppressors", "oppression", "victory", "defeat", "war", "peace", "refugees",
+]
+
+FAITH_TOPICS = [
+    "tawhid", "iman", "taqwa", "shukr", "sabr", "akhlaq", "ihsan", "dua",
+    "dhikr", "repentance", "mercy", "justice", "brotherhood", "ummah",
+]
+
+FAITH_TOPICS_EXT = [
+    "qadr", "destiny", "angels", "jinn", "prophets", "books", "hereafter",
+    "hellfire", "paradise", "accountability", "scale", "sirat", "intercession",
+    "shirk", "bidah", "innovation", "sunnah", "companions", "caliphate",
+]
+
+RAMADAN = [
+    ("What is suhoor in Ramadan?", ["hadith", "quran"], ["suhoor", "Ramadan", "fast"], []),
+    ("What is iftar in Islam?", ["hadith", "quran"], ["iftar", "fast", "break"], []),
+    ("Can you brush teeth while fasting?", ["hadith", "quran"], ["fast", "tooth", "brush"], []),
+    ("What breaks the fast in Ramadan?", ["hadith", "quran"], ["fast", "break", "Ramadan"], []),
+    ("What is Laylat al-Qadr?", ["quran", "hadith"], ["Qadr", "night", "Ramadan"], []),
+    ("What is taraweeh prayer?", ["hadith", "quran"], ["taraweeh", "Ramadan", "prayer"], []),
+    ("What is zakat al-fitr?", ["hadith", "quran"], ["fitr", "Ramadan", "charity"], []),
+    ("Why is Ramadan the best month?", ["quran", "hadith"], ["Ramadan", "month", "blessed"], []),
+    ("Can pregnant women fast in Ramadan?", ["hadith", "quran"], ["fast", "pregnant", "Ramadan"], []),
+    ("What dua to make when breaking fast?", ["dua", "hadith"], ["fast", "iftar", "Allah"], []),
+]
+
+PROPHETS = [
+    ("Who was Prophet Ibrahim in Islam?", ["quran", "hadith"], ["Ibrahim", "Abraham", "prophet"], []),
+    ("Who was Prophet Musa in Islam?", ["quran", "hadith"], ["Musa", "Moses", "prophet"], []),
+    ("Who was Prophet Isa in Islam?", ["quran", "hadith"], ["Isa", "Jesus", "prophet"], []),
+    ("Who was Prophet Nuh in Islam?", ["quran", "hadith"], ["Nuh", "Noah", "prophet"], []),
+    ("Who was Prophet Yusuf in Islam?", ["quran", "hadith"], ["Yusuf", "Joseph", "prophet"], []),
+    ("Who was Prophet Sulaiman in Islam?", ["quran", "hadith"], ["Sulaiman", "Solomon", "prophet"], []),
+    ("Who was Prophet Dawud in Islam?", ["quran", "hadith"], ["Dawud", "David", "prophet"], []),
+    ("Who was Prophet Yunus in Islam?", ["quran", "hadith"], ["Yunus", "Jonah", "prophet"], []),
+    ("Who was Prophet Adam in Islam?", ["quran", "hadith"], ["Adam", "prophet", "created"], []),
+    ("Who was Prophet Muhammad for Muslims?", ["quran", "hadith"], ["Muhammad", "Prophet", "messenger"], []),
+]
+
+ETIQUETTE = [
+    ("How to enter a masjid in Islam?", ["hadith", "quran"], ["mosque", "enter", "prayer"], []),
+    ("Islamic etiquette for visiting the sick", ["hadith", "quran"], ["sick", "visit", "mercy"], []),
+    ("How to give advice in Islam?", ["hadith", "quran"], ["advice", "kind", "wisdom"], []),
+    ("Rights of guests in Islam", ["hadith", "quran"], ["guest", "hospitality", "rights"], []),
+    ("Islamic manners for social media", ["hadith", "quran"], ["speech", "honest", "kind"], []),
+    ("How to handle disagreement in Islam?", ["hadith", "quran"], ["disagree", "respect", "wisdom"], []),
+    ("Islamic etiquette for funerals", ["hadith", "quran"], ["funeral", "janazah", "prayer"], []),
+    ("How to treat servants and workers in Islam?", ["hadith", "quran"], ["worker", "kind", "fair"], []),
+]
+
+EXTRA_AYAH_INDICES = [
+    4, 6, 8, 9, 11, 12, 13, 15, 16, 17, 18, 19, 20, 22, 23, 24, 25, 26, 27, 29,
+    30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 41, 42, 43, 44, 45, 46, 47, 48, 49,
+    51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69,
+    70, 71, 72, 73, 74, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89,
+    90, 91, 92, 93, 94, 95, 96, 97, 98, 99,
+]
+
+EXTRA_TAFSIR_ANCHORS = [
+    "2:102", "2:183", "2:219", "2:255", "3:18", "3:97", "4:11", "4:34", "4:36",
+    "5:3", "5:90", "6:151", "7:156", "9:60", "10:25", "12:86", "14:7", "16:90",
+    "17:23", "18:9", "19:96", "21:87", "24:30", "25:63", "27:62", "29:45", "31:14",
+    "33:21", "35:2", "39:53", "41:53", "48:29", "51:56", "55:13", "57:25", "59:18",
+    "64:16", "70:23", "76:8", "89:27", "94:5", "96:1", "99:7", "112:2", "114:4",
+]
+
+GENERATED_TEMPLATES = [
+    "what does Quran {vk} teach about faith",
+    "what lesson is in {name} ayah {ayah}",
+    "meaning of Quran {vk} in simple words",
+    "why is {vk} important",
+    "how does verse {vk} apply to daily life",
+    "what guidance is in {name} verse {ayah}",
+    "summarize the message of {vk}",
+    "what should Muslims learn from {vk}",
+    "explain Quran verse {vk} to a beginner",
+    "what theme appears in ayah {ayah} of surah {num}",
+    "what wisdom is found in {vk}",
+    "how is {vk} relevant today",
+]
+
 EXPERT = [
     ("difference between zakat and sadaqah", ["quran", "hadith"], ["zakat", "charity", "obligatory"], []),
     ("asr madhab hanafi vs shafi", ["hadith", "quran"], ["Asr", "shadow", "length"], []),
@@ -156,16 +256,8 @@ EXPERT = [
     ("conditions of valid wudu", ["hadith", "quran"], ["wudu", "ablution"], []),
 ]
 
-DUA_TOPICS = [
-    "exam", "anxiety", "marriage", "health", "forgiveness", "rizq", "sleep", "rain",
-    "new home", "travel", "protection", "guidance", "success", "sick", "debt",
-    "job", "pregnancy", "newborn", "stress", "fear", "morning", "evening",
-]
 
-FAITH_TOPICS = [
-    "tawhid", "iman", "taqwa", "shukr", "sabr", "akhlaq", "ihsan", "dua",
-    "dhikr", "repentance", "mercy", "justice", "brotherhood", "ummah",
-]
+GENERATED_RESERVE = 1500
 
 
 def _norm(q: str) -> str:
@@ -184,6 +276,8 @@ def build_cases(target: int = TARGET_TOTAL) -> list[dict]:
         category: str = "general",
         tags: list[str] | None = None,
     ) -> None:
+        if len(cases) >= target:
+            return
         key = _norm(q)
         if not key or key in seen:
             return
@@ -219,6 +313,25 @@ def build_cases(target: int = TARGET_TOTAL) -> list[dict]:
         add(f"what did Prophet say about {topic}", ["hadith"], [topic, "Prophet", "Bukhari"], [], "hadith", [topic])
         add(f"is there a hadith on {topic}", ["hadith"], [topic, "Bukhari"], [], "hadith", [topic])
 
+    for topic in HADITH_TOPICS_EXT:
+        needles = [topic, "Bukhari"]
+        if topic in ("gossip", "gossiping"):
+            needles = ["slander", "Bukhari"]
+        elif topic == "fitr":
+            needles = ["fitr", "Bukhari"]
+        elif topic in ("breastfeeding", "aqiqah"):
+            needles = ["Bukhari"]
+        add(f"hadith about {topic}", ["hadith", "quran"], needles, [], "hadith_ext", [topic])
+        add(f"Sunnah regarding {topic}", ["hadith"], needles, [], "hadith_ext", [topic])
+        add(f"what did Prophet Muhammad teach about {topic}", ["hadith"], needles, [], "hadith_ext", [topic])
+
+    for row in RAMADAN:
+        add(*row, category="ramadan")
+    for row in PROPHETS:
+        add(*row, category="prophets")
+    for row in ETIQUETTE:
+        add(*row, category="etiquette")
+
     for num, name in SURAH_NAMES.items():
         short = name.split()[-1] if " " in name else name
         add(f"summarize surah {name}", ["quran"], [str(num), short], [], "surah", [short.lower()])
@@ -244,6 +357,10 @@ def build_cases(target: int = TARGET_TOTAL) -> list[dict]:
             add(tmpl.format(vk=vk), ["quran", "tafsir"], [vk.split(":")[0], "meaning", "Tafsir"], [], "tafsir", [vk])
         add(f"explain tafsir for {vk}", ["tafsir", "quran"], [vk, "Tafsir"], [], "tafsir", [vk])
 
+    for vk in EXTRA_TAFSIR_ANCHORS:
+        add(f"explain the tafsir of Quran {vk}", ["quran", "tafsir"], [vk.split(":")[0], "meaning", "Tafsir"], [], "tafsir_ext", [vk])
+        add(f"what is the meaning of ayah {vk}", ["quran", "tafsir"], [vk, "meaning"], [], "tafsir_ext", [vk])
+
     for vk in anchors[:10]:
         add("what is the tafsir for that verse", ["tafsir", "quran"], ["Tafsir", vk.split(":")[0]], [], "followup", [vk])
         add("tell me more about the meaning", ["quran", "tafsir"], ["meaning"], [], "followup", [])
@@ -253,9 +370,30 @@ def build_cases(target: int = TARGET_TOTAL) -> list[dict]:
         add(f"dua for {topic}", ["dua", "quran", "hadith"], [topic], [], "dua", [topic])
         add(f"supplication for {topic} in Islam", ["dua", "hadith", "quran"], [topic], [], "dua", [topic])
 
+    for topic in DUA_TOPICS_EXT:
+        add(f"dua for {topic}", ["dua", "quran", "hadith"], [topic], [], "dua_ext", [topic])
+        add(f"Islamic prayer for {topic}", ["dua", "hadith", "quran"], [topic], [], "dua_ext", [topic])
+
     for topic in FAITH_TOPICS:
         add(f"what does Quran say about {topic}", ["quran", "hadith"], [topic], [], "faith", [topic])
         add(f"explain {topic} in Islam", ["quran", "hadith"], [topic], [], "faith", [topic])
+
+    for topic in FAITH_TOPICS_EXT:
+        add(f"what does Islam teach about {topic}", ["quran", "hadith"], [topic], [], "faith_ext", [topic])
+        add(f"importance of {topic} in Islam", ["quran", "hadith"], [topic], [], "faith_ext", [topic])
+
+    for num in range(1, 115):
+        if len(cases) >= target - GENERATED_RESERVE:
+            break
+        count = AYAH_COUNTS.get(num, 50)
+        for ayah in EXTRA_AYAH_INDICES:
+            if len(cases) >= target - GENERATED_RESERVE:
+                break
+            if ayah > count:
+                continue
+            vk = f"{num}:{ayah}"
+            add(f"explain ayah {vk} briefly", ["quran"], [vk], [], "verse_ext", [vk])
+            add(f"what is the message of verse {vk}", ["quran"], [vk, str(num)], [], "verse_ext", [vk])
 
     i = 0
     while len(cases) < target:
@@ -263,15 +401,10 @@ def build_cases(target: int = TARGET_TOTAL) -> list[dict]:
         ayah = (i % min(AYAH_COUNTS.get(num, 7), 60)) + 1
         vk = f"{num}:{ayah}"
         name = SURAH_NAMES[num]
-        templates = [
-            f"what does Quran {vk} teach about faith",
-            f"what lesson is in {name} ayah {ayah}",
-            f"meaning of Quran {vk} in simple words",
-            f"why is {vk} important",
-        ]
-        add(templates[i % len(templates)], ["quran"], [vk, str(num)], [], "generated", [vk])
+        tmpl = GENERATED_TEMPLATES[i % len(GENERATED_TEMPLATES)]
+        add(tmpl.format(vk=vk, name=name, ayah=ayah, num=num), ["quran"], [vk, str(num)], [], "generated", [vk])
         i += 1
-        if i > target * 3:
+        if i > target * 4:
             break
 
     return cases[:target]

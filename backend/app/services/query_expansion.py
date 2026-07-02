@@ -88,7 +88,8 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "pattern": r"death|dying|grave|janaz|funeral|موت",
         "terms": ["death", "grave", "hereafter", "mercy", "forgive"],
         "dua_categories": ["death"],
-        "verse_keys": [],
+        "verse_keys": ["2:156", "3:185"],
+        "hadith_refs": ["Sahih al-Bukhari 18", "Sahih al-Bukhari 1260"],
     },
     {
         "id": "forgiveness",
@@ -618,6 +619,20 @@ THEME_SUMMARIES: dict[str, dict[str, str]] = {
             "मुसलमान सेहत और शिफा की दुआ करते हैं; संबंधित दुआएँ और हदीस नीचे हैं।"
         ),
     },
+    "death": {
+        "en": (
+            "Islamic funeral (janazah) rites include washing the deceased, funeral prayer, and burial. The Quran reminds "
+            "believers that every soul shall taste death (3:185) and encourages patience and prayer for the departed."
+        ),
+        "ur": (
+            "اسلامی جنازے کے آداب میں میت کو غسل دینا، نمازِ جنازہ اور دفن شامل ہے۔ قرآن یاد دہانی کراتا ہے کہ ہر جانے "
+            "کو موت کا مزہ چکھنا ہے (3:185) اور اہلِ میت کے لیے صبر اور دعا کی تلقین کرتا ہے۔"
+        ),
+        "hi": (
+            "इस्लामी जनाज़ा में मय्यित को गुस्ल, नमाज़-ए-जनाज़ा और दफ़न शामिल हैं। कुरान याद दिलाता है कि हर जान "
+            "को मौत चखनी है (3:185) और अहल-ए-मय्यित के लिए सब्र और दुआ की तालीम देता है।"
+        ),
+    },
     "scripture": {
         "en": (
             "Muslims believe Allah revealed the Torah (Tawrat) to Moses, the Gospel (Injil) to Jesus, and the Quran to "
@@ -804,10 +819,11 @@ THEME_SUMMARIES: dict[str, dict[str, str]] = {
 }
 
 DUA_HINT = re.compile(r"\b(dua|duas|supplication|دعا|दुआ|prayer for)\b", re.I)
-HADITH_HINT = re.compile(r"\b(hadith|hadeeth|حدیث|हदीस|bukhari|sahih)\b", re.I)
+HADITH_HINT = re.compile(r"\b(hadith|hadeeth|sunnah|حدیث|हदीस|bukhari|sahih)\b", re.I)
 PROPHET_HINT = re.compile(
-    r"\b(?:what did (?:the )?prophet|prophet (?:say|said|teach|taught)|messenger of allah (?:say|said)|"
-    r"muhammad (?:say|said)|rasool (?:say|said)|نبی نے|رسول نے|पैगंबर ने)\b",
+    r"\b(?:what did (?:the )?prophet(?:\s+muhammad)?|prophet (?:say|said|teach|taught)|"
+    r"messenger of allah (?:say|said)|muhammad (?:say|said|teach|taught)|rasool (?:say|said)|"
+    r"نبی نے|رسول نے|पैगंबर ने)\b",
     re.I,
 )
 TAFSIR_HINT = re.compile(

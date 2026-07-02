@@ -13,13 +13,15 @@ export type NotificationPrefs = {
 
 const KEY = "noor-notification-prefs";
 
-const DEFAULT: NotificationPrefs = {
+export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   adhan: { fajr: false, dhuhr: false, asr: false, maghrib: false, isha: false },
   hadithDaily: false,
   hadithHour: 8,
   hadithMinute: 0,
   useCityTimezone: true,
 };
+
+const DEFAULT = DEFAULT_NOTIFICATION_PREFS;
 
 export function loadNotificationPrefs(): NotificationPrefs {
   if (typeof window === "undefined") return DEFAULT;

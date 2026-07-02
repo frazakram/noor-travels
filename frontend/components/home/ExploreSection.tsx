@@ -24,7 +24,7 @@ const items = [
   {
     href: "/library",
     key: "questionLibrary" as const,
-    desc: "3,000 questions with instant answers",
+    desc: "6,000 questions with instant answers",
     stat: "Pre-loaded · Searchable",
     icon: "💡",
     accent: "border-l-teal-500 bg-teal-50/60 dark:bg-teal-950/20",

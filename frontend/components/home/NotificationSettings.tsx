@@ -9,7 +9,7 @@ import {
   ensureNotificationPermission,
   updateNotificationPrefs,
 } from "@/lib/notification-schedule";
-import { loadNotificationPrefs, type NotificationPrefs } from "@/lib/notification-prefs";
+import { DEFAULT_NOTIFICATION_PREFS, loadNotificationPrefs, type NotificationPrefs } from "@/lib/notification-prefs";
 import type { PrayerId, SalahTimesResponse } from "@/lib/salah";
 
 const PRAYERS: PrayerId[] = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
@@ -59,12 +59,14 @@ function Toggle({
 export function NotificationSettings({ times }: Props) {
   const { lang } = useLang();
   const [open, setOpen] = useState(false);
-  const [prefs, setPrefs] = useState<NotificationPrefs>(() => loadNotificationPrefs());
+  const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_NOTIFICATION_PREFS);
+  const [hydrated, setHydrated] = useState(false);
   const [perm, setPerm] = useState<NotificationPermission | "unsupported">("default");
   const native = isNativeApp();
 
   useEffect(() => {
     setPrefs(loadNotificationPrefs());
+    setHydrated(true);
     if (typeof window !== "undefined" && "Notification" in window) {
       setPerm(Notification.permission);
     } else {
@@ -141,7 +143,7 @@ export function NotificationSettings({ times }: Props) {
         <div className="flex items-center gap-3">
           <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-600 to-noor-700 text-lg text-white shadow-lg shadow-teal-900/15">
             🔔
-            {anyOn && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-gold-400 ring-2 ring-white dark:ring-noor-900" />}
+            {hydrated && anyOn && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-gold-400 ring-2 ring-white dark:ring-noor-900" />}
           </span>
           <div>
             <h2 className="font-semibold text-heading">{t(lang, "notificationSettings")}</h2>

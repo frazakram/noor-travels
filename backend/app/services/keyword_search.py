@@ -719,13 +719,22 @@ def _search_ayahs(terms: list[str], limit: int) -> list[dict]:
 
 HADITH_META_TERMS = frozenset({
     "hadith", "hadeeth", "bukhari", "sahih", "prophet", "say", "said", "there", "islam", "islamic",
-    "what", "did", "about", "tell", "prophet's", "messenger",
+    "what", "did", "about", "tell", "prophet's", "messenger", "sunnah", "regarding", "muhammad",
 })
 
 
 def _hadith_topic_terms(terms: list[str]) -> list[str]:
     topic = [t for t in terms if t.lower() not in HADITH_META_TERMS and len(t) > 2]
-    return topic or terms[:4]
+    expanded: list[str] = []
+    synonyms = {
+        "gossip": "slander", "gossiping": "slander", "aqiqah": "sacrifice",
+        "breastfeeding": "suckling", "fitr": "fitrah", "adha": "sacrifice",
+    }
+    for t in topic:
+        expanded.append(t)
+        if t.lower() in synonyms:
+            expanded.append(synonyms[t.lower()])
+    return expanded or terms[:4]
 
 
 def _search_hadiths(terms: list[str], limit: int) -> list[dict]:

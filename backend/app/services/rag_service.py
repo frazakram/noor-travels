@@ -87,10 +87,15 @@ def _chunk_sources(chunks: list[dict]) -> list[dict]:
 
 
 def _prioritize_chunks_for_question(question: str, chunks: list[dict]) -> list[dict]:
-    from app.services.query_expansion import TAFSIR_HINT
+    from app.services.query_expansion import HADITH_HINT, PROPHET_HINT, TAFSIR_HINT
 
     if not chunks:
         return chunks
+    if HADITH_HINT.search(question) or PROPHET_HINT.search(question):
+        hadith = [c for c in chunks if c.get("source_type") == "hadith"]
+        other = [c for c in chunks if c.get("source_type") != "hadith"]
+        if hadith:
+            return hadith + other
     if not TAFSIR_HINT.search(question):
         return chunks
     tafsir = [c for c in chunks if c.get("source_type") == "tafsir"]
@@ -252,9 +257,37 @@ def _chat_local(
         out_lang,
         context_verse_keys=history_verse_keys or [],
     )
-    chunks = _prioritize_chunks_for_question(query, chunks)
+    from app.services.query_expansion import HADITH_HINT, PROPHET_HINT
+
+    wants_hadith = bool(HADITH_HINT.search(query) or PROPHET_HINT.search(query))
+    hadith_reserve: list[dict] = []
+    if wants_hadith:
+        curated = [
+            c
+            for c in chunks
+            if c.get("source_type") == "hadith"
+            and (c.get("metadata") or {}).get("curated")
+        ]
+        if curated:
+            hadith_reserve = curated
+        else:
+            hadith_reserve = sorted(
+                [c for c in chunks if c.get("source_type") == "hadith"],
+                key=lambda c: float(c.get("final_score", c.get("similarity", 0))),
+                reverse=True,
+            )[:3]
     if analysis.get("intent") not in ("verse_lookup", "verse_range_lookup"):
         chunks = rerank(" ".join(analysis.get("search_terms", [query])), chunks, get_settings().rag_final_k)
+    if hadith_reserve:
+        seen = {c.get("source_ref") for c in chunks}
+        for h in hadith_reserve:
+            if h.get("source_ref") not in seen:
+                chunks.insert(0, h)
+    if wants_hadith:
+        for c in chunks:
+            if c.get("source_type") == "hadith":
+                c["final_score"] = max(float(c.get("final_score", c.get("similarity", 0))), 0.9)
+    chunks = _prioritize_chunks_for_question(query, chunks)
 
     if not chunks:
         result = {
