@@ -221,134 +221,102 @@
     animation: confetti-burst 0.7s ease-out both;
   }
 
-  .islamic-pattern {
+  .hero-geo {
     pointer-events: none;
     position: absolute;
     inset: 0;
     z-index: 1;
-    opacity: 0.18;
-    background-image:
-      linear-gradient(30deg, rgba(255, 255, 255, 0.18) 12%, transparent 12.5%, transparent 87%, rgba(255, 255, 255, 0.18) 87.5%, rgba(255, 255, 255, 0.18)),
-      linear-gradient(150deg, rgba(255, 255, 255, 0.18) 12%, transparent 12.5%, transparent 87%, rgba(255, 255, 255, 0.18) 87.5%, rgba(255, 255, 255, 0.18)),
-      linear-gradient(30deg, rgba(212, 168, 83, 0.2) 12%, transparent 12.5%, transparent 87%, rgba(212, 168, 83, 0.2) 87.5%, rgba(212, 168, 83, 0.2)),
-      linear-gradient(150deg, rgba(212, 168, 83, 0.2) 12%, transparent 12.5%, transparent 87%, rgba(212, 168, 83, 0.2) 87.5%, rgba(212, 168, 83, 0.2));
-    background-position: 0 0, 0 0, 36px 63px, 36px 63px;
-    background-size: 72px 126px;
-    mask-image: radial-gradient(circle at 60% 30%, black, transparent 72%);
-    animation: pattern-glide 28s linear infinite;
+    opacity: 0.07;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='1'%3E%3Crect x='24' y='24' width='24' height='24'/%3E%3Crect x='24' y='24' width='24' height='24' transform='rotate(45 36 36)'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 72px 72px;
+    mask-image: linear-gradient(to bottom, black, transparent 82%);
+    -webkit-mask-image: linear-gradient(to bottom, black, transparent 82%);
+    animation: pattern-glide 60s linear infinite;
   }
 
-  .parallax-starfield {
-    pointer-events: none;
+  .hero-sun {
     position: absolute;
-    inset: -20%;
-    z-index: 1;
-    opacity: 0.28;
-    background-image:
-      radial-gradient(circle, rgba(255,255,255,0.9) 0 1px, transparent 1.5px),
-      radial-gradient(circle, rgba(255,255,255,0.6) 0 1px, transparent 1.5px);
-    background-position: 0 0, 28px 36px;
-    background-size: 72px 72px, 108px 108px;
-    animation: drift 52s linear infinite;
-  }
-
-  .hero-light-ribbons {
-    @apply pointer-events-none absolute inset-0 z-[1] overflow-hidden;
-  }
-
-  .hero-light-ribbons span {
-    @apply absolute h-24 w-[32rem] rounded-full blur-2xl;
-    background: linear-gradient(90deg, transparent, rgba(255, 233, 170, 0.28), rgba(45, 112, 96, 0.18), transparent);
-    transform: rotate(-18deg);
-    animation: ribbon-sweep 10s ease-in-out infinite;
-  }
-
-  .hero-light-ribbons span:nth-child(1) {
-    top: 6%;
-    left: -26rem;
-  }
-
-  .hero-light-ribbons span:nth-child(2) {
-    top: 38%;
-    left: -34rem;
-    animation-delay: -3.5s;
-    opacity: 0.65;
-  }
-
-  .hero-light-ribbons span:nth-child(3) {
-    bottom: 10%;
-    left: -30rem;
-    animation-delay: -7s;
-    opacity: 0.45;
-  }
-
-  .celestial-track {
-    @apply pointer-events-none absolute right-5 top-8 z-[2] h-28 w-28 md:right-12 md:top-10 md:h-36 md:w-36;
-    animation: celestial-orbit 14s ease-in-out infinite;
-  }
-
-  .real-sun,
-  .real-moon {
-    @apply absolute inset-0 rounded-full;
-  }
-
-  .real-sun {
-    background:
-      radial-gradient(circle at 36% 32%, rgba(255, 255, 255, 0.95) 0 7%, rgba(255, 255, 255, 0) 18%),
-      radial-gradient(circle at 50% 50%, #fff7b2 0 25%, #ffd66b 45%, #f59e0b 68%, rgba(245, 158, 11, 0) 72%);
+    z-index: 2;
+    height: 3.25rem;
+    width: 3.25rem;
+    border-radius: 9999px;
+    background: radial-gradient(circle at 36% 32%, #fff9e3, #ffd76e 52%, #e8a63d 100%);
     box-shadow:
-      0 0 34px rgba(255, 221, 110, 0.85),
-      0 0 80px rgba(251, 146, 60, 0.45),
-      inset -18px -18px 32px rgba(180, 83, 9, 0.24);
+      0 0 16px rgba(255, 215, 110, 0.55),
+      0 0 52px rgba(232, 166, 61, 0.32);
+    animation: sun-breathe 7s ease-in-out infinite;
   }
 
-  .sun-rays {
-    @apply absolute -inset-8 rounded-full;
-    background:
-      conic-gradient(from 0deg, rgba(255, 244, 174, 0.65), transparent 9deg 18deg, rgba(255, 244, 174, 0.5) 27deg, transparent 36deg 45deg);
-    filter: blur(1px);
-    opacity: 0.55;
-    animation: sun-rays-spin 24s linear infinite;
+  .hero-crescent-wrap {
+    position: absolute;
+    z-index: 2;
+    height: 3rem;
+    width: 3rem;
+    filter: drop-shadow(0 0 10px rgba(228, 188, 106, 0.55));
+    animation: celestial-float 9s ease-in-out infinite;
   }
 
-  .sun-core {
-    @apply absolute inset-0 rounded-full;
-    background:
-      radial-gradient(circle at 38% 30%, rgba(255, 255, 255, 0.75), transparent 18%),
-      radial-gradient(circle at 55% 58%, rgba(255, 207, 95, 0.35), transparent 45%);
+  .hero-crescent {
+    height: 100%;
+    width: 100%;
+    border-radius: 9999px;
+    background: radial-gradient(circle at 40% 42%, #ffedb8, #e4bc6a 72%);
+    mask: radial-gradient(circle at 70% 32%, transparent 0 54%, black 55%);
+    -webkit-mask: radial-gradient(circle at 70% 32%, transparent 0 54%, black 55%);
   }
 
-  .real-moon {
-    background:
-      radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.98) 0 6%, transparent 16%),
-      radial-gradient(circle at 50% 50%, #f8fafc 0 24%, #dbeafe 47%, #94a3b8 74%, #64748b 100%);
+  .hero-moon {
+    position: absolute;
+    z-index: 2;
+    height: 3.25rem;
+    width: 3.25rem;
+    border-radius: 9999px;
+    background: radial-gradient(circle at 36% 30%, #ffffff, #dbe7f4 48%, #9fb3c8 100%);
     box-shadow:
-      0 0 30px rgba(219, 234, 254, 0.75),
-      0 0 90px rgba(147, 197, 253, 0.35),
-      inset -16px -18px 28px rgba(30, 41, 59, 0.22);
+      0 0 18px rgba(219, 231, 244, 0.5),
+      0 0 56px rgba(147, 197, 253, 0.25);
+    animation: celestial-float 10s ease-in-out infinite;
   }
 
-  .real-crescent::after {
+  .hero-moon::before,
+  .hero-moon::after {
     content: "";
-    @apply absolute -right-2 top-0 h-full w-full rounded-full;
-    background: radial-gradient(circle at 44% 50%, rgba(15, 23, 42, 0.96), rgba(13, 34, 31, 0.9) 62%, transparent 72%);
-    transform: scale(1.04);
+    position: absolute;
+    border-radius: 9999px;
+    background: rgba(100, 116, 139, 0.28);
   }
 
-  .moon-crater {
-    @apply absolute rounded-full bg-slate-400/35 shadow-inner;
+  .hero-moon::before {
+    left: 30%;
+    top: 28%;
+    height: 0.7rem;
+    width: 0.7rem;
   }
 
-  .moon-crater-one {
-    @apply left-[31%] top-[26%] h-4 w-4 md:h-5 md:w-5;
+  .hero-moon::after {
+    left: 55%;
+    top: 56%;
+    height: 0.45rem;
+    width: 0.45rem;
   }
 
-  .moon-crater-two {
-    @apply bottom-[27%] left-[50%] h-3 w-3 md:h-4 md:w-4;
+  .hero-star {
+    position: absolute;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.85);
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.7);
+    animation: twinkle 3.6s ease-in-out infinite;
   }
 
-  .moon-crater-three {
-    @apply right-[25%] top-[49%] h-2.5 w-2.5 md:h-3 md:w-3;
+  .hero-window {
+    position: absolute;
+    bottom: 0.5rem;
+    height: 0.3rem;
+    width: 0.3rem;
+    border-radius: 9999px;
+    background: #ffd98a;
+    box-shadow: 0 0 8px rgba(255, 217, 138, 0.85);
+    animation: window-glow 4s ease-in-out infinite;
   }
 
   .cloud-layer {
@@ -399,7 +367,7 @@
   .bird-flock span,
   .bird-flock span::before,
   .bird-flock span::after {
-    @apply absolute block h-3 w-5 border-t-2 border-noor-950/45;
+    @apply absolute block h-3 w-5 border-t-2 border-white/35;
     content: "";
     border-radius: 50% 50% 0 0;
   }
@@ -460,54 +428,6 @@
     animation-duration: 9s;
   }
 
-  .mosque-silhouette {
-    @apply pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-24 opacity-25 md:h-28;
-    background: linear-gradient(to top, rgba(13, 34, 31, 0.88), rgba(13, 34, 31, 0));
-  }
-
-  .dome,
-  .minaret {
-    @apply absolute bottom-0 bg-noor-950/75;
-  }
-
-  .dome-main {
-    @apply left-1/2 h-20 w-40 -translate-x-1/2 rounded-t-full md:h-24 md:w-52;
-  }
-
-  .dome-main::before {
-    content: "";
-    @apply absolute -top-7 left-1/2 h-7 w-px -translate-x-1/2 bg-noor-950/70;
-  }
-
-  .dome-main::after {
-    content: "";
-    @apply absolute -top-9 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full border border-gold-300/60;
-  }
-
-  .dome-small {
-    @apply left-[25%] h-12 w-24 rounded-t-full md:h-14 md:w-28;
-  }
-
-  .dome-right {
-    @apply left-auto right-[25%];
-  }
-
-  .minaret {
-    @apply h-24 w-5 rounded-t-full md:h-28 md:w-6;
-  }
-
-  .minaret::before {
-    content: "";
-    @apply absolute -top-3 left-1/2 h-4 w-9 -translate-x-1/2 rounded-full bg-noor-950/75;
-  }
-
-  .minaret-left {
-    @apply left-[12%];
-  }
-
-  .minaret-right {
-    @apply right-[12%];
-  }
 }
 
 @keyframes pageEnter {
@@ -580,26 +500,6 @@
   }
 }
 
-@keyframes orb-drift {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  50% {
-    transform: translate(24px, 16px) scale(1.08);
-  }
-}
-
-@keyframes orb-drift-reverse {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  50% {
-    transform: translate(-20px, -12px) scale(1.05);
-  }
-}
-
 @keyframes twinkle {
   0%,
   100% {
@@ -612,53 +512,42 @@
 
 @keyframes pattern-glide {
   from {
-    background-position: 0 0, 0 0, 36px 63px, 36px 63px;
+    background-position: 0 0;
   }
   to {
-    background-position: 144px 252px, 144px 252px, 180px 315px, 180px 315px;
+    background-position: 144px 144px;
   }
 }
 
-@keyframes drift {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    transform: translate3d(120px, 80px, 0);
-  }
-}
-
-@keyframes ribbon-sweep {
-  0% {
-    transform: translateX(0) rotate(-18deg);
-    opacity: 0;
-  }
-  25%,
-  65% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateX(calc(100vw + 46rem)) rotate(-18deg);
-    opacity: 0;
-  }
-}
-
-@keyframes celestial-orbit {
+@keyframes sun-breathe {
   0%,
   100% {
-    transform: translate3d(0, 0, 0) rotate(-2deg) scale(1);
+    transform: scale(1);
+    opacity: 1;
   }
-  35% {
-    transform: translate3d(-18px, 10px, 0) rotate(3deg) scale(1.04);
-  }
-  70% {
-    transform: translate3d(8px, 18px, 0) rotate(-4deg) scale(0.98);
+  50% {
+    transform: scale(1.07);
+    opacity: 0.94;
   }
 }
 
-@keyframes sun-rays-spin {
-  to {
-    transform: rotate(360deg);
+@keyframes celestial-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes window-glow {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
   }
 }
 
@@ -711,18 +600,17 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in-up,
   .animate-ayah-glow,
-  .animate-orb-drift,
-  .animate-orb-drift-reverse,
   .animate-twinkle,
-  .celestial-track,
-  .sun-rays,
+  .hero-geo,
+  .hero-sun,
+  .hero-crescent-wrap,
+  .hero-moon,
+  .hero-star,
+  .hero-window,
   .cloud-layer,
-  .islamic-pattern,
-  .hero-light-ribbons span,
   .bird-flock,
   .bird-flock span,
   .shooting-star,
-  .parallax-starfield,
   .animate-confetti {
     animation: none !important;
   }
