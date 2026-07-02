@@ -104,14 +104,16 @@ export default function HomePage() {
 
         <QiblaHijriWidget coords={salah.coords} times={salah.times} />
 
-        <SalahSettingsPanel
-          settings={salah.settings}
-          onSettings={salah.setSettings}
-          onManualLocation={salah.setManualLocation}
-          onUseGps={salah.useGpsLocation}
-        />
+        <div className="grid items-start gap-4 sm:grid-cols-2">
+          <SalahSettingsPanel
+            settings={salah.settings}
+            onSettings={salah.setSettings}
+            onManualLocation={salah.setManualLocation}
+            onUseGps={salah.useGpsLocation}
+          />
 
-        <NotificationSettings times={salah.times} />
+          <NotificationSettings times={salah.times} />
+        </div>
 
         <FeaturedKhutba />
       </div>

@@ -7,6 +7,8 @@ export type NotificationPrefs = {
   hadithDaily: boolean;
   hadithHour: number;
   hadithMinute: number;
+  /** Schedule adhan in the prayer city's timezone instead of the device's. */
+  useCityTimezone: boolean;
 };
 
 const KEY = "noor-notification-prefs";
@@ -16,6 +18,7 @@ const DEFAULT: NotificationPrefs = {
   hadithDaily: false,
   hadithHour: 8,
   hadithMinute: 0,
+  useCityTimezone: true,
 };
 
 export function loadNotificationPrefs(): NotificationPrefs {
@@ -27,8 +30,9 @@ export function loadNotificationPrefs(): NotificationPrefs {
     return {
       adhan: { ...DEFAULT.adhan, ...(v.adhan ?? {}) },
       hadithDaily: Boolean(v.hadithDaily),
-      hadithHour: Number(v.hadithHour) || 8,
-      hadithMinute: Number(v.hadithMinute) || 0,
+      hadithHour: Number.isInteger(v.hadithHour) ? v.hadithHour : DEFAULT.hadithHour,
+      hadithMinute: Number.isInteger(v.hadithMinute) ? v.hadithMinute : DEFAULT.hadithMinute,
+      useCityTimezone: typeof v.useCityTimezone === "boolean" ? v.useCityTimezone : DEFAULT.useCityTimezone,
     };
   } catch {
     return DEFAULT;

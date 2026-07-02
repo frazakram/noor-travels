@@ -12,6 +12,13 @@ type NoorAndroidBridge = {
   playQuranQueue?: (playlistJson: string) => void;
   stopQuranPlayback?: () => void;
   schedulePrayerAlarm?: (prayerName: string, hour: number, minute: number, enabled: boolean) => void;
+  schedulePrayerAlarmTz?: (
+    prayerName: string,
+    hour: number,
+    minute: number,
+    timeZoneId: string,
+    enabled: boolean,
+  ) => void;
   scheduleHadithNotification?: (hour: number, minute: number, enabled: boolean) => void;
 };
 
@@ -22,7 +29,10 @@ function bridge(): NoorAndroidBridge | null {
 }
 
 export function isNativeApp(): boolean {
-  return !!(typeof window !== "undefined" && (window as unknown as { isNativeApp?: boolean }).isNativeApp);
+  if (typeof window === "undefined") return false;
+  // window.isNativeApp is injected on page finish; the NoorAndroid bridge object
+  // exists from document start, so check both to avoid a pre-injection race.
+  return !!(window as unknown as { isNativeApp?: boolean }).isNativeApp || bridge() !== null;
 }
 
 export function nativeSetQuranPlaying(playing: boolean): void {
@@ -74,6 +84,24 @@ export function nativeSchedulePrayerAlarm(
     bridge()?.schedulePrayerAlarm?.(prayerName, hour, minute, enabled);
   } catch {
     /* ignore */
+  }
+}
+
+/** Returns false when the installed APK does not expose the timezone-aware method. */
+export function nativeSchedulePrayerAlarmTz(
+  prayerName: string,
+  hour: number,
+  minute: number,
+  timeZoneId: string,
+  enabled: boolean,
+): boolean {
+  try {
+    const b = bridge();
+    if (!b?.schedulePrayerAlarmTz) return false;
+    b.schedulePrayerAlarmTz(prayerName, hour, minute, timeZoneId, enabled);
+    return true;
+  } catch {
+    return false;
   }
 }
 

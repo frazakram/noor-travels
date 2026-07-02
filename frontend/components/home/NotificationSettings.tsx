@@ -78,13 +78,16 @@ export function NotificationSettings({ times }: Props) {
     times.prayers.forEach((p) => {
       starts[p.id] = p.start;
     });
-    applyAllNotificationSchedules(prefs, starts);
+    applyAllNotificationSchedules(prefs, starts, times.timezone);
   }, [times, prefs]);
 
   const prayerStarts: Partial<Record<PrayerId, string>> = {};
   times?.prayers.forEach((p) => {
     prayerStarts[p.id] = p.start;
   });
+  const cityTz = times?.timezone;
+  const deviceTz =
+    typeof window !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined;
 
   async function requestPermission() {
     const ok = await ensureNotificationPermission();
@@ -94,7 +97,7 @@ export function NotificationSettings({ times }: Props) {
   function setAdhan(prayer: PrayerId, enabled: boolean) {
     void (async () => {
       if (!native && enabled) await requestPermission();
-      const next = updateNotificationPrefs({ adhan: { ...prefs.adhan, [prayer]: enabled } }, prayerStarts);
+      const next = updateNotificationPrefs({ adhan: { ...prefs.adhan, [prayer]: enabled } }, prayerStarts, cityTz);
       setPrefs(next);
     })();
   }
@@ -102,13 +105,18 @@ export function NotificationSettings({ times }: Props) {
   function setHadithDaily(enabled: boolean) {
     void (async () => {
       if (!native && enabled) await requestPermission();
-      const next = updateNotificationPrefs({ hadithDaily: enabled }, prayerStarts);
+      const next = updateNotificationPrefs({ hadithDaily: enabled }, prayerStarts, cityTz);
       setPrefs(next);
     })();
   }
 
   function setHadithTime(hour: number, minute: number) {
-    const next = updateNotificationPrefs({ hadithHour: hour, hadithMinute: minute }, prayerStarts);
+    const next = updateNotificationPrefs({ hadithHour: hour, hadithMinute: minute }, prayerStarts, cityTz);
+    setPrefs(next);
+  }
+
+  function setUseCityTimezone(enabled: boolean) {
+    const next = updateNotificationPrefs({ useCityTimezone: enabled }, prayerStarts, cityTz);
     setPrefs(next);
   }
 
@@ -116,7 +124,7 @@ export function NotificationSettings({ times }: Props) {
     void (async () => {
       if (!native) await requestPermission();
       const all = { fajr: true, dhuhr: true, asr: true, maghrib: true, isha: true };
-      const next = updateNotificationPrefs({ adhan: all }, prayerStarts);
+      const next = updateNotificationPrefs({ adhan: all }, prayerStarts, cityTz);
       setPrefs(next);
     })();
   }
@@ -131,12 +139,9 @@ export function NotificationSettings({ times }: Props) {
         className="flex w-full items-center justify-between gap-3 p-4 text-left transition hover:bg-teal-50/50 dark:hover:bg-teal-950/20 sm:p-5"
       >
         <div className="flex items-center gap-3">
-          <span
-            className={`flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-600 to-noor-700 text-lg text-white shadow-lg shadow-teal-900/15 ${
-              anyOn ? "animate-[pulse_3s_ease-in-out_infinite]" : ""
-            }`}
-          >
+          <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-600 to-noor-700 text-lg text-white shadow-lg shadow-teal-900/15">
             🔔
+            {anyOn && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-gold-400 ring-2 ring-white dark:ring-noor-900" />}
           </span>
           <div>
             <h2 className="font-semibold text-heading">{t(lang, "notificationSettings")}</h2>
@@ -194,6 +199,21 @@ export function NotificationSettings({ times }: Props) {
                 </div>
               ))}
             </div>
+            {cityTz && deviceTz && cityTz !== deviceTz && (
+              <div className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-subtle bg-surface-muted/50 px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="font-medium text-heading">{t(lang, "adhanTimezone")}</p>
+                  <p className="text-xs text-muted">
+                    {t(lang, "adhanTimezoneHint")} · <span className="font-mono">{cityTz}</span>
+                  </p>
+                </div>
+                <Toggle
+                  on={prefs.useCityTimezone}
+                  onChange={setUseCityTimezone}
+                  label={t(lang, "adhanTimezone")}
+                />
+              </div>
+            )}
           </div>
 
           <div className="rounded-2xl border border-gold-200/60 bg-gradient-to-br from-amber-50/80 to-teal-50/50 p-4 dark:border-gold-500/20 dark:from-amber-950/20 dark:to-teal-950/20">

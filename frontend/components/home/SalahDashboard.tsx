@@ -72,6 +72,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
   const [streak, setStreak] = useState<StreakStore>({ currentStreak: 0, longestStreak: 0, logs: {} });
   const [notifySet, setNotifySet] = useState<Record<string, boolean>>(() => loadNotificationPrefs().adhan);
   const [shareStatus, setShareStatus] = useState("");
+  const [showWeek, setShowWeek] = useState(false);
   const tz = times?.timezone ?? "UTC";
 
   useEffect(() => {
@@ -106,7 +107,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
     const nextAdhan = { ...prefs.adhan, [prayer]: enabled };
     saveNotificationPrefs({ ...prefs, adhan: nextAdhan });
     setNotifySet(nextAdhan);
-    scheduleAdhan(prayer, start, enabled);
+    scheduleAdhan(prayer, start, enabled, times?.timezone);
   }
 
   const prayerLabel = (id: PrayerId) => t(lang, PRAYER_LABEL_KEYS[id]);
@@ -235,12 +236,8 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
             </button>
             {shareStatus && <span className="text-xs text-gold-300">{shareStatus}</span>}
           </div>
-          <div className="mt-2 flex items-center justify-between text-[9px] uppercase tracking-wide text-white/55">
-            <span>{t(lang, "salahProgress")}</span>
-            <span>{Math.round(nextInfo.progress * 100)}%</span>
-          </div>
           <div
-            className="mt-1 h-1 overflow-hidden rounded-full bg-white/20"
+            className="mt-3 h-1 overflow-hidden rounded-full bg-white/20"
             title={`${Math.round(nextInfo.progress * 100)}% through ${nextInfo.current ? prayerLabel(nextInfo.current) : "current"} window`}
           >
             <div
@@ -350,27 +347,39 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
       )}
 
       {weekLogs.length > 0 && (
-        <div className="rounded-2xl bg-white/10 p-3 backdrop-blur-md sm:p-4">
-          <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div className="rounded-2xl bg-white/10 backdrop-blur-md">
+          <button
+            type="button"
+            onClick={() => setShowWeek((v) => !v)}
+            className="flex w-full items-center justify-between gap-2 p-3 text-left sm:p-4"
+          >
             <p className="text-sm font-semibold text-white">{t(lang, "weeklyPrayerHistory")}</p>
-            <p className="text-xs text-white/60">{t(lang, "qadaReminder")}</p>
-          </div>
-          <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-            {weekLogs.map((d) => (
-              <div key={d.key} className="rounded-lg bg-white/10 p-1.5 text-center sm:rounded-xl sm:p-2">
-                <p className="text-[10px] font-medium uppercase text-white/60">{d.label}</p>
-                <div className="mt-2 flex justify-center gap-0.5">
-                  {Array.from({ length: 5 }, (_, i) => (
-                    <span
-                      key={i}
-                      className={`h-2 w-2 rounded-full ${i < d.prayed ? "bg-gold-400" : "bg-white/20"}`}
-                    />
-                  ))}
-                </div>
-                <p className="mt-1 text-[10px] text-white/50">{d.prayed}/5</p>
+            <span className="flex items-center gap-2 text-xs text-white/60">
+              {weekLogs.reduce((sum, d) => sum + d.prayed, 0)}/{weekLogs.length * 5}
+              <span aria-hidden>{showWeek ? "▴" : "▾"}</span>
+            </span>
+          </button>
+          {showWeek && (
+            <div className="animate-fade-in px-3 pb-3 sm:px-4 sm:pb-4">
+              <p className="mb-3 text-xs text-white/60">{t(lang, "qadaReminder")}</p>
+              <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+                {weekLogs.map((d) => (
+                  <div key={d.key} className="rounded-lg bg-white/10 p-1.5 text-center sm:rounded-xl sm:p-2">
+                    <p className="text-[10px] font-medium uppercase text-white/60">{d.label}</p>
+                    <div className="mt-2 flex justify-center gap-0.5">
+                      {Array.from({ length: 5 }, (_, i) => (
+                        <span
+                          key={i}
+                          className={`h-2 w-2 rounded-full ${i < d.prayed ? "bg-gold-400" : "bg-white/20"}`}
+                        />
+                      ))}
+                    </div>
+                    <p className="mt-1 text-[10px] text-white/50">{d.prayed}/5</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
       )}
 

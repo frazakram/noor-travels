@@ -4,9 +4,10 @@ import {
   isNativeApp,
   nativeScheduleHadithNotification,
   nativeSchedulePrayerAlarm,
+  nativeSchedulePrayerAlarmTz,
 } from "@/lib/native-bridge";
 import { loadNotificationPrefs, saveNotificationPrefs, type NotificationPrefs } from "@/lib/notification-prefs";
-import type { PrayerId } from "@/lib/salah";
+import { msUntilTime, type PrayerId } from "@/lib/salah";
 
 const NATIVE_PRAYER: Record<PrayerId, string> = {
   fajr: "Fajr",
@@ -24,24 +25,34 @@ export async function ensureNotificationPermission(): Promise<boolean> {
   return result === "granted";
 }
 
-export function scheduleAdhan(prayer: PrayerId, startTime: string, enabled: boolean): void {
+export function scheduleAdhan(prayer: PrayerId, startTime: string, enabled: boolean, timezone?: string): void {
   const [h, m] = startTime.split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return;
+  // Prayer times come in the selected city's timezone; only honor it when the pref is on.
+  const tz = timezone && loadNotificationPrefs().useCityTimezone ? timezone : undefined;
   if (isNativeApp()) {
-    nativeSchedulePrayerAlarm(NATIVE_PRAYER[prayer], h, m, enabled);
+    if (!tz || !nativeSchedulePrayerAlarmTz(NATIVE_PRAYER[prayer], h, m, tz, enabled)) {
+      nativeSchedulePrayerAlarm(NATIVE_PRAYER[prayer], h, m, enabled);
+    }
     return;
   }
   // Web fallback: only works while tab is open (native APK recommended for real adhan)
-  if (!enabled || typeof window === "undefined") return;
-  const prefs = loadNotificationPrefs();
+  if (typeof window === "undefined") return;
   const key = `noor-adhan-timer-${prayer}`;
   const existing = (window as unknown as Record<string, number>)[key];
   if (existing) window.clearTimeout(existing);
+  if (!enabled) return;
 
-  const now = new Date();
-  const target = new Date();
-  target.setHours(h, m, 0, 0);
-  if (target <= now) target.setDate(target.getDate() + 1);
-  const ms = target.getTime() - now.getTime();
+  let ms: number;
+  if (tz) {
+    ms = msUntilTime(startTime, tz);
+  } else {
+    const now = new Date();
+    const target = new Date();
+    target.setHours(h, m, 0, 0);
+    if (target <= now) target.setDate(target.getDate() + 1);
+    ms = target.getTime() - now.getTime();
+  }
   if (ms > 2_147_000_000) return;
 
   (window as unknown as Record<string, number>)[key] = window.setTimeout(() => {
@@ -52,7 +63,7 @@ export function scheduleAdhan(prayer: PrayerId, startTime: string, enabled: bool
         tag: `adhan-${prayer}`,
       });
     }
-    scheduleAdhan(prayer, startTime, prefs.adhan[prayer]);
+    scheduleAdhan(prayer, startTime, loadNotificationPrefs().adhan[prayer], timezone);
   }, ms);
 }
 
@@ -92,17 +103,19 @@ export function scheduleHadithDaily(enabled: boolean, hour: number, minute: numb
         });
       }
     }
-    scheduleHadithDaily(true, hour, minute);
+    const latest = loadNotificationPrefs();
+    scheduleHadithDaily(latest.hadithDaily, latest.hadithHour, latest.hadithMinute);
   }, ms);
 }
 
 export function applyAllNotificationSchedules(
   prefs: NotificationPrefs,
   prayerStarts: Partial<Record<PrayerId, string>>,
+  timezone?: string,
 ): void {
   (Object.keys(prefs.adhan) as PrayerId[]).forEach((id) => {
     const start = prayerStarts[id];
-    if (start) scheduleAdhan(id, start, prefs.adhan[id]);
+    if (start) scheduleAdhan(id, start, prefs.adhan[id], timezone);
   });
   scheduleHadithDaily(prefs.hadithDaily, prefs.hadithHour, prefs.hadithMinute);
 }
@@ -110,10 +123,11 @@ export function applyAllNotificationSchedules(
 export function updateNotificationPrefs(
   patch: Partial<NotificationPrefs>,
   prayerStarts?: Partial<Record<PrayerId, string>>,
+  timezone?: string,
 ): NotificationPrefs {
   const next = { ...loadNotificationPrefs(), ...patch };
   if (patch.adhan) next.adhan = { ...loadNotificationPrefs().adhan, ...patch.adhan };
   saveNotificationPrefs(next);
-  if (prayerStarts) applyAllNotificationSchedules(next, prayerStarts);
+  if (prayerStarts) applyAllNotificationSchedules(next, prayerStarts, timezone);
   return next;
 }

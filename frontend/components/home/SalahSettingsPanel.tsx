@@ -28,12 +28,17 @@ export function SalahSettingsPanel({ settings, onSettings, onManualLocation, onU
 
   return (
     <section className="card p-4 sm:p-5">
-      <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between text-left">
-        <div>
-          <h2 className="font-semibold text-heading">{t(lang, "prayerSettings")}</h2>
-          <p className="text-xs text-muted sm:text-sm">{t(lang, "prayerSettingsHint")}</p>
+      <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between gap-3 text-left">
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-noor-700 to-teal-600 text-lg text-white shadow-lg shadow-teal-900/15">
+            🕌
+          </span>
+          <div>
+            <h2 className="font-semibold text-heading">{t(lang, "prayerSettings")}</h2>
+            <p className="text-xs text-muted sm:text-sm">{t(lang, "prayerSettingsHint")}</p>
+          </div>
         </div>
-        <span className="text-accent">{open ? t(lang, "close") : t(lang, "edit")}</span>
+        <span className="text-sm font-medium text-accent">{open ? t(lang, "close") : t(lang, "edit")}</span>
       </button>
 
       {open && (

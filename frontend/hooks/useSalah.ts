@@ -116,7 +116,7 @@ export function useSalah(): SalahState {
       prayerTimes.prayers.forEach((p) => {
         starts[p.id] = p.start;
       });
-      applyAllNotificationSchedules(loadNotificationPrefs(), starts);
+      applyAllNotificationSchedules(loadNotificationPrefs(), starts, prayerTimes.timezone);
       localStorage.setItem(COORDS_KEY, JSON.stringify({ lat, lng }));
       localStorage.setItem(LABEL_KEY, loc.label);
     } catch (e) {
