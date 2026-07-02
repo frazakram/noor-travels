@@ -46,6 +46,58 @@ Return JSON:
 }"""
 
 
+def _extract_verse_keys_from_text(text: str) -> list[str]:
+    keys: list[str] = []
+    for match in re.finditer(r"(?:quran\s*)?(\d{1,3}):(\d{1,3})", text, re.I):
+        keys.append(f"{int(match.group(1))}:{int(match.group(2))}")
+    return list(dict.fromkeys(keys))
+
+
+def _merge_history_context(question: str, history: list[dict[str, str]]) -> tuple[str, list[str]]:
+    verse_keys: list[str] = []
+    for turn in history[-8:]:
+        verse_keys.extend(_extract_verse_keys_from_text(turn.get("content", "")))
+
+    standalone = question.strip()
+    if history and len(question.split()) < 14:
+        last_user = next((m["content"] for m in reversed(history) if m.get("role") == "user"), "")
+        last_asst = next((m["content"] for m in reversed(history) if m.get("role") == "assistant"), "")
+        if last_user and last_user.strip() != question.strip():
+            standalone = f"{last_user.strip()} — {question.strip()}"
+        elif last_asst:
+            standalone = f"{last_asst[:240].strip()} — {question.strip()}"
+
+    return standalone, list(dict.fromkeys(verse_keys))
+
+
+def _normalize_source_score(score: float) -> float:
+    return round(min(1.0, max(0.0, float(score))), 3)
+
+
+def _chunk_sources(chunks: list[dict]) -> list[dict]:
+    return [
+        {
+            "ref": c["source_ref"],
+            "type": c["source_type"],
+            "snippet": c["content"][:280],
+            "score": _normalize_source_score(c.get("final_score", c.get("similarity", 0))),
+        }
+        for c in chunks
+    ]
+
+
+def _prioritize_chunks_for_question(question: str, chunks: list[dict]) -> list[dict]:
+    from app.services.query_expansion import TAFSIR_HINT
+
+    if not chunks:
+        return chunks
+    if not TAFSIR_HINT.search(question):
+        return chunks
+    tafsir = [c for c in chunks if c.get("source_type") == "tafsir"]
+    other = [c for c in chunks if c.get("source_type") != "tafsir"]
+    return tafsir + other
+
+
 def chat(
     question: str,
     lang: str = "en",
@@ -56,6 +108,7 @@ def chat(
     settings = get_settings()
     history = history or []
     out_lang = response_lang or lang
+    standalone, history_verse_keys = _merge_history_context(question, history)
 
     history_tail = " ".join(m["content"] for m in history[-2:])
     cache_key = make_cache_key(question, out_lang, history_tail, include_transliteration)
@@ -67,14 +120,13 @@ def chat(
     if settings.use_groq_chat:
         from app.services.keyword_search import extract_search_terms
         from app.services.query_expansion import build_analysis
-        _la = build_analysis(question, out_lang, extract_search_terms(question))
-        # If this is a follow-up (short pronoun-heavy question), prepend last assistant context
-        _standalone = question
-        if history and len(question.split()) < 12:
-            _last = next((m["content"] for m in reversed(history) if m.get("role") == "user"), "")
-            if _last and _last != question:
-                _standalone = f"{_last} — {question}"
-        local_analysis = {**_la, "search_queries_en": _la.get("search_terms", [question]), "standalone_question": _standalone}
+        _la = build_analysis(standalone, out_lang, extract_search_terms(standalone))
+        local_analysis = {
+            **_la,
+            "search_queries_en": _la.get("search_terms", [standalone]),
+            "standalone_question": standalone,
+            "history_verse_keys": history_verse_keys,
+        }
         client = OpenAI(
             api_key=settings.groq_api_key,
             base_url="https://api.groq.com/openai/v1",
@@ -95,12 +147,14 @@ def chat(
         except APIError as exc:
             if not _is_quota_or_auth_error(exc):
                 raise
-            return _chat_local(
-                question,
-                out_lang,
-                include_transliteration,
-                reason="Groq unavailable",
-            )
+        return _chat_local(
+            question,
+            out_lang,
+            include_transliteration,
+            reason="Groq unavailable",
+            standalone=standalone,
+            history_verse_keys=history_verse_keys,
+        )
 
     if not settings.use_openai_chat:
         return _chat_local(
@@ -109,6 +163,8 @@ def chat(
             include_transliteration,
             cache_key=cache_key,
             intentional_local=True,
+            standalone=standalone,
+            history_verse_keys=history_verse_keys,
         )
 
     client = OpenAI(api_key=settings.openai_api_key)
@@ -131,6 +187,8 @@ def chat(
             out_lang,
             include_transliteration,
             reason=str(exc.message) if hasattr(exc, "message") else "OpenAI unavailable",
+            standalone=standalone,
+            history_verse_keys=history_verse_keys,
         )
 
 
@@ -185,10 +243,18 @@ def _chat_local(
     reason: str = "",
     cache_key: str | None = None,
     intentional_local: bool = False,
+    standalone: str | None = None,
+    history_verse_keys: list[str] | None = None,
 ) -> dict[str, Any]:
-    chunks, analysis = retrieve_for_question(question, out_lang)
+    query = standalone or question
+    chunks, analysis = retrieve_for_question(
+        query,
+        out_lang,
+        context_verse_keys=history_verse_keys or [],
+    )
+    chunks = _prioritize_chunks_for_question(query, chunks)
     if analysis.get("intent") not in ("verse_lookup", "verse_range_lookup"):
-        chunks = rerank(" ".join(analysis.get("search_terms", [question])), chunks, get_settings().rag_final_k)
+        chunks = rerank(" ".join(analysis.get("search_terms", [query])), chunks, get_settings().rag_final_k)
 
     if not chunks:
         result = {
@@ -207,7 +273,7 @@ def _chat_local(
             result["notice"] = _fallback_notice(out_lang, reason)
         return _apply_validation(question, result)
 
-    answer = format_short_answer(question, chunks, analysis, out_lang)
+    answer = format_short_answer(query, chunks, analysis, out_lang)
     source_limit = 20 if analysis.get("intent") == "verse_range_lookup" else 6
     citations = [_ref_from_chunk(c) for c in chunks[: min(4, source_limit)]]
     confidence = (
@@ -227,7 +293,7 @@ def _chat_local(
                 "ref": c["source_ref"],
                 "type": c["source_type"],
                 "snippet": _clean_source_snippet(c["content"], source_snippet_len),
-                "score": round(float(c.get("final_score", c.get("similarity", 0))), 3),
+                "score": _normalize_source_score(c.get("final_score", c.get("similarity", 0))),
             }
             for c in chunks[:source_limit]
         ],
@@ -275,18 +341,6 @@ def _format_keyword_answer(chunks: list[dict], lang: str) -> str:
         snippet = c["content"][:500].strip()
         lines.append(f"\n• {c['source_ref']}\n{snippet}")
     return "\n".join(lines)
-
-
-def _chunk_sources(chunks: list[dict]) -> list[dict]:
-    return [
-        {
-            "ref": c["source_ref"],
-            "type": c["source_type"],
-            "snippet": c["content"][:280],
-            "score": round(float(c.get("final_score", c.get("similarity", 0))), 3),
-        }
-        for c in chunks
-    ]
 
 
 def _top_chunk_score(chunks: list[dict]) -> float:
@@ -367,10 +421,16 @@ def _chat_with_openai(
     analysis = analysis or analyze_query(client, question, out_lang, history)
     search_queries = analysis["search_queries_en"]
     source_filter = analysis["source_filter"] or ["quran", "hadith", "dua"]
-    standalone = analysis["standalone_question"]
+    standalone = analysis.get("standalone_question") or question
+    history_verse_keys = analysis.get("history_verse_keys") or []
 
     # Always use local/unified retrieval (bge-m3 when indexed)
-    chunks, _ = retrieve_for_question(standalone or question, out_lang)
+    chunks, _ = retrieve_for_question(
+        standalone or question,
+        out_lang,
+        context_verse_keys=history_verse_keys,
+    )
+    chunks = _prioritize_chunks_for_question(standalone or question, chunks)
     chunks = rerank(standalone, chunks, get_settings().rag_final_k)
 
     from app.services.keyword_search import extract_search_terms
@@ -399,8 +459,8 @@ def _chat_with_openai(
         return result
 
     context = "\n\n---\n\n".join(
-        f"SOURCE: [{c['source_ref']}] ({c['source_type']})\n{c['content'][:700]}"
-        for c in chunks[:4]
+        f"SOURCE: [{c['source_ref']}] ({c['source_type']})\n{c['content'][:900]}"
+        for c in chunks[:6]
     )
 
     lang_name = {"en": "English", "ur": "Urdu", "hi": "Hindi"}.get(out_lang, "English")
@@ -437,7 +497,11 @@ def _chat_with_openai(
     )
 
     parsed = json.loads(response.choices[0].message.content or "{}")
-    answer = parsed.get("answer", "")
+    answer = (parsed.get("answer") or "").strip()
+    if not answer or len(answer) < 12:
+        fallback = format_short_answer(standalone or question, chunks, merged_analysis, out_lang)
+        if fallback and not _is_refusal_answer(fallback):
+            answer = fallback
     if _is_refusal_answer(answer) and chunks:
         from app.services.keyword_search import extract_search_terms
         from app.services.query_expansion import build_analysis

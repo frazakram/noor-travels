@@ -150,6 +150,15 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "hadith_refs": [],
     },
     {
+        "id": "asr_madhab",
+        "priority": 52,
+        "pattern": r"asr|hanafi|shafi|shadow.{0,20}length|madhab|مذہب",
+        "terms": ["Asr", "afternoon", "shadow", "length", "Hanafi", "Shafi", "prayer time"],
+        "dua_categories": [],
+        "verse_keys": ["2:238"],
+        "hadith_refs": ["Sahih al-Bukhari 46"],
+    },
+    {
         "id": "ramadan",
         "priority": 30,
         "pattern": r"ramadan|ramzan|fasting|fast\b|roza|روزہ|रोज़ा|iftar|suhoor",
@@ -375,6 +384,21 @@ THEME_SUMMARIES: dict[str, dict[str, str]] = {
         "hi": (
             "कुरान ईमान वालों को निर्धारित समय पर नमाज़ क़ायम करने का हुक्म देता है (4:103, 2:238) और इसे "
             "मोमिनों की पहचान बताता है (70:22–23)। नमाज़ पूरे दिन अल्लाह से राब्ता बनाए रखती है।"
+        ),
+    },
+    "asr_madhab": {
+        "en": (
+            "Scholars differ on Asr time: the Hanafi madhab counts the shadow length from when the sun has declined "
+            "(often later Asr), while the Shafi'i madhab counts from when the shadow equals the object's length "
+            "(earlier Asr). Both rely on authentic hadith about afternoon prayer."
+        ),
+        "ur": (
+            "عصر کے وقت میں فقہاء اختلاف کرتے ہیں: حنفی مذہب میں سایہ دو گنا ہونے کا وقت (عام طور پر دیر کی عصر) "
+            "اور شافعی مذہب میں سایہ برابر ہونے کا وقت (پہلی عصر) لیا جاتا ہے۔ دونوں احادیث پر مبنی ہیں۔"
+        ),
+        "hi": (
+            "अस्र के समय पर विद्वानों में मतभेद है: हनफ़ी मज़हब में छाया दोगुनी होने का समय (अक्सर देर की अस्र) "
+            "और शाफ़ी मज़हब में छाया बराबर होने का समय (पहली अस्र) माना जाता है। दोनों प्रामाणिक हदीस पर आधारित हैं।"
         ),
     },
     "ramadan": {
@@ -633,7 +657,7 @@ THEME_SUMMARIES: dict[str, dict[str, str]] = {
 DUA_HINT = re.compile(r"\b(dua|duas|supplication|دعا|दुआ|prayer for)\b", re.I)
 HADITH_HINT = re.compile(r"\b(hadith|hadeeth|حدیث|हदीस|bukhari|sahih)\b", re.I)
 TAFSIR_HINT = re.compile(
-    r"\b(tafsir|تفسیر|تفسير|commentary|explain|context|historical|background|meaning|scholar|interpretation|why does quran|why does allah)\b",
+    r"\b(tafsir|تفسیر|تفسير|commentary|explain|context|historical|background|meaning|scholar|interpretation|why does quran|why does allah|what does .+ mean|tell me more|elaborate|that verse|this ayah|this verse)\b",
     re.I,
 )
 TRAVEL_HINT = re.compile(r"\b(travel|journey|safar|سفر|trip)\b", re.I)

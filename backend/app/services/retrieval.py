@@ -100,7 +100,12 @@ def _retrieve_by_themes(
     return _filter_dua_by_theme(merged, analysis)
 
 
-def retrieve_for_question(question: str, lang: str = "en") -> tuple[list[dict], dict[str, Any]]:
+def retrieve_for_question(
+    question: str,
+    lang: str = "en",
+    *,
+    context_verse_keys: list[str] | None = None,
+) -> tuple[list[dict], dict[str, Any]]:
     """Retrieve relevant chunks: semantic (bge-m3) when indexed, plus keyword expansion."""
     settings = get_settings()
 
@@ -108,12 +113,15 @@ def retrieve_for_question(question: str, lang: str = "en") -> tuple[list[dict], 
     from app.services.query_expansion import match_themes
 
     is_explanation = bool(TAFSIR_HINT.search(question))
+    ctx_keys = context_verse_keys or []
 
     # Route direct verse/surah lookups through keyword_retrieve_smart, but if this is an
     # explanation question augment with tafsir before returning.
     if is_verse_query(question) or _is_surah_number_question(question):
         chunks, analysis = keyword_retrieve_smart(question, lang)
-        if is_explanation:
+        if ctx_keys:
+            analysis = {**analysis, "verse_keys": list(dict.fromkeys((analysis.get("verse_keys") or []) + ctx_keys))}
+        if is_explanation or ctx_keys:
             chunks = _augment_with_tafsir(question, chunks, analysis)
         return chunks, analysis
 
@@ -127,6 +135,9 @@ def retrieve_for_question(question: str, lang: str = "en") -> tuple[list[dict], 
             return chunks, analysis
 
     analysis = build_analysis(question, lang, extract_search_terms(question))
+    if context_verse_keys:
+        merged_keys = list(dict.fromkeys((analysis.get("verse_keys") or []) + context_verse_keys))
+        analysis = {**analysis, "verse_keys": merged_keys}
     source_filter = analysis["source_filter"]
     matched_clusters = match_themes(question)
 
@@ -136,6 +147,7 @@ def retrieve_for_question(question: str, lang: str = "en") -> tuple[list[dict], 
         matched_clusters,
         analysis,
         wants_tafsir=is_explanation
+        or bool(ctx_keys)
         or bool(re.search(r"\b(context|why|meaning|background|story|teach)\b", question, re.I)),
     )
     if themed:
@@ -155,13 +167,16 @@ def retrieve_for_question(question: str, lang: str = "en") -> tuple[list[dict], 
             p.setdefault("metadata", {})["theme_pinned"] = True
         candidates.extend(pinned)
 
-    wants_context = is_explanation or bool(
+    wants_context = is_explanation or bool(ctx_keys) or bool(
         re.search(r"\b(context|why|meaning|background|story|teach)\b", question, re.I)
     )
-    if matched_clusters and wants_context:
-        all_verse_keys = []
+    if (matched_clusters and wants_context) or (ctx_keys and wants_context):
+        all_verse_keys = list(ctx_keys)
         for cluster in matched_clusters:
             all_verse_keys.extend(cluster.get("verse_keys") or [])
+        if analysis.get("verse_keys"):
+            all_verse_keys.extend(analysis["verse_keys"])
+        all_verse_keys = list(dict.fromkeys(all_verse_keys))
         if all_verse_keys:
             tafsir_chunks = _fetch_tafsir_chunks(all_verse_keys)
             for t in tafsir_chunks:
@@ -212,10 +227,11 @@ def _augment_with_tafsir(question: str, chunks: list[dict], analysis: dict) -> l
 
 
 def _fetch_tafsir_chunks(verse_keys: list[str]) -> list[dict]:
-    """Fetch tafsir chunks from document_chunks for given verse keys."""
+    """Fetch tafsir chunks from document_chunks and tafsir table for given verse keys."""
     if not verse_keys:
         return []
     results = []
+    seen: set[str] = set()
     try:
         with get_conn() as conn:
             cur = conn.cursor()
@@ -232,18 +248,46 @@ def _fetch_tafsir_chunks(verse_keys: list[str]) -> list[dict]:
                         (ref,),
                     )
                 row = cur.fetchone()
-                if not row:
-                    continue
-                if isinstance(row, dict):
-                    ref_val, content, stype = row["source_ref"], row["content"], row["source_type"]
+                if row:
+                    if isinstance(row, dict):
+                        ref_val, content, stype = row["source_ref"], row["content"], row["source_type"]
+                    else:
+                        ref_val, content, stype = row[0], row[1], row[2]
+                    if ref_val not in seen:
+                        seen.add(ref_val)
+                        results.append({
+                            "source_ref": ref_val,
+                            "content": content,
+                            "source_type": stype,
+                            "similarity": 0.80,
+                        })
+
+                if use_sqlite():
+                    cur.execute(
+                        "SELECT verse_key, source, text FROM tafsir WHERE verse_key = ? AND source IN ('ibn_kathir_en', 'maududi_ur')",
+                        (vk,),
+                    )
                 else:
-                    ref_val, content, stype = row[0], row[1], row[2]
-                results.append({
-                    "source_ref": ref_val,
-                    "content": content,
-                    "source_type": stype,
-                    "similarity": 0.80,
-                })
+                    cur.execute(
+                        "SELECT verse_key, source, text FROM tafsir WHERE verse_key = %s AND source IN ('ibn_kathir_en', 'maududi_ur')",
+                        (vk,),
+                    )
+                for trow in cur.fetchall() or []:
+                    if isinstance(trow, dict):
+                        tvk, src, txt = trow["verse_key"], trow["source"], trow["text"]
+                    else:
+                        tvk, src, txt = trow[0], trow[1], trow[2]
+                    ref_val = f"Tafsir {tvk} ({src})"
+                    if ref_val in seen:
+                        continue
+                    seen.add(ref_val)
+                    results.append({
+                        "source_ref": ref_val,
+                        "content": f"Tafsir {src} {tvk}: {txt[:2500]}",
+                        "source_type": "tafsir",
+                        "similarity": 0.82,
+                        "metadata": {"verse_key": tvk, "tafsir_source": src},
+                    })
     except Exception:
         pass
     return results
@@ -320,7 +364,7 @@ def format_short_answer(
         )
 
     # Always try to surface real content from chunks — never leave users with a generic pointer.
-    built = _build_answer_from_chunks(chunks, lang)
+    built = _build_answer_from_chunks(chunks, lang, question)
     if built:
         return built
 
@@ -344,7 +388,7 @@ def _extract_chunk_field(content: str, field: str) -> str:
     return content[start:].strip().rstrip(".")
 
 
-def _build_answer_from_chunks(chunks: list[dict], lang: str) -> str:
+def _build_answer_from_chunks(chunks: list[dict], lang: str, question: str = "") -> str:
     """Build a concrete answer from top retrieved chunks when no specific formatter matches.
 
     Ensures users always see actual Quran/Hadith/dua text, not just a navigation hint.
@@ -359,6 +403,23 @@ def _build_answer_from_chunks(chunks: list[dict], lang: str) -> str:
     }
 
     parts: list[str] = []
+    wants_tafsir = bool(TAFSIR_HINT.search(question))
+
+    # Tafsir-first when user asks for explanation / commentary
+    if wants_tafsir:
+        for chunk in chunks[:6]:
+            if chunk.get("source_type") != "tafsir":
+                continue
+            content = chunk.get("content", "")
+            ref = chunk.get("source_ref", "")
+            body = re.sub(r"^Tafsir\s+\S+\s+[\d:]+\s*:\s*", "", content, count=1)
+            body = re.sub(r"^Tafsir\s+\S+\s+[\d:]+\s*:\s*", "", body, count=1)
+            sentences = re.split(r"(?<=[.!?])\s+", body.strip())
+            text = " ".join(sentences[:3]).strip()[:360]
+            if len(text) > 30:
+                parts.append(f"• {ref}\n{text}")
+            if len(parts) >= 2:
+                break
 
     # Dua chunks → use the dedicated formatter (it already knows the content format)
     dua_chunks = [c for c in chunks[:6] if c.get("source_type") == "dua"]

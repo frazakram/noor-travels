@@ -75,6 +75,15 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
   const [status, setStatus] = useState("");
   const stopRef = useRef(false);
   const sessionRef = useRef(0);
+  const includeTafsirRef = useRef(includeTafsir);
+  const includeTranslationRef = useRef(includeTranslation);
+  const tafsirSourceRef = useRef(tafsirSource);
+  const translationLangRef = useRef(translationLang);
+  const currentIndexRef = useRef(0);
+  includeTafsirRef.current = includeTafsir;
+  includeTranslationRef.current = includeTranslation;
+  tafsirSourceRef.current = tafsirSource;
+  translationLangRef.current = translationLang;
 
   useEffect(() => {
     const savedReciter = localStorage.getItem("noor-reciter");
@@ -157,7 +166,7 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
   async function fetchTafsirText(verseKey: string): Promise<string> {
     try {
       const row = await api<{ text: string }>(
-        `/api/quran/ayahs/${verseKey}/tafsir?source=${tafsirSource}`
+        `/api/quran/ayahs/${verseKey}/tafsir?source=${tafsirSourceRef.current}`
       );
       return truncateForSpeech(row.text);
     } catch {
@@ -171,9 +180,11 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
     if (!audio?.audio || !text) return;
 
     setCurrentIndex(i);
+    currentIndexRef.current = i;
 
+    const wantTafsir = includeTafsirRef.current;
     const tafsirPromise =
-      includeTafsir && !stopRef.current ? fetchTafsirText(text.verse_key) : null;
+      wantTafsir && !stopRef.current ? fetchTafsirText(text.verse_key) : null;
 
     const prefix = passLabel ? `${passLabel} · ` : "";
 
@@ -186,23 +197,23 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
     }
     if (stopRef.current || sessionRef.current !== gen) return;
 
-    if (includeTranslation) {
+    if (includeTranslationRef.current) {
       const tr = getTranslation(text);
       if (tr) {
         setStatus(`${prefix}${text.verse_key} — ${t(lang, "translation")}`);
         stopAllPlayback();
-        await playSpokenText(tr, translationLang, audio.translation_audio, gen);
+        await playSpokenText(tr, translationLangRef.current, audio.translation_audio, gen);
       }
     }
     if (stopRef.current || sessionRef.current !== gen) return;
 
-    if (includeTafsir && tafsirPromise) {
-      setStatus(`${prefix}${text.verse_key} — ${t(lang, "tafsir")}`);
-      const tf = await tafsirPromise;
+    if (includeTafsirRef.current) {
+      const tf = tafsirPromise ? await tafsirPromise : await fetchTafsirText(text.verse_key);
       if (stopRef.current || sessionRef.current !== gen) return;
       if (tf) {
+        setStatus(`${prefix}${text.verse_key} — ${t(lang, "tafsir")}`);
         stopAllPlayback();
-        await playSpokenText(tf, speechLangForSource(tafsirSource), null, gen);
+        await playSpokenText(tf, speechLangForSource(tafsirSourceRef.current), null, gen);
       }
     }
   }
@@ -251,6 +262,10 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
       setStatus("");
     }
   }
+
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
 
   function handlePlay() {
     stopRef.current = false;
@@ -375,7 +390,6 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
               type="checkbox"
               checked={includeTafsir}
               onChange={(e) => setIncludeTafsir(e.target.checked)}
-              disabled={playing}
             />
             {t(lang, "includeTafsir")}
           </label>
@@ -388,7 +402,6 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
               className="input mt-1"
               value={tafsirSource}
               onChange={(e) => setTafsirSource(e.target.value as TafsirSource)}
-              disabled={playing}
             >
               <option value="ibn_kathir_en">{t(lang, "tafsirIbnKathir")}</option>
               <option value="maududi_ur">{t(lang, "tafsirMaududi")}</option>

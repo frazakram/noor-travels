@@ -370,7 +370,6 @@ export default function SurahClient() {
                 type="checkbox"
                 checked={includeTafsir}
                 onChange={(e) => setIncludeTafsir(e.target.checked)}
-                disabled={audio.playing}
               />
               {t(lang, "includeTafsir")}
             </label>
@@ -379,7 +378,6 @@ export default function SurahClient() {
                 className="input py-1 text-xs"
                 value={tafsirSource}
                 onChange={(e) => setTafsirSource(e.target.value as TafsirSource)}
-                disabled={audio.playing}
               >
                 <option value="ibn_kathir_en">{t(lang, "tafsirEnglishOption")}</option>
                 <option value="maududi_ur">{t(lang, "tafsirUrduOption")}</option>

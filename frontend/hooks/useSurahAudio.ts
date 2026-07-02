@@ -91,8 +91,15 @@ export function useSurahAudio({
   const loadGenRef = useRef(0);
   const nativeModeRef = useRef(false);
   const playingRef = useRef(false);
+  const playIndexRef = useRef(0);
+  const includeTafsirRef = useRef(includeTafsir);
+  const includeTranslationRef = useRef(includeTranslation);
+  const tafsirSourceRef = useRef(tafsirSource);
   const textAyahsRef = useRef(textAyahs);
   const onPlayIndexRef = useRef(onPlayIndex);
+  includeTafsirRef.current = includeTafsir;
+  includeTranslationRef.current = includeTranslation;
+  tafsirSourceRef.current = tafsirSource;
   onPlayIndexRef.current = onPlayIndex;
   textAyahsRef.current = textAyahs;
   playingRef.current = playing;
@@ -223,7 +230,7 @@ export function useSurahAudio({
   async function fetchTafsirText(verseKey: string): Promise<string> {
     try {
       const row = await api<{ text: string }>(
-        `/api/quran/ayahs/${verseKey}/tafsir?source=${tafsirSource}`
+        `/api/quran/ayahs/${verseKey}/tafsir?source=${tafsirSourceRef.current}`
       );
       return truncateForSpeech(row.text);
     } catch {
@@ -250,7 +257,7 @@ export function useSurahAudio({
             ayahIndex: i,
             kind: "arabic",
           });
-          if (includeTranslation && audio.translation_audio) {
+          if (includeTranslationRef.current && audio.translation_audio) {
             items.push({
               url: audio.translation_audio,
               title: `${text.verse_key} · translation`,
@@ -275,10 +282,12 @@ export function useSurahAudio({
     if (!audio?.audio || !text) return;
 
     setPlayIndex(i);
+    playIndexRef.current = i;
     onPlayIndex?.(i);
 
+    const wantTafsir = includeTafsirRef.current;
     const tafsirPromise =
-      includeTafsir && !stopRef.current ? fetchTafsirText(text.verse_key) : null;
+      wantTafsir && !stopRef.current ? fetchTafsirText(text.verse_key) : null;
 
     const prefix = passLabel ? `${passLabel} · ` : "";
     const label = `${prefix}${text.verse_key}`;
@@ -293,7 +302,7 @@ export function useSurahAudio({
     }
     if (stopRef.current || sessionRef.current !== gen) return;
 
-    if (includeTranslation) {
+    if (includeTranslationRef.current) {
       const tr = getTranslation(text);
       if (tr) {
         stopAllPlayback();
@@ -302,12 +311,12 @@ export function useSurahAudio({
     }
     if (stopRef.current || sessionRef.current !== gen) return;
 
-    if (includeTafsir && tafsirPromise) {
-      const tf = await tafsirPromise;
+    if (includeTafsirRef.current) {
+      const tf = tafsirPromise ? await tafsirPromise : await fetchTafsirText(text.verse_key);
       if (stopRef.current || sessionRef.current !== gen) return;
       if (tf) {
         stopAllPlayback();
-        await playSpokenText(tf, speechLangForSource(tafsirSource), null, gen);
+        await playSpokenText(tf, speechLangForSource(tafsirSourceRef.current), null, gen);
       }
     }
   }
@@ -335,8 +344,8 @@ export function useSurahAudio({
       // Native ExoPlayer queue: HTTP streams + lock-screen notification (Android APK)
       const canNative =
         isNativeApp() &&
-        (!includeTafsir) &&
-        (!includeTranslation || audioList.some((a) => a.translation_audio));
+        !includeTafsirRef.current &&
+        (!includeTranslationRef.current || audioList.some((a) => a.translation_audio));
 
       if (canNative) {
         const queue = await buildNativeQueue(start, audioList, surahPasses, ayahRepeats);
@@ -396,6 +405,25 @@ export function useSurahAudio({
       updateNowPlaying,
     ]
   );
+
+  const playFromIndexRef = useRef(playFromIndex);
+  playFromIndexRef.current = playFromIndex;
+
+  useEffect(() => {
+    playIndexRef.current = playIndex;
+  }, [playIndex]);
+
+  // Leave native ExoPlayer queue when tafsir is turned on during playback.
+  useEffect(() => {
+    if (!includeTafsir || !playingRef.current || !nativeModeRef.current) return;
+    const idx = playIndexRef.current;
+    stopRef.current = true;
+    nativeModeRef.current = false;
+    nativeStopQuranPlayback();
+    nativeSetQuranPlaying(false);
+    stopRef.current = false;
+    void playFromIndexRef.current(idx);
+  }, [includeTafsir]);
 
   function togglePlay(index: number) {
     if (playing) {

@@ -49,7 +49,7 @@ const SUGGESTIONS: Record<Lang, string[]> = {
 
 function ConfidenceBadge({ confidence, sources, lang }: { confidence: string; sources?: SourceDetail[]; lang: Lang }) {
   const topScore = sources?.[0]?.score;
-  const pct = topScore != null ? Math.round(topScore * 100) : null;
+  const pct = topScore != null ? Math.min(100, Math.round(topScore * 100)) : null;
 
   const colorClass =
     confidence === "high"
