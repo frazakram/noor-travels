@@ -52,6 +52,10 @@ export function updateMediaSession(meta: {
     title: meta.title,
     artist: meta.artist,
     album: meta.album ?? "Noor Safar — Quran",
+    artwork: [
+      { src: "/logo-192.png", sizes: "192x192", type: "image/png" },
+      { src: "/logo.png", type: "image/png" },
+    ],
   });
   navigator.mediaSession.playbackState = meta.playing ? "playing" : "paused";
 }

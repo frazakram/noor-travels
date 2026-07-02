@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Tooltip } from "@/components/Tooltip";
 
 type Props = {
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   onClick?: () => void;
   href?: string;
@@ -73,17 +73,54 @@ export function IconButton({
   );
 }
 
+function svgIcon(path: React.ReactNode) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-[1.2em] w-[1.2em]" aria-hidden>
+      {path}
+    </svg>
+  );
+}
+
 export const Icons = {
-  play: "▶",
-  pause: "⏸",
-  prevAyah: "⏮",
-  nextAyah: "⏭",
-  prevSurah: "◀◀",
-  nextSurah: "▶▶",
+  play: svgIcon(
+    <path d="M8.5 5.6v12.8c0 1.2 1.3 1.9 2.3 1.3l10-6.4a1.5 1.5 0 0 0 0-2.6l-10-6.4c-1-.6-2.3.1-2.3 1.3Z" />,
+  ),
+  pause: svgIcon(
+    <>
+      <rect x="6" y="4.5" width="4.4" height="15" rx="1.8" />
+      <rect x="13.6" y="4.5" width="4.4" height="15" rx="1.8" />
+    </>,
+  ),
+  prevAyah: svgIcon(
+    <>
+      <rect x="5" y="5" width="2.6" height="14" rx="1.3" />
+      <path d="M19 6.7v10.6c0 1.2-1.3 1.9-2.3 1.3l-8.3-5.3a1.5 1.5 0 0 1 0-2.6l8.3-5.3c1-.6 2.3.1 2.3 1.3Z" />
+    </>,
+  ),
+  nextAyah: svgIcon(
+    <>
+      <path d="M5 6.7v10.6c0 1.2 1.3 1.9 2.3 1.3l8.3-5.3a1.5 1.5 0 0 0 0-2.6L7.3 5.4C6.3 4.8 5 5.5 5 6.7Z" />
+      <rect x="16.4" y="5" width="2.6" height="14" rx="1.3" />
+    </>,
+  ),
+  prevSurah: svgIcon(
+    <>
+      <path d="M11.5 7.2v9.6c0 1.1-1.2 1.8-2.2 1.2l-7-4.8a1.4 1.4 0 0 1 0-2.4l7-4.8c1-.6 2.2.1 2.2 1.2Z" />
+      <path d="M21.5 7.2v9.6c0 1.1-1.2 1.8-2.2 1.2l-7-4.8a1.4 1.4 0 0 1 0-2.4l7-4.8c1-.6 2.2.1 2.2 1.2Z" />
+    </>,
+  ),
+  nextSurah: svgIcon(
+    <>
+      <path d="M2.5 7.2v9.6c0 1.1 1.2 1.8 2.2 1.2l7-4.8a1.4 1.4 0 0 0 0-2.4l-7-4.8c-1-.6-2.2.1-2.2 1.2Z" />
+      <path d="M12.5 7.2v9.6c0 1.1 1.2 1.8 2.2 1.2l7-4.8a1.4 1.4 0 0 0 0-2.4l-7-4.8c-1-.6-2.2.1-2.2 1.2Z" />
+    </>,
+  ),
+  back: svgIcon(
+    <path d="M13.8 5.3a1.2 1.2 0 0 1 0 1.7L9.9 11H19a1.2 1.2 0 0 1 0 2.4H9.9l3.9 4a1.2 1.2 0 1 1-1.7 1.6l-6-6a1.2 1.2 0 0 1 0-1.7l6-6a1.2 1.2 0 0 1 1.7 0Z" />,
+  ),
   repeat: "🔁",
   tafsir: "📜",
   book: "📖",
   ayah: "①",
-  back: "←",
   search: "🔍",
 } as const;

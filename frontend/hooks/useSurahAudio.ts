@@ -22,6 +22,7 @@ import {
   invalidatePlaybackSession,
   playAudioUrl,
   playSpokenText,
+  primeAudioPlayback,
   stopAllPlayback,
   truncateForSpeech,
 } from "@/lib/quran-audio";
@@ -139,6 +140,15 @@ export function useSurahAudio({
     setAudioReady(false);
     setAudioAyahs([]);
   }, [surahNumber, reciter, translation, includeTranslation]);
+
+  // Prefetch the audio list so the first tap on play starts immediately.
+  useEffect(() => {
+    if (audioReady) return;
+    const id = window.setTimeout(() => {
+      void ensureAudioLoaded().catch(() => {});
+    }, 400);
+    return () => window.clearTimeout(id);
+  }, [audioReady, ensureAudioLoaded]);
 
   const pause = useCallback(() => {
     const wasActive = playingRef.current || nativeModeRef.current;
@@ -304,6 +314,9 @@ export function useSurahAudio({
 
   const playFromIndex = useCallback(
     async (start: number) => {
+      // Runs synchronously within the click gesture, before the awaits below
+      // consume it — otherwise mobile autoplay policy blocks the first play.
+      primeAudioPlayback();
       const audioList = await ensureAudioLoaded();
       if (!audioList.length) return;
 

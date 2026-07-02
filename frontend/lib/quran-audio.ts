@@ -58,6 +58,50 @@ export function invalidatePlaybackSession(): void {
   stopAllPlayback();
 }
 
+let sharedAudio: HTMLAudioElement | null = null;
+
+function getSharedAudio(): HTMLAudioElement {
+  if (!sharedAudio) {
+    sharedAudio = new Audio();
+    // Helps background playback on mobile WebViews
+    sharedAudio.setAttribute("playsinline", "true");
+    (sharedAudio as HTMLAudioElement & { webkitPlaysinline?: boolean }).webkitPlaysinline = true;
+  }
+  return sharedAudio;
+}
+
+// Shortest valid silent WAV (44-byte header, zero samples).
+const SILENT_WAV =
+  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+
+/**
+ * Must be called synchronously inside a user gesture (click/tap), before any
+ * awaits. Playing a silent clip unlocks the shared element so later play()
+ * calls — after network fetches have consumed the gesture — are not blocked
+ * by mobile autoplay policy.
+ */
+export function primeAudioPlayback(): void {
+  if (typeof window === "undefined") return;
+  try {
+    const el = getSharedAudio();
+    if (!el.paused) return;
+    el.muted = true;
+    el.src = SILENT_WAV;
+    void el
+      .play()
+      .then(() => {
+        // Only stop the primer clip — a real track may have replaced it already.
+        if (el.src.startsWith("data:")) el.pause();
+        el.muted = false;
+      })
+      .catch(() => {
+        el.muted = false;
+      });
+  } catch {
+    /* ignore */
+  }
+}
+
 export function playAudioUrl(url: string, gen?: number): Promise<void> {
   return new Promise((resolve, reject) => {
     if (gen !== undefined && isStale(gen)) {
@@ -65,7 +109,7 @@ export function playAudioUrl(url: string, gen?: number): Promise<void> {
       return;
     }
 
-    const audio = new Audio(url);
+    const audio = getSharedAudio();
     const w = window as unknown as {
       __noorAudio?: HTMLAudioElement;
       __noorAudioResolve?: () => void;
@@ -89,9 +133,8 @@ export function playAudioUrl(url: string, gen?: number): Promise<void> {
       if (w.__noorAudio === audio) w.__noorAudio = undefined;
       reject(new Error("Audio playback failed"));
     };
-    // Helps background playback on mobile WebViews
-    audio.setAttribute("playsinline", "true");
-    (audio as HTMLAudioElement & { webkitPlaysinline?: boolean }).webkitPlaysinline = true;
+    audio.muted = false;
+    audio.src = url;
     audio.play().catch(reject);
   });
 }
