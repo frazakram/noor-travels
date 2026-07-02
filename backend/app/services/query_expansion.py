@@ -656,6 +656,11 @@ THEME_SUMMARIES: dict[str, dict[str, str]] = {
 
 DUA_HINT = re.compile(r"\b(dua|duas|supplication|دعا|दुआ|prayer for)\b", re.I)
 HADITH_HINT = re.compile(r"\b(hadith|hadeeth|حدیث|हदीस|bukhari|sahih)\b", re.I)
+PROPHET_HINT = re.compile(
+    r"\b(?:what did (?:the )?prophet|prophet (?:say|said|teach|taught)|messenger of allah (?:say|said)|"
+    r"muhammad (?:say|said)|rasool (?:say|said)|نبی نے|رسول نے|पैगंबर ने)\b",
+    re.I,
+)
 TAFSIR_HINT = re.compile(
     r"\b(tafsir|تفسیر|تفسير|commentary|explain|context|historical|background|meaning|scholar|interpretation|why does quran|why does allah|what does .+ mean|tell me more|elaborate|that verse|this ayah|this verse)\b",
     re.I,
@@ -714,7 +719,7 @@ def get_theme_summary(themes: list[str], lang: str) -> str | None:
 
 def infer_source_filter(question: str) -> list[str]:
     q = question.lower()
-    if HADITH_HINT.search(q):
+    if PROPHET_HINT.search(q) or HADITH_HINT.search(q):
         return ["hadith", "quran"]
     if TAFSIR_HINT.search(q):
         return ["tafsir", "quran"]

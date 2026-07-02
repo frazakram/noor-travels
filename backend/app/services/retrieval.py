@@ -15,7 +15,7 @@ from app.services.keyword_search import (
     format_verse_range_answer,
     keyword_retrieve_smart,
 )
-from app.services.query_expansion import DUA_HINT, TAFSIR_HINT, build_analysis, get_theme_summary
+from app.services.query_expansion import DUA_HINT, PROPHET_HINT, TAFSIR_HINT, build_analysis, get_theme_summary
 
 
 def _is_surah_number_question(question: str) -> bool:
@@ -44,6 +44,7 @@ def _retrieve_by_themes(
     analysis: dict[str, Any],
     *,
     wants_tafsir: bool = False,
+    wants_prophet_hadith: bool = False,
 ) -> list[dict] | None:
     """Fast path: fetch only curated theme pins (skips slow broad keyword scan)."""
     if not clusters:
@@ -53,6 +54,7 @@ def _retrieve_by_themes(
         _fetch_ayah_chunks,
         _fetch_hadith_by_refs,
         _search_duas,
+        _search_hadiths,
     )
 
     candidates: list[dict] = []
@@ -78,6 +80,11 @@ def _retrieve_by_themes(
         candidates.extend(_fetch_hadith_by_refs(all_refs))
     if dua_cats:
         candidates.extend(_search_duas(search_terms, 6, dua_cats))
+    if wants_prophet_hadith:
+        hadith_hits = _search_hadiths(search_terms, 6)
+        for h in hadith_hits:
+            h["final_score"] = 0.93
+        candidates.extend(hadith_hits)
 
     if not candidates:
         return None
@@ -94,7 +101,10 @@ def _retrieve_by_themes(
 
     for p in candidates:
         p.setdefault("metadata", {})["theme_pinned"] = True
-        p["final_score"] = 0.85
+        if p.get("source_type") == "hadith" and wants_prophet_hadith:
+            p["final_score"] = max(float(p.get("final_score", 0)), 0.93)
+        else:
+            p["final_score"] = 0.85
 
     merged = rerank(" ".join(analysis.get("search_terms", [question])), candidates, get_settings().rag_retrieval_k)
     return _filter_dua_by_theme(merged, analysis)
@@ -141,6 +151,8 @@ def retrieve_for_question(
     source_filter = analysis["source_filter"]
     matched_clusters = match_themes(question)
 
+    wants_prophet = bool(PROPHET_HINT.search(question))
+
     themed = _retrieve_by_themes(
         question,
         lang,
@@ -149,6 +161,7 @@ def retrieve_for_question(
         wants_tafsir=is_explanation
         or bool(ctx_keys)
         or bool(re.search(r"\b(context|why|meaning|background|story|teach)\b", question, re.I)),
+        wants_prophet_hadith=wants_prophet,
     )
     if themed:
         return themed, analysis
@@ -334,6 +347,13 @@ def format_short_answer(
         return format_surah_summary_answer(analysis["surah_number"], lang, question)
 
     themes = analysis.get("themes") or []
+    if PROPHET_HINT.search(question):
+        hadith_chunks = [c for c in chunks if c.get("source_type") == "hadith"]
+        if hadith_chunks:
+            prophet_answer = _build_answer_from_chunks(hadith_chunks, lang, question)
+            if prophet_answer:
+                return prophet_answer
+
     themed = get_theme_summary(themes, lang)
     if themed:
         return themed
