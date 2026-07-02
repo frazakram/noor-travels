@@ -63,6 +63,7 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "terms": ["patient", "patience", "steadfast", "persevere", "trial", "hardship", "ease"],
         "dua_categories": ["patience"],
         "verse_keys": ["2:153", "2:155", "3:200"],
+        "hadith_refs": ["Sahih al-Bukhari 1260"],
     },
     {
         "id": "purpose",
@@ -79,6 +80,7 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "terms": ["marriage", "spouse", "wife", "husband", "mercy", "tranquillity"],
         "dua_categories": ["marriage"],
         "verse_keys": ["30:21", "25:74"],
+        "hadith_refs": ["Sahih al-Bukhari 5063"],
     },
     {
         "id": "death",
@@ -95,6 +97,7 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "terms": ["forgive", "mercy", "repent", "sin", "pardon"],
         "dua_categories": ["forgiveness"],
         "verse_keys": ["39:53", "2:286"],
+        "hadith_refs": ["Sahih al-Bukhari 6306"],
     },
     {
         "id": "rizq",
@@ -110,7 +113,8 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "pattern": r"health|sick|illness|heal|شفا",
         "terms": ["heal", "health", "sick", "cure", "mercy"],
         "dua_categories": ["health"],
-        "verse_keys": [],
+        "verse_keys": ["26:80", "41:44"],
+        "hadith_refs": ["Sahih al-Bukhari 233"],
     },
     {
         "id": "anxiety",
@@ -127,6 +131,7 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "terms": ["parent", "mother", "father", "kindness", "mercy"],
         "dua_categories": [],
         "verse_keys": ["17:23", "31:14"],
+        "hadith_refs": ["Sahih al-Bukhari 5971"],
     },
     {
         "id": "sleep",
@@ -165,7 +170,7 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "terms": ["fast", "fasting", "ramadan", "month", "break", "poor", "taqwa"],
         "dua_categories": [],
         "verse_keys": ["2:183", "2:185", "2:187"],
-        "hadith_refs": [],
+        "hadith_refs": ["Sahih al-Bukhari 1899"],
     },
     {
         "id": "hajj",
@@ -174,7 +179,88 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "terms": ["hajj", "pilgrimage", "kaaba", "arafat", "tawaf", "ihram"],
         "dua_categories": [],
         "verse_keys": ["2:196", "3:97", "22:27"],
-        "hadith_refs": [],
+        "hadith_refs": ["Sahih al-Bukhari 1519"],
+    },
+    {
+        "id": "alcohol",
+        "priority": 55,
+        "pattern": r"alcohol|wine|beer|intoxicant|khamr|شراب|शराब|drunk",
+        "terms": ["wine", "intoxicant", "alcohol", "forbidden", "avoid", "drink"],
+        "dua_categories": [],
+        "verse_keys": ["2:219", "5:90", "4:43"],
+        "hadith_refs": ["Sahih al-Bukhari 242"],
+    },
+    {
+        "id": "allahu_akbar",
+        "priority": 60,
+        "pattern": r"allahu\s+akbar|takbir|takbeer|الله\s+اکبر",
+        "terms": ["Allah", "great", "Akbar", "magnificent", "praise"],
+        "dua_categories": [],
+        "verse_keys": ["37:102", "17:111"],
+        "hadith_refs": ["Sahih al-Bukhari 340"],
+    },
+    {
+        "id": "makruh_haram",
+        "priority": 55,
+        "pattern": r"makruh|makrooh|disliked|haram\s+and|difference.{0,20}haram",
+        "terms": ["forbidden", "disliked", "haram", "makruh", "sin", "lawful"],
+        "dua_categories": [],
+        "verse_keys": ["2:173", "5:3", "6:145"],
+        "hadith_refs": ["Sahih al-Bukhari 52"],
+    },
+    {
+        "id": "wudu_conditions",
+        "priority": 55,
+        "pattern": r"valid\s+wudu|conditions?.{0,15}wudu|wudu.{0,20}valid|ablution.{0,20}condition",
+        "terms": ["wudu", "ablution", "purify", "wash", "valid", "prayer"],
+        "dua_categories": [],
+        "verse_keys": ["5:6", "4:43"],
+        "hadith_refs": ["Sahih al-Bukhari 135"],
+    },
+    {
+        "id": "jannah",
+        "priority": 50,
+        "pattern": r"jannah|paradise|heaven|جنہ|جنت|स्वर्ग",
+        "terms": ["Paradise", "Jannah", "heaven", "reward", "garden", "believers"],
+        "dua_categories": [],
+        "verse_keys": ["3:133", "9:72", "18:31"],
+        "hadith_refs": ["Sahih al-Bukhari 22"],
+    },
+    {
+        "id": "truthfulness",
+        "priority": 52,
+        "pattern": r"ly(?:ing|e)|liar|truthful|honest|truth\b|جھوٹ|झूठ",
+        "terms": ["truth", "honest", "lie", "lying", "trustworthy", "falsehood"],
+        "dua_categories": [],
+        "verse_keys": ["9:119", "33:35"],
+        "hadith_refs": ["Sahih al-Bukhari 319"],
+    },
+    {
+        "id": "eating_etiquette",
+        "priority": 52,
+        "pattern": r"etiquette.{0,20}eat|eating.{0,20}islam|bismillah.{0,20}eat|manners?.{0,15}food",
+        "terms": ["eat", "Bismillah", "right hand", "food", "manners", "table"],
+        "dua_categories": [],
+        "verse_keys": ["2:168", "7:31"],
+        "hadith_refs": ["Sahih al-Bukhari 3"],
+    },
+    {
+        "id": "business_honesty",
+        "priority": 52,
+        "pattern": r"honest.{0,20}business|business.{0,20}honest|trade.{0,20}honest|honesty.{0,15}trade",
+        "terms": ["honest", "trade", "business", "cheat", "measure", "fair"],
+        "dua_categories": [],
+        "verse_keys": ["83:1", "55:9", "17:35"],
+        "hadith_refs": ["Sahih al-Bukhari 33"],
+    },
+    {
+        "id": "rain_dua",
+        "priority": 48,
+        "pattern": r"rain|istisqa|drought|barish|بارش|बारिश",
+        "terms": ["rain", "istisqa", "drought", "prayer", "supplication", "water"],
+        "dua_categories": ["travel"],
+        "verse_keys": ["30:48", "25:48"],
+        "hadith_refs": ["Sahih al-Bukhari 978"],
     },
     {
         "id": "charity",
@@ -183,6 +269,24 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "terms": ["charity", "zakat", "poor", "needy", "spend", "wealth"],
         "dua_categories": [],
         "verse_keys": ["2:267", "9:60", "57:7"],
+        "hadith_refs": ["Sahih al-Bukhari 1419"],
+    },
+    {
+        "id": "scripture",
+        "priority": 58,
+        "pattern": r"bible|gospel|torah|injil|tawrat|people of the book|scripture|انجیل|تورات",
+        "terms": ["Torah", "Gospel", "revealed", "Scripture", "Book", "Injil", "Tawrat"],
+        "dua_categories": [],
+        "verse_keys": ["3:3", "5:46", "5:68", "2:97", "6:154"],
+        "hadith_refs": [],
+    },
+    {
+        "id": "science_knowledge",
+        "priority": 55,
+        "pattern": r"science|scientific|knowledge|reflect.{0,20}creation|signs?.{0,15}(?:heaven|earth|creation)",
+        "terms": ["sign", "reflect", "knowledge", "creation", "heavens", "earth", "ponder"],
+        "dua_categories": [],
+        "verse_keys": ["41:53", "3:190", "16:12", "2:164", "30:22"],
         "hadith_refs": [],
     },
     {
@@ -497,6 +601,51 @@ THEME_SUMMARIES: dict[str, dict[str, str]] = {
         "hi": (
             "कुरान निकाह को पति-पत्नी के बीच मोहब्बत और रहमत का बंधन बताता है (30:21)। मोमिन नेक साथी "
             "और सुकून भरे घर की दुआ करते हैं (25:74)।"
+        ),
+    },
+    "health": {
+        "en": (
+            "Islam encourages seeking treatment when sick — the Prophet ﷺ taught that Allah sent down both disease and "
+            "cure. Muslims pray for health and healing; related supplications and hadith on sickness and recovery appear "
+            "in the sources below."
+        ),
+        "ur": (
+            "اسلام بیماری میں علاج کرانے کی ترغیب دیتا ہے — نبی ﷺ نے سکھایا کہ اللہ نے بیماری اور شفا دونوں بھیجی ہیں۔ "
+            "مسلمان صحت اور شفا کی دعا کرتے ہیں؛ متعلقہ دعائیں اور احادیث ذیل میں ہیں۔"
+        ),
+        "hi": (
+            "इस्लाम बीमारी में इलाज कराने की तरगीब देता है — नबी ﷺ ने सिखाया कि अल्लाह ने बीमारी और शिफा दोनों भेजे हैं। "
+            "मुसलमान सेहत और शिफा की दुआ करते हैं; संबंधित दुआएँ और हदीस नीचे हैं।"
+        ),
+    },
+    "scripture": {
+        "en": (
+            "Muslims believe Allah revealed the Torah (Tawrat) to Moses, the Gospel (Injil) to Jesus, and the Quran to "
+            "Muhammad ﷺ as the final preserved revelation (3:3, 5:46, 5:68). Earlier scriptures were sent for guidance "
+            "though Muslims hold the Quran as the authoritative text today."
+        ),
+        "ur": (
+            "مسلمان مانتے ہیں کہ اللہ نے تورات حضرت موسیٰ، انجیل حضرت عیسیٰ، اور قرآن حضرت محمد ﷺ پر نازل کیے "
+            "(3:3، 5:46، 5:68)۔ پہلے صحیفے ہدایت کے لیے تھے مگر آج قرآن حتمی اور محفوظ کتاب ہے۔"
+        ),
+        "hi": (
+            "मुसलमान मानते हैं कि अल्लाह ने तौरात मूसा (अलै.) पर, इंजील ईसा (अलै.) पर, और कुरान मुहम्मद ﷺ पर "
+            "नाज़िल किए (3:3, 5:46, 5:68)। पहले ग्रंथ हिदायत के लिए थे, पर आज कुरान अंतिम और संरक्षित किताब है।"
+        ),
+    },
+    "science_knowledge": {
+        "en": (
+            "The Quran invites reflection on the signs of creation — in the heavens, earth, and within ourselves — as "
+            "paths to knowledge and certainty about Allah (41:53, 3:190, 16:12). Seeking beneficial knowledge is praised "
+            "in both Quran and Hadith."
+        ),
+        "ur": (
+            "قرآن آسمانوں، زمین اور اپنے اندر کی نشانیوں پر غور کرنے کی دعوت دیتا ہے — یہ اللہ کے بارے میں "
+            "علم اور یقین کے راستے ہیں (41:53، 3:190، 16:12)۔ نافع علم حاصل کرنا قرآن و حدیث میں تعریف یافتہ ہے۔"
+        ),
+        "hi": (
+            "कुरान आसमानों, ज़मीन और अपने भीतर की निशानियों पर ग़ौर करने की दावत देता है — ये अल्लाह के बारे में "
+            "इल्म और यक़ीन के रास्ते हैं (41:53, 3:190, 16:12)। फायदेमंद इल्म हासिल करना कुरान और हदीस में तारीफ़ पाता है।"
         ),
     },
     "anxiety": {

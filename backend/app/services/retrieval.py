@@ -15,7 +15,7 @@ from app.services.keyword_search import (
     format_verse_range_answer,
     keyword_retrieve_smart,
 )
-from app.services.query_expansion import DUA_HINT, PROPHET_HINT, TAFSIR_HINT, build_analysis, get_theme_summary
+from app.services.query_expansion import DUA_HINT, HADITH_HINT, PROPHET_HINT, TAFSIR_HINT, build_analysis, get_theme_summary
 
 
 def _is_surah_number_question(question: str) -> bool:
@@ -136,7 +136,9 @@ def retrieve_for_question(
         return chunks, analysis
 
     surah_num = detect_surah_number(question)
-    if surah_num and not (DUA_HINT.search(question) and not _has_surah_context(question)):
+    if surah_num and not (PROPHET_HINT.search(question) or HADITH_HINT.search(question)) and not (
+        DUA_HINT.search(question) and not _has_surah_context(question)
+    ):
         has_theme = bool(match_themes(question))
         if not has_theme:
             chunks, analysis = keyword_retrieve_smart(question, lang)
@@ -151,7 +153,7 @@ def retrieve_for_question(
     source_filter = analysis["source_filter"]
     matched_clusters = match_themes(question)
 
-    wants_prophet = bool(PROPHET_HINT.search(question))
+    wants_hadith = bool(PROPHET_HINT.search(question) or HADITH_HINT.search(question))
 
     themed = _retrieve_by_themes(
         question,
@@ -161,7 +163,7 @@ def retrieve_for_question(
         wants_tafsir=is_explanation
         or bool(ctx_keys)
         or bool(re.search(r"\b(context|why|meaning|background|story|teach)\b", question, re.I)),
-        wants_prophet_hadith=wants_prophet,
+        wants_prophet_hadith=wants_hadith,
     )
     if themed:
         return themed, analysis
@@ -347,7 +349,7 @@ def format_short_answer(
         return format_surah_summary_answer(analysis["surah_number"], lang, question)
 
     themes = analysis.get("themes") or []
-    if PROPHET_HINT.search(question):
+    if PROPHET_HINT.search(question) or HADITH_HINT.search(question):
         hadith_chunks = [c for c in chunks if c.get("source_type") == "hadith"]
         if hadith_chunks:
             prophet_answer = _build_answer_from_chunks(hadith_chunks, lang, question)
@@ -355,7 +357,7 @@ def format_short_answer(
                 return prophet_answer
 
     themed = get_theme_summary(themes, lang)
-    if themed:
+    if themed and not (HADITH_HINT.search(question) or PROPHET_HINT.search(question)):
         return themed
 
     curated = format_curated_answer(chunks, lang, analysis)
@@ -368,6 +370,9 @@ def format_short_answer(
             return dua_answer
 
     if DUA_HINT.search(question) and not any(c["source_type"] == "dua" for c in chunks[:5]):
+        built = _build_answer_from_chunks(chunks, lang, question)
+        if built:
+            return built
         if lang == "ur":
             return (
                 "اس مخصوص موضوع کی دعا ہمارے مجموعے میں نہیں ہے۔ "

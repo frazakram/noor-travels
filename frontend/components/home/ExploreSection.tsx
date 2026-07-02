@@ -22,6 +22,14 @@ const items = [
     accent: "border-l-amber-500 bg-amber-50/60 dark:bg-amber-950/20",
   },
   {
+    href: "/library",
+    key: "questionLibrary" as const,
+    desc: "3,000 questions with instant answers",
+    stat: "Pre-loaded · Searchable",
+    icon: "💡",
+    accent: "border-l-teal-500 bg-teal-50/60 dark:bg-teal-950/20",
+  },
+  {
     href: "/duas",
     key: "duas" as const,
     desc: "Authentic duas for journeys",

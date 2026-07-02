@@ -130,6 +130,22 @@ SURAH_ALIASES: dict[str, int] = {
     "quraysh": 106,
     "maun": 107,
     "kawthar": 108,
+    "shuara": 26,
+    "shuaraa": 26,
+    "shuaara": 26,
+    "dhariyat": 51,
+    "dhaariyat": 51,
+    "dhariat": 51,
+    "tur": 52,
+    "saffat": 37,
+    "zumar": 39,
+    "muminun": 23,
+    "muminoon": 23,
+    "furqan": 25,
+    "ankabut": 29,
+    "jathiyah": 45,
+    "ahqaf": 46,
+    "hashr": 59,
     # Common misspellings / speech-to-text
     "nafl": 114,
     "alnafl": 114,
@@ -202,7 +218,16 @@ SEARCH_STOP = STOP_WORDS | frozenset(
 LONG_SURAH_AYAH_LIMIT = 6
 
 SUMMARY_HINTS = re.compile(
-    r"summ?a?r[iy]?[sz]e?|summary|overview|explain|about|meaning|tell me|what is|describe",
+    r"summ?a?r[iy]?[sz]e?|summary|overview|explain|meaning|tell me|what is|describe",
+    re.I,
+)
+SURAH_NAME_EXTRACT = re.compile(
+    r"(?:summarize|summarise|summary|overview|explain|describe|what\s+is)\s+"
+    r"(?:the\s+)?(?:surah|sura|chapter)\s+(.+?)(?:\?|$)",
+    re.I,
+)
+SURAH_NAME_INLINE = re.compile(
+    r"(?:surah|sura|chapter)\s+([a-z][\w''-]+(?:\s+[a-z][\w''-]+)?)\s*(?:\?|$)",
     re.I,
 )
 
@@ -232,10 +257,6 @@ def lookup_surah_by_name_phrase(phrase: str) -> int | None:
     """Map a surah name phrase (possibly misspelled) to surah number."""
     if not phrase:
         return None
-
-    direct = detect_surah_number(f"surah {phrase}")
-    if direct:
-        return direct
 
     norm_phrase = _normalize_name(phrase)
     if len(norm_phrase) < 3:
@@ -292,6 +313,7 @@ def _has_surah_context(question: str) -> bool:
     return bool(
         QURAN_CONTEXT.search(question)
         or SUMMARY_HINTS.search(question)
+        or re.search(r"about\s+(?:the\s+)?(?:surah|sura|chapter)", question, re.I)
         or PERIOD_HINT.search(question)
     )
 
@@ -364,6 +386,13 @@ def detect_verse_reference(question: str) -> tuple[int, int] | None:
         if 1 <= surah <= 114 and 1 <= ayah <= 286:
             return surah, ayah
 
+    m = re.search(r"([a-z][\w''-]+(?:\s+[a-z][\w''-]+)?)\s+ayah\s+(\d{1,3})\b", question, re.I)
+    if m:
+        surah = lookup_surah_by_name_phrase(m.group(1).strip())
+        ayah = int(m.group(2))
+        if surah and 1 <= ayah <= 286:
+            return surah, ayah
+
     return None
 
 
@@ -375,6 +404,15 @@ def detect_surah_number(question: str) -> int | None:
         num = next(int(g) for g in m.groups() if g)
         if 1 <= num <= 114:
             return num
+
+    for pat in (SURAH_NAME_EXTRACT, SURAH_NAME_INLINE):
+        m = pat.search(question)
+        if m:
+            phrase = m.group(1).strip().rstrip("?.!")
+            if phrase and not phrase.isdigit():
+                hit = lookup_surah_by_name_phrase(phrase)
+                if hit:
+                    return hit
 
     cleaned = re.sub(
         r"summ?a?r[iy]?[sz]e?|summary|overview|for me|please|tell me|about|explain|"
@@ -679,12 +717,24 @@ def _search_ayahs(terms: list[str], limit: int) -> list[dict]:
     return results[:limit]
 
 
+HADITH_META_TERMS = frozenset({
+    "hadith", "hadeeth", "bukhari", "sahih", "prophet", "say", "said", "there", "islam", "islamic",
+    "what", "did", "about", "tell", "prophet's", "messenger",
+})
+
+
+def _hadith_topic_terms(terms: list[str]) -> list[str]:
+    topic = [t for t in terms if t.lower() not in HADITH_META_TERMS and len(t) > 2]
+    return topic or terms[:4]
+
+
 def _search_hadiths(terms: list[str], limit: int) -> list[dict]:
     if not terms:
         return []
+    topic_terms = _hadith_topic_terms(terms)
     clauses = []
     params: list[Any] = []
-    for t in terms[:6]:
+    for t in topic_terms[:6]:
         clauses.append("(english LIKE ? OR chapter_en LIKE ?)")
         pat = f"%{t}%"
         params.extend([pat, pat])
@@ -701,7 +751,7 @@ def _search_hadiths(terms: list[str], limit: int) -> list[dict]:
     for row in rows:
         hid, ref, ch, ar, en = _row_fields(row, "id", "reference", "chapter_en", "arabic", "english")
         content = f"{ref}. Chapter: {ch}. English: {en[:1500]}."
-        score = _score_text(content, terms)
+        score = _score_text(content, topic_terms)
         if score < 0.35:
             continue
         results.append(
