@@ -188,8 +188,6 @@ export function TimeOfDayHero({ phase, coords, children }: Props) {
         className="absolute inset-0"
         style={{ background: `radial-gradient(120% 60% at 50% 104%, ${p.horizon}, transparent 62%)` }}
       />
-      <div className="hero-geo" aria-hidden="true" />
-
       {p.stars > 0 && (
         <div className="pointer-events-none absolute inset-0 z-[1]" aria-hidden="true">
           {Array.from({ length: p.stars }, (_, i) => (

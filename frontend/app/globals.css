@@ -24,22 +24,18 @@
     padding-top: max(env(safe-area-inset-top, 0px), 8px);
   }
 
-  @media (max-width: 767px) {
-    .pt-safe {
-      padding-top: max(env(safe-area-inset-top, 0px), 2.75rem);
-    }
-  }
-
+  /* APK / installed app: clear the status bar. app-shell is set by a blocking
+     head script, so this applies before first paint; env() wins when larger. */
   html.app-shell .pt-safe {
-    padding-top: max(env(safe-area-inset-top, 0px), 3rem);
+    padding-top: max(env(safe-area-inset-top, 0px), 2rem);
   }
 
   html.app-shell .top-safe-header {
-    top: calc(max(env(safe-area-inset-top, 0px), 3rem) + 3.5rem);
+    top: calc(max(env(safe-area-inset-top, 0px), 2rem) + 3.5rem);
   }
 
   html.app-shell .sticky-below-header {
-    top: calc(max(env(safe-area-inset-top, 0px), 3rem) + 3.5rem + 0.25rem);
+    top: calc(max(env(safe-area-inset-top, 0px), 2rem) + 3.5rem + 0.25rem);
   }
 
   .pb-safe {
@@ -219,19 +215,6 @@
 
   .animate-confetti {
     animation: confetti-burst 0.7s ease-out both;
-  }
-
-  .hero-geo {
-    pointer-events: none;
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    opacity: 0.07;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='1'%3E%3Crect x='24' y='24' width='24' height='24'/%3E%3Crect x='24' y='24' width='24' height='24' transform='rotate(45 36 36)'/%3E%3C/g%3E%3C/svg%3E");
-    background-size: 72px 72px;
-    mask-image: linear-gradient(to bottom, black, transparent 82%);
-    -webkit-mask-image: linear-gradient(to bottom, black, transparent 82%);
-    animation: pattern-glide 60s linear infinite;
   }
 
   .hero-sun {
@@ -472,15 +455,6 @@
   }
 }
 
-@keyframes pattern-glide {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: 144px 144px;
-  }
-}
-
 @keyframes sun-breathe {
   0%,
   100% {
@@ -584,7 +558,6 @@
   .animate-fade-in-up,
   .animate-ayah-glow,
   .animate-twinkle,
-  .hero-geo,
   .hero-sun,
   .hero-moon-wrap,
   .hero-star,
