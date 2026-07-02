@@ -2,9 +2,13 @@
 """Score chat retrieval quality across diverse question types (RAG-first, no LLM)."""
 import argparse
 import json
+import os
 import sys
 from collections import defaultdict
 from pathlib import Path
+
+# Eval always uses local SQLite — avoids slow/hung remote Postgres connections.
+os.environ.setdefault("FORCE_SQLITE", "1")
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 

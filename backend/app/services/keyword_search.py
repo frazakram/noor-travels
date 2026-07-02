@@ -14,6 +14,13 @@ def _run_query(cur, sql: str, params: tuple | list = ()) -> None:
     else:
         cur.execute(sql.replace("?", "%s"), params)
 
+
+def _row_fields(row: Any, *fields: str) -> tuple[Any, ...]:
+    """Read named columns from cursor rows (SQLite + Postgres both return dicts)."""
+    if isinstance(row, dict):
+        return tuple(row[f] for f in fields)
+    return tuple(row[i] for i in range(len(fields)))
+
 STOP_WORDS = frozenset(
     """
     a an the and or but if then else when at by for with about against between into
@@ -243,10 +250,7 @@ def lookup_surah_by_name_phrase(phrase: str) -> int | None:
     fuzzy_candidates: list[tuple[str, int]] = []
 
     for row in rows:
-        if use_sqlite():
-            num, name_en, name_tr = row
-        else:
-            num, name_en, name_tr = row["number"], row["name_en"], row["name_en_translation"]
+        num, name_en, name_tr = _row_fields(row, "number", "name_en", "name_en_translation")
         for name in (name_en, name_tr or ""):
             norm_name = _normalize_name(name)
             if len(norm_name) < 3:
@@ -414,10 +418,7 @@ def detect_surah_number(question: str) -> int | None:
     best_num: int | None = None
     best_len = 0
     for row in rows:
-        if use_sqlite():
-            num, name_en, name_tr = row
-        else:
-            num, name_en, name_tr = row["number"], row["name_en"], row["name_en_translation"]
+        num, name_en, name_tr = _row_fields(row, "number", "name_en", "name_en_translation")
         for name in (name_en, name_tr or ""):
             norm_name = _normalize_name(name)
             if len(norm_name) < 5:
@@ -563,11 +564,9 @@ def _fetch_hadith_by_refs(refs: list[str]) -> list[dict]:
             row = cur.fetchone()
             if not row:
                 continue
-            if use_sqlite():
-                hid, reference, ch, ar, en = row
-            else:
-                hid = row["id"]
-                reference, ch, ar, en = row["reference"], row["chapter_en"], row["arabic"], row["english"]
+            hid, reference, ch, ar, en = _row_fields(
+                row, "id", "reference", "chapter_en", "arabic", "english"
+            )
             content = f"{reference}. Chapter: {ch}. English: {en[:2000]}."
             results.append(
                 {
@@ -612,16 +611,9 @@ def _fetch_ayah_chunks(verse_keys: list[str]) -> list[dict]:
 
         by_key = {}
         for row in rows:
-            if use_sqlite():
-                vk, ar, tr, en, ur = row
-            else:
-                vk, ar, tr, en, ur = (
-                    row["verse_key"],
-                    row["arabic"],
-                    row["transliteration"],
-                    row["translation_en"],
-                    row["translation_ur"],
-                )
+            vk, ar, tr, en, ur = _row_fields(
+                row, "verse_key", "arabic", "transliteration", "translation_en", "translation_ur"
+            )
             by_key[vk] = (ar, tr, en, ur)
 
         for vk in keys:
@@ -666,16 +658,9 @@ def _search_ayahs(terms: list[str], limit: int) -> list[dict]:
         rows = cur.fetchall()
 
     for row in rows:
-        if use_sqlite():
-            vk, ar, tr, en, ur = row
-        else:
-            vk, ar, tr, en, ur = (
-                row["verse_key"],
-                row["arabic"],
-                row["transliteration"],
-                row["translation_en"],
-                row["translation_ur"],
-            )
+        vk, ar, tr, en, ur = _row_fields(
+            row, "verse_key", "arabic", "transliteration", "translation_en", "translation_ur"
+        )
         content = f"Quran {vk}. Arabic: {ar}. English: {en}. Urdu: {ur}."
         score = _score_text(content, terms)
         if score < 0.2:
@@ -714,10 +699,7 @@ def _search_hadiths(terms: list[str], limit: int) -> list[dict]:
         rows = cur.fetchall()
 
     for row in rows:
-        if use_sqlite():
-            hid, ref, ch, ar, en = row
-        else:
-            hid, ref, ch, ar, en = row["id"], row["reference"], row["chapter_en"], row["arabic"], row["english"]
+        hid, ref, ch, ar, en = _row_fields(row, "id", "reference", "chapter_en", "arabic", "english")
         content = f"{ref}. Chapter: {ch}. English: {en[:1500]}."
         score = _score_text(content, terms)
         if score < 0.35:
@@ -764,19 +746,17 @@ def _search_duas(terms: list[str], limit: int, dua_categories: list[str] | None 
         rows = cur.fetchall()
 
     for row in rows:
-        if use_sqlite():
-            did, title, ar, tr, en, ur, src, row_cat = row
-        else:
-            did = row["id"]
-            title, ar, tr, en, ur, src, row_cat = (
-                row["title_en"],
-                row["arabic"],
-                row["transliteration"],
-                row["translation_en"],
-                row["translation_ur"],
-                row["source"],
-                row["category"],
-            )
+        did, title, ar, tr, en, ur, src, row_cat = _row_fields(
+            row,
+            "id",
+            "title_en",
+            "arabic",
+            "transliteration",
+            "translation_en",
+            "translation_ur",
+            "source",
+            "category",
+        )
         content = (
             f"Dua {did}: {title}. Arabic: {ar}. Transliteration: {tr}. "
             f"English: {en}. Urdu: {ur}. Source: {src}"
@@ -821,10 +801,7 @@ def _search_tafsir(terms: list[str], limit: int) -> list[dict]:
         rows = cur.fetchall()
 
     for row in rows:
-        if use_sqlite():
-            vk, src, txt = row
-        else:
-            vk, src, txt = row["verse_key"], row["source"], row["text"]
+        vk, src, txt = _row_fields(row, "verse_key", "source", "text")
         content = f"Tafsir {src} {vk}: {txt[:2000]}"
         score = _score_text(content, terms)
         if score < 0.25:
@@ -862,17 +839,15 @@ def _fetch_surah_summary_chunks(surah_number: int) -> list[dict]:
     tafsir_en, tafsir_ur = _fetch_tafsir_at_ayahs(surah_number, tafsir_anchors)
 
     for row in ayah_rows:
-        if use_sqlite():
-            vk, ar, tr, en, ur, num = row
-        else:
-            vk, ar, tr, en, ur = (
-                row["verse_key"],
-                row["arabic"],
-                row["transliteration"],
-                row["translation_en"],
-                row["translation_ur"],
-            )
-            num = row["ayah_number"]
+        vk, ar, tr, en, ur, num = _row_fields(
+            row,
+            "verse_key",
+            "arabic",
+            "transliteration",
+            "translation_en",
+            "translation_ur",
+            "ayah_number",
+        )
         if num not in show_nums:
             continue
         content = f"Quran {vk}. Arabic: {ar}. English: {en}. Urdu: {ur}."
@@ -939,7 +914,7 @@ def _fetch_verse_lookup_chunks(verse_key: str) -> list[dict]:
             row = cur.fetchone()
             if not row:
                 continue
-            txt = row[0] if use_sqlite() else row["text"]
+            txt = _row_fields(row, "text")[0]
             if not txt or len(txt.strip()) < 20:
                 continue
             chunks.append(
@@ -1078,14 +1053,9 @@ def format_surah_name_answer(surah_number: int, lang: str) -> str:
     if not row:
         return f"Surah {surah_number} not found."
 
-    if use_sqlite():
-        name_en, name_tr, name_ar, ayah_count, rev = row
-    else:
-        name_en = row["name_en"]
-        name_tr = row["name_en_translation"]
-        name_ar = row["name_ar"]
-        ayah_count = row["ayah_count"]
-        rev = row["revelation_type"]
+    name_en, name_tr, name_ar, ayah_count, rev = _row_fields(
+        row, "name_en", "name_en_translation", "name_ar", "ayah_count", "revelation_type"
+    )
 
     if lang == "ur":
         tr = name_tr or name_en
@@ -1112,14 +1082,9 @@ def format_surah_number_answer(surah_number: int, lang: str) -> str:
     if not row:
         return f"Surah {surah_number} not found."
 
-    if use_sqlite():
-        name_en, name_tr, name_ar, ayah_count, rev = row
-    else:
-        name_en = row["name_en"]
-        name_tr = row["name_en_translation"]
-        name_ar = row["name_ar"]
-        ayah_count = row["ayah_count"]
-        rev = row["revelation_type"]
+    name_en, name_tr, name_ar, ayah_count, rev = _row_fields(
+        row, "name_en", "name_en_translation", "name_ar", "ayah_count", "revelation_type"
+    )
 
     if lang == "ur":
         tr = name_tr or name_en
@@ -1306,7 +1271,7 @@ def _fetch_tafsir_at_ayahs(surah_number: int, ayah_numbers: list[int]) -> tuple[
             )
             row = cur.fetchone()
             if row:
-                en_map[num] = row[0] if use_sqlite() else row["text"]
+                en_map[num] = _row_fields(row, "text")[0]
             _run_query(
                 cur,
                 "SELECT text FROM tafsir WHERE verse_key = ? AND source = 'maududi_ur'",
@@ -1314,7 +1279,7 @@ def _fetch_tafsir_at_ayahs(surah_number: int, ayah_numbers: list[int]) -> tuple[
             )
             row = cur.fetchone()
             if row:
-                txt = (row[0] if use_sqlite() else row["text"]).strip()
+                txt = _row_fields(row, "text")[0].strip()
                 if len(txt) > 20:
                     ur_map[num] = txt
     return en_map, ur_map
@@ -1359,11 +1324,9 @@ def _build_surah_teaching_bullets(
         use_ur = lang == "ur"
         use_hi = lang == "hi"
         for row in ayahs:
-            if use_sqlite():
-                num, _ar, en, ur, _tr = row
-            else:
-                num = row["ayah_number"]
-                en, ur = row["translation_en"], row["translation_ur"]
+            num, _ar, en, ur, _tr = _row_fields(
+                row, "ayah_number", "arabic", "translation_en", "translation_ur", "transliteration"
+            )
             if num not in indices:
                 continue
             trans = ur if use_ur and ur else en
@@ -1469,14 +1432,9 @@ def format_verse_range_answer(surah_number: int, start_ayah: int, end_ayah: int,
 
     lines = [header, ""]
     for row in rows:
-        if use_sqlite():
-            num, arabic, trans_en, trans_ur, translit = row
-        else:
-            num = row["ayah_number"]
-            arabic = row["arabic"]
-            trans_en = row["translation_en"]
-            trans_ur = row["translation_ur"]
-            translit = row["transliteration"]
+        num, arabic, trans_en, trans_ur, translit = _row_fields(
+            row, "ayah_number", "arabic", "translation_en", "translation_ur", "transliteration"
+        )
         trans = (trans_ur or trans_en) if lang == "ur" else trans_en
         lines.append(f"{surah_number}:{num}")
         lines.append(arabic)
@@ -1575,13 +1533,10 @@ def format_surah_summary_answer(surah_number: int, lang: str, question: str = ""
     if not surah or not ayahs:
         return "Surah not found."
 
-    if use_sqlite():
-        name_en, name_tr, ayah_count, rev = surah
-    else:
-        name_en = surah["name_en"]
-        name_tr = surah["name_en_translation"]
-        ayah_count = surah["ayah_count"]
-        rev = surah["revelation_type"]
+    name_en, name_tr, ayah_count, rev = _row_fields(
+        surah, "name_en", "name_en_translation", "ayah_count", "revelation_type"
+    )
+    ayah_count = int(ayah_count)
 
     tafsir_anchors = _tafsir_anchor_ayahs(ayah_count)
     tafsir_en, tafsir_ur = _fetch_tafsir_at_ayahs(surah_number, tafsir_anchors)
@@ -1612,7 +1567,7 @@ def format_surah_summary_answer(surah_number: int, lang: str, question: str = ""
     bullets = _build_surah_teaching_bullets(ayahs, lang, tafsir_en, tafsir_ur)
     if not bullets:
         bullets = [
-            row[2] if use_sqlite() else row["translation_en"]
+            _row_fields(row, "translation_en")[0]
             for row in ayahs[:3]
         ]
 
