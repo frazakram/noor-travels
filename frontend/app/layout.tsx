@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { AppShellDetect } from "@/components/AppShellDetect";
 import { ChatProvider } from "@/components/ChatProvider";
+import { InstallAppBanner } from "@/components/InstallAppBanner";
 import { ChatWidget } from "@/components/ChatWidget";
 import { Footer } from "@/components/Footer";
 import { LangProvider } from "@/components/LangProvider";
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Footer />
               <RegisterServiceWorker />
               <ChatWidget />
+              <InstallAppBanner />
             </ChatProvider>
           </LangProvider>
         </ThemeProvider>
