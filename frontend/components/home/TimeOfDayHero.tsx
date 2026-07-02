@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import * as SunCalc from "suncalc";
 import type { TimePhase } from "@/lib/salah";
 
 type PhaseTheme = {
@@ -108,13 +110,74 @@ const SKYLINE_PATH =
   "L790,126 Q790,96 826,84 Q862,96 862,126 " +
   "L1026,126 L1026,52 Q1039,24 1052,52 L1052,126 L1200,126 L1200,160 Z";
 
+type Coords = { lat: number; lng: number } | null;
+
 type Props = {
   phase: TimePhase;
+  coords?: Coords;
   children: React.ReactNode;
 };
 
-export function TimeOfDayHero({ phase, children }: Props) {
+/**
+ * Real astronomy via suncalc (no network needed): the sun's position on the
+ * card follows its true altitude/azimuth for the user's coordinates, and the
+ * moon renders its true phase shape.
+ */
+function useCelestial(coords: Coords | undefined) {
+  const [sun, setSun] = useState<React.CSSProperties | null>(null);
+  const [moonPhase, setMoonPhase] = useState<number | null>(null);
+
+  const lat = coords?.lat;
+  const lng = coords?.lng;
+
+  useEffect(() => {
+    function compute() {
+      const now = new Date();
+      setMoonPhase(SunCalc.getMoonIllumination(now).phase);
+      if (lat === undefined || lng === undefined) {
+        setSun(null);
+        return;
+      }
+      const pos = SunCalc.getPosition(now, lat, lng);
+      if (pos.altitude <= 0) {
+        setSun(null);
+        return;
+      }
+      // Azimuth: 0 = south, -π/2 = east, π/2 = west → map east→west across the card.
+      const leftPct = Math.min(88, Math.max(6, 50 + (pos.azimuth / (Math.PI / 2)) * 40));
+      // Altitude: horizon → just above the skyline, zenith → top of the card.
+      const topPct = Math.min(64, Math.max(6, 62 - (pos.altitude / (Math.PI / 2)) * 56));
+      setSun({ left: `${leftPct}%`, top: `${topPct}%` });
+    }
+    compute();
+    const id = setInterval(compute, 60_000);
+    return () => clearInterval(id);
+  }, [lat, lng]);
+
+  return { sun, moonPhase };
+}
+
+/** True moon-phase shape: 0 = new, 0.25 = first quarter, 0.5 = full, 0.75 = last quarter. */
+function MoonIcon({ phase }: { phase: number }) {
+  const r = 21;
+  const c = 24;
+  const waxing = phase <= 0.5;
+  const t = Math.cos(2 * Math.PI * phase);
+  const rx = Math.max(0.4, Math.abs(t) * r);
+  const outerSweep = waxing ? 1 : 0;
+  const innerSweep = t > 0 ? (waxing ? 0 : 1) : waxing ? 1 : 0;
+  const lit = `M ${c} ${c - r} A ${r} ${r} 0 0 ${outerSweep} ${c} ${c + r} A ${rx} ${r} 0 0 ${innerSweep} ${c} ${c - r} Z`;
+  return (
+    <svg viewBox="0 0 48 48" className="h-full w-full">
+      <circle cx={c} cy={c} r={r} fill="#0c1a24" fillOpacity={0.6} stroke="#ffffff" strokeOpacity={0.14} />
+      <path d={lit} fill="#f0d896" />
+    </svg>
+  );
+}
+
+export function TimeOfDayHero({ phase, coords, children }: Props) {
   const p = PHASES[phase];
+  const { sun, moonPhase } = useCelestial(coords);
 
   return (
     <section className="relative overflow-hidden rounded-3xl shadow-xl ring-1 ring-white/10">
@@ -152,27 +215,22 @@ export function TimeOfDayHero({ phase, children }: Props) {
       )}
 
       <div aria-hidden="true">
-        {p.celestial === "sun" && <div className="hero-sun" style={p.celestialPos} />}
-        {p.celestial === "crescent" && (
-          <div className="hero-crescent-wrap" style={p.celestialPos}>
-            <div className="hero-crescent" />
+        {p.celestial === "sun" && <div className="hero-sun" style={sun ?? p.celestialPos} />}
+        {p.celestial !== "sun" && (
+          <div className="hero-moon-wrap" style={p.celestialPos}>
+            <MoonIcon phase={moonPhase ?? (p.celestial === "moon" ? 0.45 : 0.06)} />
           </div>
         )}
-        {p.celestial === "moon" && <div className="hero-moon" style={p.celestialPos} />}
       </div>
 
       {p.clouds && (
-        <>
-          <div className="cloud-layer cloud-layer-one" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </div>
-          <div className="cloud-layer cloud-layer-two" aria-hidden="true">
-            <span />
-            <span />
-          </div>
-        </>
+        <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden" aria-hidden="true">
+          {(["hero-cloud-1", "hero-cloud-2", "hero-cloud-3"] as const).map((cls) => (
+            <svg key={cls} className={`hero-cloud ${cls}`} viewBox="0 0 84 36">
+              <path d="M14,32 Q4,32 4,24 Q4,16 12,14 Q13,6 22,6 Q27,0 36,3 Q44,-2 51,4 Q60,2 62,11 Q72,11 72,20 Q76,24 72,28 Q70,32 62,32 Z" />
+            </svg>
+          ))}
+        </div>
       )}
 
       {p.birds && (

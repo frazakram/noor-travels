@@ -76,10 +76,10 @@ export function Nav() {
           scrolled ? "shadow-md shadow-noor-950/10" : "shadow-none"
         }`}
       >
-        <div className="mx-auto flex min-h-14 max-w-5xl items-center justify-between gap-2 px-3 py-2 sm:gap-4 sm:px-4 sm:py-3">
+        <div className="mx-auto flex min-h-12 max-w-5xl items-center justify-between gap-2 px-3 py-1 sm:gap-4 sm:px-4 sm:py-2">
           <Link
             href="/"
-            className="flex min-h-11 shrink-0 items-center gap-2 font-semibold text-heading"
+            className="flex min-h-10 shrink-0 items-center gap-2 font-semibold text-heading"
             aria-label={t(lang, "appName")}
           >
             <AppLogo />
@@ -118,7 +118,7 @@ export function Nav() {
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-700 text-white shadow-sm active:scale-95 md:hidden"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-700 text-white shadow-sm active:scale-95 md:hidden"
               aria-label={open ? "Close navigation menu" : "Open navigation menu"}
               aria-expanded={open}
             >

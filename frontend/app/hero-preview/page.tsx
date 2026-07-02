@@ -34,7 +34,7 @@ const MOCK_TIMES: SalahTimesResponse = {
 export default function HeroPreviewPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4 p-4">
-      <TimeOfDayHero phase="isha">
+      <TimeOfDayHero phase="isha" coords={{ lat: 12.9713, lng: 77.7362 }}>
         <SalahDashboard
           times={MOCK_TIMES}
           locationLabel="S.M Krishna Ward, Karnataka, India"
@@ -44,7 +44,7 @@ export default function HeroPreviewPage() {
         />
       </TimeOfDayHero>
       {PHASES.map((phase) => (
-        <TimeOfDayHero key={phase} phase={phase}>
+        <TimeOfDayHero key={phase} phase={phase} coords={{ lat: 12.9713, lng: 77.7362 }}>
           <div className="py-6">
             <p className="text-xs font-medium uppercase tracking-widest text-gold-300">{phase}</p>
             <h2 className="mt-1 text-lg font-bold text-white">Remember Allah while travelling</h2>

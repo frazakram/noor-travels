@@ -73,6 +73,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
   const [notifySet, setNotifySet] = useState<Record<string, boolean>>(() => loadNotificationPrefs().adhan);
   const [shareStatus, setShareStatus] = useState("");
   const [showWeek, setShowWeek] = useState(false);
+  const [showAllPrayers, setShowAllPrayers] = useState(false);
   const tz = times?.timezone ?? "UTC";
 
   useEffect(() => {
@@ -265,10 +266,15 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
         />
       )}
 
-      {/* All 5 prayers — compact rows on mobile */}
+      {/* Prayers on mobile: only the active window by default, expandable to all */}
       {times && (
         <div className="space-y-1.5 sm:hidden">
-          {displaySlots.map((p) => {
+          {(showAllPrayers
+            ? displaySlots
+            : displaySlots.filter(
+                (s) => s.kind === "prayer" && s.id === (nextInfo?.current ?? nextInfo?.next),
+              )
+          ).map((p) => {
             const isSunrise = p.kind === "sunrise";
             const prayerId = p.kind === "prayer" ? p.id : null;
             const isCurrent = prayerId ? nextInfo?.current === prayerId : false;
@@ -352,6 +358,14 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
               </button>
             );
           })}
+          <button
+            type="button"
+            onClick={() => setShowAllPrayers((v) => !v)}
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/75 transition hover:bg-white/10"
+          >
+            {t(lang, showAllPrayers ? "showLessPrayers" : "showAllPrayers")}
+            <span aria-hidden>{showAllPrayers ? "▴" : "▾"}</span>
+          </button>
         </div>
       )}
 
