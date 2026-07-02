@@ -265,9 +265,99 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
         />
       )}
 
-      {/* All 5 prayers */}
+      {/* All 5 prayers — compact rows on mobile */}
       {times && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="space-y-1.5 sm:hidden">
+          {displaySlots.map((p) => {
+            const isSunrise = p.kind === "sunrise";
+            const prayerId = p.kind === "prayer" ? p.id : null;
+            const isCurrent = prayerId ? nextInfo?.current === prayerId : false;
+            const isNext = prayerId ? nextInfo?.next === prayerId : false;
+            const done = prayerId ? !!todayLog[prayerId] : false;
+            const canMark = prayerId ? done || isCurrent || (!isNext && hasStarted(prayerId, p.start)) : false;
+            const isPast = prayerId ? hasStarted(prayerId, p.start) && !isCurrent && !isNext : false;
+            if (isSunrise) {
+              return (
+                <div
+                  key={p.id}
+                  className="flex items-center gap-2.5 rounded-xl border border-amber-200/30 bg-amber-200/10 px-3 py-1.5"
+                >
+                  <span className="text-sm">🌄</span>
+                  <span className="min-w-0 flex-1 truncate text-xs text-white/70">
+                    {t(lang, "sunrise")} · {t(lang, "fajrWindowEnds")}
+                  </span>
+                  <span className="font-mono text-xs text-gold-300">{p.start}</span>
+                </div>
+              );
+            }
+            return (
+              <button
+                key={p.id}
+                type="button"
+                aria-disabled={!canMark}
+                title={!canMark ? t(lang, "prayerNotStarted") : undefined}
+                onClick={() => {
+                  if (canMark && prayerId) handleToggle(prayerId);
+                }}
+                className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition ${
+                  isCurrent
+                    ? "border-gold-400/80 bg-gold-400/20"
+                    : isNext
+                      ? "border-gold-300/40 bg-white/10"
+                      : "border-white/15 bg-white/10"
+                } ${canMark ? "" : "opacity-60"}`}
+              >
+                <span className={`text-base ${isPast ? "opacity-60 grayscale-[30%]" : ""}`}>
+                  {PRAYER_ICONS[prayerId!]}
+                </span>
+                <span className="flex min-w-0 flex-1 items-center gap-2">
+                  <span className="truncate text-sm font-semibold text-white">{prayerLabel(prayerId!)}</span>
+                  {isCurrent && (
+                    <span className="shrink-0 rounded-full bg-amber-400 px-1.5 py-px text-[8px] font-bold uppercase tracking-wide text-noor-950">
+                      {t(lang, "salahActive")}
+                    </span>
+                  )}
+                </span>
+                <span className={`font-mono text-sm text-gold-300 ${isPast ? "opacity-60" : ""}`}>{p.start}</span>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void toggleNotification(prayerId!, p.start);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      void toggleNotification(prayerId!, p.start);
+                    }
+                  }}
+                  className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] ${
+                    notifySet[prayerId!] ? "bg-gold-400 text-noor-950" : "bg-white/10 text-white/60"
+                  }`}
+                  title={t(lang, "notifyAtAdhan")}
+                >
+                  🔔
+                </span>
+                <span
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] ${
+                    done
+                      ? "animate-check-pop border-gold-400 bg-gold-400 text-noor-950"
+                      : "border-white/25 text-transparent"
+                  }`}
+                >
+                  ✓
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* All 5 prayers — tile grid on larger screens */}
+      {times && (
+        <div className="hidden gap-2 sm:grid sm:grid-cols-3 lg:grid-cols-6">
           {displaySlots.map((p) => {
             const isSunrise = p.kind === "sunrise";
             const prayerId = p.kind === "prayer" ? p.id : null;
