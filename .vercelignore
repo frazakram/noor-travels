@@ -23,8 +23,8 @@ backend/data
 *.sqlite
 *.sqlite3
 
-# Source data (loaded into Postgres locally; not needed at runtime on Vercel)
-data
+# Source data at repo root (loaded into Postgres locally; not needed at runtime on Vercel)
+/data
 
 # Dev-only ingestion scripts and large offline assets
 backend/ingestion
