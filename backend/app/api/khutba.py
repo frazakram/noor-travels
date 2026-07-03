@@ -1,7 +1,7 @@
 import json
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
 from openai import OpenAI
 
 from app.core.config import get_settings
@@ -13,6 +13,16 @@ router = APIRouter()
 TRANSLATE_PROMPT = """Translate this Arabic khutba/sermon excerpt to English and Urdu.
 Return JSON only: {"arabic": "...", "english": "...", "urdu": "..."}
 Keep religious terms accurate. If unclear, transliterate names."""
+
+
+def _translation_client_and_model(settings) -> tuple[OpenAI, str]:
+    """Prefer Groq (free tier) like the chat service; OpenAI only as fallback."""
+    if settings.groq_api_key.strip():
+        return (
+            OpenAI(api_key=settings.groq_api_key, base_url="https://api.groq.com/openai/v1"),
+            settings.groq_chat_model,
+        )
+    return OpenAI(api_key=settings.openai_api_key), settings.chat_model
 
 
 @router.get("/sermons")
@@ -77,11 +87,70 @@ def match_sermon(q: str = Query(min_length=8)):
     }
 
 
+@router.post("/live-chunk")
+async def khutba_live_chunk(
+    audio: UploadFile = File(...),
+    accumulated: str = Form(default=""),
+):
+    """One ~10s recording segment → Arabic transcript + English/Urdu translation.
+
+    Vercel's serverless runtime drops WebSocket data frames, so the live page
+    posts complete recording segments here instead. The client passes back the
+    accumulated English text so khutbah matching stays stateless server-side.
+    """
+    settings = get_settings()
+    data = await audio.read()
+    if len(data) < 200:
+        return {"type": "empty", "message": "No speech detected"}
+
+    try:
+        transcript = await _transcribe_arabic(
+            settings.deepgram_api_key, data, audio.content_type or "audio/webm"
+        )
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(502, f"Transcription failed ({exc.response.status_code})") from exc
+    if not transcript.strip():
+        return {"type": "empty", "message": "No speech detected"}
+
+    client, model = _translation_client_and_model(settings)
+    translation = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": TRANSLATE_PROMPT},
+            {"role": "user", "content": transcript},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0.2,
+    )
+    result = json.loads(translation.choices[0].message.content or "{}")
+    english = result.get("english", "").strip()
+    accumulated_english = f"{accumulated} {english}".strip()[-4000:]
+
+    response: dict = {
+        "type": "translation",
+        "arabic": result.get("arabic", transcript),
+        "english": english,
+        "urdu": result.get("urdu", ""),
+        "accumulated": accumulated_english,
+        "match": None,
+    }
+    match = match_transcript(accumulated_english) if accumulated_english else None
+    if match:
+        response["match"] = {
+            "slug": match.khutbah.slug,
+            "title": match.khutbah.title,
+            "source_url": match.khutbah.source_url,
+            "score": match.score,
+            "matched_phrase": match.matched_phrase,
+        }
+    return response
+
+
 @router.websocket("/live")
 async def khutba_live(ws: WebSocket):
     await ws.accept()
     settings = get_settings()
-    client = OpenAI(api_key=settings.openai_api_key)
+    client, ws_model = _translation_client_and_model(settings)
     accumulated_english = ""
     matched_slug: str | None = None
 
@@ -97,7 +166,7 @@ async def khutba_live(ws: WebSocket):
                 continue
 
             translation = client.chat.completions.create(
-                model=settings.chat_model,
+                model=ws_model,
                 messages=[
                     {"role": "system", "content": TRANSLATE_PROMPT},
                     {"role": "user", "content": transcript},
@@ -136,19 +205,22 @@ async def khutba_live(ws: WebSocket):
         pass
 
 
-async def _transcribe_arabic(api_key: str, audio_bytes: bytes) -> str:
+async def _transcribe_arabic(
+    api_key: str, audio_bytes: bytes, content_type: str = "audio/webm"
+) -> str:
+    # nova-2 has no Arabic support; Deepgram serves Arabic through hosted Whisper.
     async with httpx.AsyncClient(timeout=60.0) as http:
         resp = await http.post(
             "https://api.deepgram.com/v1/listen",
             params={
-                "model": "nova-2",
+                "model": "whisper-medium",
                 "language": "ar",
                 "punctuate": "true",
                 "smart_format": "true",
             },
             headers={
                 "Authorization": f"Token {api_key}",
-                "Content-Type": "audio/webm",
+                "Content-Type": content_type,
             },
             content=audio_bytes,
         )

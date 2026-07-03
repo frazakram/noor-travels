@@ -69,6 +69,7 @@ def _load_khutbah_index() -> tuple[list[KhutbahRecord], dict[str, list[tuple[str
         )
         rows = cur.fetchall()
 
+    raw_shingles: dict[str, list[tuple[str, int]]] = {}
     for row in rows:
         rec = KhutbahRecord(
             id=row["id"],
@@ -83,7 +84,17 @@ def _load_khutbah_index() -> tuple[list[KhutbahRecord], dict[str, list[tuple[str
         rec_shingles: list[tuple[str, int]] = []
         for i in range(len(words) - 7):
             rec_shingles.append((" ".join(words[i : i + 8]), i))
-        shingles[rec.slug] = rec_shingles
+        raw_shingles[rec.slug] = rec_shingles
+
+    # Openings like "all praise is due to allah..." appear in nearly every
+    # khutbah; matching on them stops live listening with the wrong sermon.
+    # Keep only phrases unique to at most two khutbahs.
+    doc_freq: dict[str, int] = {}
+    for rec_shingles in raw_shingles.values():
+        for s in {s for s, _ in rec_shingles}:
+            doc_freq[s] = doc_freq.get(s, 0) + 1
+    for slug, rec_shingles in raw_shingles.items():
+        shingles[slug] = [(s, i) for s, i in rec_shingles if doc_freq[s] <= 2]
 
     return records, shingles
 
@@ -130,6 +141,8 @@ def match_transcript(accumulated_english: str, min_words: int = 8) -> MatchResul
                 matched_phrase=hits[0],
             )
 
-    if best is None or best.score < 3.0:
+    # Verbatim passages score 40+; boilerplate openings score ~5. Require
+    # several distinct phrase hits so a shared formula can't trigger a match.
+    if best is None or best.score < 12.0:
         return None
     return best
