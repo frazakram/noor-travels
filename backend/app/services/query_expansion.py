@@ -259,7 +259,7 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "priority": 48,
         "pattern": r"rain|istisqa|drought|barish|بارش|बारिश",
         "terms": ["rain", "istisqa", "drought", "prayer", "supplication", "water"],
-        "dua_categories": ["travel"],
+        "dua_categories": ["rain"],
         "verse_keys": ["30:48", "25:48"],
         "hadith_refs": ["Sahih al-Bukhari 978"],
     },
@@ -857,7 +857,7 @@ def infer_dua_categories(question: str) -> list[str]:
     if not categories:
         q = question.lower()
         aliases = [
-            (r"\brain\b", "rain"),
+            (r"\brain(?:s|ing|y)?\b", "rain"),
             (r"\bnew\s*home|moving\b", "home"),
             (r"\bprotection\b", "protection"),
             (r"\bguidance\b", "guidance"),
