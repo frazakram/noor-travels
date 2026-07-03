@@ -14,6 +14,14 @@ const items = [
     accent: "border-l-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/20",
   },
   {
+    href: "/learn-quran",
+    key: "learnQuran" as const,
+    desc: "Understand Quranic Arabic without translation",
+    stat: "24 Lessons · 103+ Words",
+    icon: "🎓",
+    accent: "border-l-lime-500 bg-lime-50/60 dark:bg-lime-950/20",
+  },
+  {
     href: "/hadith",
     key: "hadith" as const,
     desc: "Browse Bukhari by topic",

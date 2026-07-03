@@ -1,0 +1,146 @@
+{
+  "modules": [
+    {
+      "id": "m1-core",
+      "order": 1,
+      "title_en": "Core vocabulary",
+      "title_ur": "بنیادی الفاظ",
+      "title_hi": "मूल शब्दावली",
+      "desc_en": "~35% of Quran words — start here",
+      "icon": "⭐",
+      "lesson_ids": [
+        "vocab-01",
+        "vocab-02",
+        "vocab-03",
+        "vocab-04",
+        "vocab-05",
+        "vocab-06"
+      ]
+    },
+    {
+      "id": "m2-nouns",
+      "order": 2,
+      "title_en": "Essential nouns",
+      "title_ur": "اہم اسماء",
+      "title_hi": "ज़रूरी संज्ञाएँ",
+      "desc_en": "People, body, and creation",
+      "icon": "📚",
+      "lesson_ids": [
+        "vocab-07",
+        "vocab-08"
+      ]
+    },
+    {
+      "id": "m3-verbs",
+      "order": 3,
+      "title_en": "Essential verbs",
+      "title_ur": "اہم افعال",
+      "title_hi": "ज़रूरी फ़ेल",
+      "desc_en": "Most frequent action words",
+      "icon": "⚡",
+      "lesson_ids": [
+        "vocab-09",
+        "vocab-10"
+      ]
+    },
+    {
+      "id": "m4-grammar",
+      "order": 4,
+      "title_en": "Quranic grammar",
+      "title_ur": "قرآنی قواعد",
+      "title_hi": "क़ुरआनी क़वाइद",
+      "desc_en": "Madinah Arabic essentials",
+      "icon": "📝",
+      "lesson_ids": [
+        "grammar-01",
+        "grammar-02",
+        "grammar-03",
+        "grammar-04",
+        "grammar-05"
+      ]
+    },
+    {
+      "id": "m5-roots",
+      "order": 5,
+      "title_en": "Root patterns",
+      "title_ur": "جذور اور وزن",
+      "title_hi": "जड़ें और वज़न",
+      "desc_en": "Nadwi root methodology",
+      "icon": "🌳",
+      "lesson_ids": [
+        "roots-01",
+        "roots-02",
+        "roots-03"
+      ]
+    },
+    {
+      "id": "m6-reading",
+      "order": 6,
+      "title_en": "Guided reading",
+      "title_ur": "ہدایت یافتہ مطالعہ",
+      "title_hi": "मार्गदर्शित पढ़ाई",
+      "desc_en": "Read Arabic with fading translation",
+      "icon": "📖",
+      "lesson_ids": [
+        "read-01",
+        "read-02",
+        "read-03",
+        "read-04",
+        "read-05",
+        "read-06"
+      ]
+    }
+  ],
+  "meta": {
+    "version": 1,
+    "total_modules": 6,
+    "total_lessons": 24,
+    "total_vocabulary": 103,
+    "target_coverage_pct": 82.6,
+    "sources": {
+      "version": 1,
+      "methodology": "Structured path from high-frequency Quranic vocabulary through essential grammar to guided Arabic-only reading. Designed for learners who can read Arabic script but rely on translation.",
+      "sources": [
+        {
+          "id": "abdulraheem-80pct",
+          "title_en": "80% of Qur'anic Words",
+          "author": "Dr. Abdulazeez Abdulraheem",
+          "institution": "Understand Quran Academy",
+          "url": "https://www.understandquran.com",
+          "role": "High-frequency vocabulary sequencing (~82.6% word coverage methodology)"
+        },
+        {
+          "id": "madinah-arabic",
+          "title_en": "Arabic Course for English-Speaking Students",
+          "author": "Dr. V. Abdur Rahim",
+          "institution": "Islamic University of Madinah",
+          "url": "https://abdurrahman.org/arabic-learning/madina-arabic/",
+          "role": "Quranic grammar framework (nominal sentences, verbs, particles)"
+        },
+        {
+          "id": "nadwi-vocabulary",
+          "title_en": "Vocabulary of the Holy Quran",
+          "author": "Dr. Abdullah Abbas Nadwi",
+          "institution": "Umm al-Qura University, Makkah",
+          "role": "Root-based vocabulary and morphological patterns"
+        },
+        {
+          "id": "quranic-corpus",
+          "title_en": "Quranic Arabic Corpus",
+          "author": "Kais Dukes et al.",
+          "url": "https://corpus.quran.com",
+          "role": "Lemma frequency and morphological analysis (GNU licensed)"
+        },
+        {
+          "id": "quran-com-wbw",
+          "title_en": "Quran.com Word-by-Word",
+          "url": "https://quran.com",
+          "role": "Practice ayah glosses and transliteration for guided reading"
+        }
+      ],
+      "disclaimer_en": "Course content is for education and Quranic understanding. Meanings follow mainstream Sunni tafsir usage. Verify advanced rulings with qualified scholars.",
+      "disclaimer_ur": "یہ کورس تعلیم اور قرآن کی سمجھ کے لیے ہے۔ معانی مستند سنی تفسیر کے مطابق ہیں۔",
+      "disclaimer_hi": "यह कोर्स शिक्षा और क़ुरआन की समझ के लिए है। अर्थ प्रमुख सुन्नी तफ़्सीर के अनुरूप हैं।"
+    }
+  }
+}
