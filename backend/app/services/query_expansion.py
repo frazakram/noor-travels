@@ -142,7 +142,7 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
             "mulk", "ikhlas", "falaq", "nas", "kursi", "sleep", "bed", "night",
             "recite", "read", "protect", "grave", "blow", "palms",
         ],
-        "dua_categories": [],
+        "dua_categories": ["sleep"],
         "verse_keys": ["67:1", "2:255", "112:1", "113:1", "114:1"],
         "hadith_refs": ["Sahih al-Bukhari 5526", "Sahih al-Bukhari 247"],
     },
@@ -854,6 +854,26 @@ def infer_dua_categories(question: str) -> list[str]:
     categories: list[str] = []
     for cluster in match_themes(question):
         categories.extend(cluster.get("dua_categories") or [])
+    if not categories:
+        q = question.lower()
+        aliases = [
+            (r"\brain\b", "rain"),
+            (r"\bnew\s*home|moving\b", "home"),
+            (r"\bprotection\b", "protection"),
+            (r"\bguidance\b", "guidance"),
+            (r"\bmorning\b", "morning"),
+            (r"\bevening\b", "evening"),
+            (r"\bpregnancy|newborn|children\b", "newborn"),
+            (r"\bjob|interview|debt|success\b", "rizq"),
+            (r"\bgrief|loss|loneliness\b", "anxiety"),
+            (r"\bflight\b", "travel"),
+            (r"\bgraduation|studying|wisdom\b", "study"),
+            (r"\bwedding\b", "marriage"),
+            (r"\bsick\b", "health"),
+        ]
+        for pattern, cat in aliases:
+            if re.search(pattern, q):
+                categories.append(cat)
     return list(dict.fromkeys(categories))
 
 

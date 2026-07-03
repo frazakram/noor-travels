@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLang } from "@/components/LangProvider";
-import { t } from "@/lib/i18n";
+import { t, type Lang } from "@/lib/i18n";
 
 type LibraryIndex = {
   version: number;
@@ -30,18 +30,21 @@ type LibraryAnswer = {
 const PAGE_SIZE = 40;
 
 function categoryLabel(lang: string, cat: string): string {
-  const key = `libraryCat_${cat}` as keyof typeof import("@/lib/i18n").translations.en;
   const labels = {
     en: {
       beginner: "Beginner",
       expert: "Expert",
       hadith: "Hadith",
+      hadith_ext: "Hadith",
       other_faith: "Other faiths",
       surah: "Surah",
       travel: "Travel",
       tafsir: "Tafsir",
+      tafsir_ext: "Tafsir",
       verse: "Verse",
+      verse_ext: "Verse",
       dua: "Dua",
+      dua_ext: "Dua",
       followup: "Follow-up",
       generated: "General",
       revert: "New Muslim",
@@ -49,17 +52,25 @@ function categoryLabel(lang: string, cat: string): string {
       daily_life: "Daily life",
       salah: "Salah",
       faith: "Faith",
+      faith_ext: "Faith",
+      ramadan: "Ramadan",
+      prophets: "Prophets",
+      etiquette: "Etiquette",
     },
     ur: {
       beginner: "ابتدائی",
       expert: "ماہر",
       hadith: "حدیث",
+      hadith_ext: "حدیث",
       other_faith: "دیگر مذاہب",
       surah: "سورت",
       travel: "سفر",
       tafsir: "تفسیر",
+      tafsir_ext: "تفسیر",
       verse: "آیت",
+      verse_ext: "آیت",
       dua: "دعا",
+      dua_ext: "دعا",
       followup: "فالو اپ",
       generated: "عام",
       revert: "نیا مسلمان",
@@ -67,17 +78,25 @@ function categoryLabel(lang: string, cat: string): string {
       daily_life: "روزمرہ",
       salah: "نماز",
       faith: "ایمان",
+      faith_ext: "ایمان",
+      ramadan: "رمضان",
+      prophets: "انبیاء",
+      etiquette: "آداب",
     },
     hi: {
       beginner: "शुरुआती",
       expert: "विशेषज्ञ",
       hadith: "हदीस",
+      hadith_ext: "हदीस",
       other_faith: "अन्य धर्म",
       surah: "सूरह",
       travel: "सफ़र",
       tafsir: "तफ़सीर",
+      tafsir_ext: "तफ़सीर",
       verse: "आयत",
+      verse_ext: "आयत",
       dua: "दुआ",
+      dua_ext: "दुआ",
       followup: "फ़ॉलो-अप",
       generated: "सामान्य",
       revert: "नए मुसलमान",
@@ -85,10 +104,65 @@ function categoryLabel(lang: string, cat: string): string {
       daily_life: "रोज़मर्रा",
       salah: "नमाज़",
       faith: "ईमान",
+      faith_ext: "ईमान",
+      ramadan: "रमज़ान",
+      prophets: "पैग़म्बर",
+      etiquette: "आदाब",
     },
   } as const;
   const table = labels[lang as keyof typeof labels] || labels.en;
   return table[cat as keyof typeof table] || cat.replace(/_/g, " ");
+}
+
+function AnswerPanel({
+  lang,
+  question,
+  answer,
+  loading,
+}: {
+  lang: Lang;
+  question: string;
+  answer: LibraryAnswer | null;
+  loading: boolean;
+}) {
+  if (loading && !answer) {
+    return (
+      <div className="rounded-xl border border-teal-200 bg-teal-50/50 p-4 dark:border-teal-800 dark:bg-teal-950/20">
+        <p className="text-sm text-faint">{t(lang, "libraryLoadingAnswer")}</p>
+      </div>
+    );
+  }
+
+  if (!answer) return null;
+
+  return (
+    <div className="rounded-xl border border-teal-200 bg-teal-50/50 p-4 dark:border-teal-800 dark:bg-teal-950/20">
+      <h2 className="text-sm font-semibold text-heading">{t(lang, "libraryAnswerTitle")}</h2>
+      <p className="mt-1 text-sm text-muted">{question}</p>
+      <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-body">{answer.answer}</p>
+      {answer.citations.length > 0 && (
+        <p className="mt-3 text-xs text-accent">
+          {t(lang, "citations")}: {answer.citations.join(" · ")}
+        </p>
+      )}
+      {answer.sources.length > 0 && (
+        <details className="group mt-2">
+          <summary className="cursor-pointer text-xs font-medium text-accent">
+            {t(lang, "showSources")} ({answer.sources.length})
+          </summary>
+          <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto">
+            {answer.sources.map((s, i) => (
+              <li key={i} className="rounded-lg border border-subtle bg-surface-muted/50 p-2 text-[11px]">
+                <p className="font-medium text-heading">{s.ref}</p>
+                <p className="mt-1 text-muted">{s.snippet}</p>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      <p className="mt-3 text-[10px] text-faint">{t(lang, "libraryPreloadedNote")}</p>
+    </div>
+  );
 }
 
 export default function QuestionLibraryPage() {
@@ -147,10 +221,18 @@ export default function QuestionLibraryPage() {
     setSelectedId(null);
   }, [search, category]);
 
+  useEffect(() => {
+    setSelectedId(null);
+  }, [page]);
+
   const pageItems = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 
   async function onSelect(id: string) {
+    if (selectedId === id) {
+      setSelectedId(null);
+      return;
+    }
     setSelectedId(id);
     await loadAnswers();
   }
@@ -171,7 +253,7 @@ export default function QuestionLibraryPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 pb-8">
+    <div className="mx-auto max-w-5xl space-y-4 pb-8">
       <header className="space-y-2">
         <h1 className="text-2xl font-bold text-heading">{t(lang, "questionLibrary")}</h1>
         <p className="text-sm text-muted">{t(lang, "questionLibraryHint")}</p>
@@ -213,96 +295,99 @@ export default function QuestionLibraryPage() {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <p className="text-xs text-faint">
-          {filtered.length.toLocaleString()} {t(lang, "libraryMatches")}
-          {search ? ` · “${search}”` : ""}
-        </p>
-        <ul className="space-y-2">
-          {pageItems.map((item) => (
-            <li key={item.id}>
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(280px,38%)] lg:items-start lg:gap-5">
+        <div className="space-y-2">
+          <p className="text-xs text-faint">
+            {filtered.length.toLocaleString()} {t(lang, "libraryMatches")}
+            {search ? ` · “${search}”` : ""}
+          </p>
+          <ul className="space-y-2">
+            {pageItems.map((item) => {
+              const isOpen = selectedId === item.id;
+              return (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => void onSelect(item.id)}
+                    aria-expanded={isOpen}
+                    className={`w-full rounded-xl border px-4 py-3 text-left transition ${
+                      isOpen
+                        ? "border-teal-500 bg-teal-50/80 dark:bg-teal-950/30"
+                        : "border-subtle bg-surface-muted/40 hover:border-teal-300 dark:hover:border-teal-700"
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <span
+                        className={`mt-0.5 shrink-0 text-xs transition-transform ${isOpen ? "rotate-90 text-teal-600" : "text-faint"}`}
+                        aria-hidden
+                      >
+                        ▶
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-heading">{item.question}</p>
+                        <p className="mt-1 text-[10px] uppercase tracking-wide text-faint">
+                          {categoryLabel(lang, item.category)}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                  {isOpen && (
+                    <div className="mt-2 lg:hidden">
+                      <AnswerPanel
+                        lang={lang}
+                        question={item.question}
+                        answer={answers?.[item.id] ?? null}
+                        loading={answersLoading}
+                      />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {filtered.length === 0 && (
+            <p className="py-8 text-center text-sm text-muted">{t(lang, "libraryNoResults")}</p>
+          )}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => void onSelect(item.id)}
-                className={`w-full rounded-xl border px-4 py-3 text-left transition ${
-                  selectedId === item.id
-                    ? "border-teal-500 bg-teal-50/80 dark:bg-teal-950/30"
-                    : "border-subtle bg-surface-muted/40 hover:border-teal-300 dark:hover:border-teal-700"
-                }`}
+                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                className="rounded-lg border border-subtle px-3 py-1.5 text-xs font-medium text-muted disabled:opacity-40"
               >
-                <p className="text-sm font-medium text-heading">{item.question}</p>
-                <p className="mt-1 text-[10px] uppercase tracking-wide text-faint">
-                  {categoryLabel(lang, item.category)}
-                </p>
+                {t(lang, "prevPage")}
               </button>
-            </li>
-          ))}
-        </ul>
-        {filtered.length === 0 && (
-          <p className="py-8 text-center text-sm text-muted">{t(lang, "libraryNoResults")}</p>
-        )}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between gap-2 pt-2">
-            <button
-              type="button"
-              disabled={page === 0}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              className="rounded-lg border border-subtle px-3 py-1.5 text-xs font-medium text-muted disabled:opacity-40"
-            >
-              {t(lang, "prevPage")}
-            </button>
-            <span className="text-xs text-faint">
-              {page + 1} / {totalPages}
-            </span>
-            <button
-              type="button"
-              disabled={page >= totalPages - 1}
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              className="rounded-lg border border-subtle px-3 py-1.5 text-xs font-medium text-muted disabled:opacity-40"
-            >
-              {t(lang, "nextPage")}
-            </button>
-          </div>
-        )}
-      </div>
+              <span className="text-xs text-faint">
+                {page + 1} / {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={page >= totalPages - 1}
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                className="rounded-lg border border-subtle px-3 py-1.5 text-xs font-medium text-muted disabled:opacity-40"
+              >
+                {t(lang, "nextPage")}
+              </button>
+            </div>
+          )}
+        </div>
 
-      {selectedId && (
-        <section className="card animate-fade-in-up space-y-3 border-teal-200 dark:border-teal-800">
-          <h2 className="text-sm font-semibold text-heading">{t(lang, "libraryAnswerTitle")}</h2>
-          {selectedQuestion && (
-            <p className="text-sm text-muted">{selectedQuestion.question}</p>
+        <aside className="hidden lg:block lg:sticky lg:top-4">
+          {selectedId && selectedQuestion ? (
+            <AnswerPanel
+              lang={lang}
+              question={selectedQuestion.question}
+              answer={selected}
+              loading={answersLoading}
+            />
+          ) : (
+            <div className="rounded-xl border border-dashed border-subtle bg-surface-muted/30 p-6 text-center">
+              <p className="text-sm text-muted">{t(lang, "librarySelectQuestion")}</p>
+            </div>
           )}
-          {answersLoading && !selected && (
-            <p className="text-sm text-faint">{t(lang, "libraryLoadingAnswer")}</p>
-          )}
-          {selected && (
-            <>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-body">{selected.answer}</p>
-              {selected.citations.length > 0 && (
-                <p className="text-xs text-accent">
-                  {t(lang, "citations")}: {selected.citations.join(" · ")}
-                </p>
-              )}
-              {selected.sources.length > 0 && (
-                <details className="group">
-                  <summary className="cursor-pointer text-xs font-medium text-accent">
-                    {t(lang, "showSources")} ({selected.sources.length})
-                  </summary>
-                  <ul className="mt-2 space-y-2">
-                    {selected.sources.map((s, i) => (
-                      <li key={i} className="rounded-lg border border-subtle bg-surface-muted/50 p-2 text-[11px]">
-                        <p className="font-medium text-heading">{s.ref}</p>
-                        <p className="mt-1 text-muted">{s.snippet}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-              <p className="text-[10px] text-faint">{t(lang, "libraryPreloadedNote")}</p>
-            </>
-          )}
-        </section>
-      )}
+        </aside>
+      </div>
     </div>
   );
 }

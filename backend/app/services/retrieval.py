@@ -9,6 +9,7 @@ from app.services.keyword_search import (
     _hadith_topic_terms,
     _search_hadiths,
     extract_search_terms,
+    fetch_duas_by_categories,
     format_curated_answer,
     format_dua_answer,
     format_surah_number_answer,
@@ -17,7 +18,7 @@ from app.services.keyword_search import (
     format_verse_range_answer,
     keyword_retrieve_smart,
 )
-from app.services.query_expansion import DUA_HINT, HADITH_HINT, PROPHET_HINT, TAFSIR_HINT, build_analysis, get_theme_summary
+from app.services.query_expansion import DUA_HINT, HADITH_HINT, PROPHET_HINT, TAFSIR_HINT, build_analysis, get_theme_summary, infer_dua_categories
 
 
 def _is_surah_number_question(question: str) -> bool:
@@ -232,6 +233,15 @@ def retrieve_for_question(
         if hadith_hits:
             merged = hadith_hits + merged
 
+    if DUA_HINT.search(question) and not any(c.get("source_type") == "dua" for c in merged):
+        cats = analysis.get("dua_categories") or infer_dua_categories(question)
+        dua_chunks = fetch_duas_by_categories(cats, 3) if cats else []
+        if not dua_chunks:
+            dua_chunks = fetch_duas_by_categories(["general"], 1)
+        for d in dua_chunks:
+            d["final_score"] = 0.95
+        merged = dua_chunks + merged
+
     return merged, analysis
 
 
@@ -353,6 +363,12 @@ def format_short_answer(
         )
 
     if analysis.get("intent") == "verse_lookup" and analysis.get("verse_keys"):
+        if TAFSIR_HINT.search(question):
+            tafsir_chunks = [c for c in chunks if c.get("source_type") == "tafsir"]
+            if tafsir_chunks:
+                tafsir_answer = _build_answer_from_chunks(tafsir_chunks, lang, question)
+                if tafsir_answer:
+                    return tafsir_answer
         return format_verse_answer(analysis["verse_keys"][0], lang)
 
     if analysis.get("intent") == "surah_number_lookup" and analysis.get("surah_number"):
@@ -369,8 +385,28 @@ def format_short_answer(
             if prophet_answer:
                 return prophet_answer
 
+    if DUA_HINT.search(question):
+        dua_answer = format_dua_answer(chunks, lang)
+        if dua_answer:
+            return dua_answer
+        cats = analysis.get("dua_categories") or infer_dua_categories(question)
+        if cats:
+            fallback_duas = fetch_duas_by_categories(cats, 2)
+            dua_answer = format_dua_answer(fallback_duas, lang)
+            if dua_answer:
+                return dua_answer
+        general = fetch_duas_by_categories(["general"], 1)
+        general_answer = format_dua_answer(general, lang)
+        if general_answer:
+            intro = {
+                "en": "While there is no single prescribed dua specifically for this topic, Muslims commonly recite:",
+                "ur": "اس مخصوص موضوع کی کوئی مخصوص دعا نہیں، مسلمان عام طور پر یہ دعا پڑھتے ہیں:",
+                "hi": "इस विशेष विषय की कोई मुकर्रर दुआ नहीं है, मुसलमान आम तौर पर यह दुआ पढ़ते हैं:",
+            }
+            return f"{intro.get(lang, intro['en'])}\n\n{general_answer}"
+
     themed = get_theme_summary(themes, lang)
-    if themed and not (HADITH_HINT.search(question) or PROPHET_HINT.search(question)):
+    if themed and not (HADITH_HINT.search(question) or PROPHET_HINT.search(question) or DUA_HINT.search(question)):
         return themed
 
     curated = format_curated_answer(chunks, lang, analysis)
@@ -378,13 +414,8 @@ def format_short_answer(
         return curated
 
     if DUA_HINT.search(question):
-        dua_answer = format_dua_answer(chunks, lang)
-        if dua_answer:
-            return dua_answer
-
-    if DUA_HINT.search(question) and not any(c["source_type"] == "dua" for c in chunks[:5]):
         built = _build_answer_from_chunks(chunks, lang, question)
-        if built:
+        if built and re.search(r"[\u0600-\u06FF]", built):
             return built
         if lang == "ur":
             return (

@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import re
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -58,6 +59,19 @@ def load_cases(limit: int | None = None) -> list[dict]:
     return cases[:limit] if limit else cases
 
 
+def _dua_answer_has_text(answer: str) -> bool:
+    """Dua questions must return actual supplication text, not only thematic summaries."""
+    if re.search(r"[\u0600-\u06FF]", answer):
+        return True
+    return bool(
+        re.search(
+            r"\b(Allahumma|Rabbana|Rabbi|Bismillah|Subhan|Astaghfir|Hasbunallah|La ilaha)\b",
+            answer,
+            re.I,
+        )
+    )
+
+
 def score_case(case: dict) -> dict:
     question = case["question"]
     expected_types = case.get("expected_types", [])
@@ -100,7 +114,10 @@ def score_case(case: dict) -> dict:
     )
     not_ok = not any(m.lower() in combined for m in must_not_contain)
     has_answer = len((result.get("answer") or "").strip()) > 15
-    passed = type_ok and answer_ok and not_ok and has_answer and result.get("validation", {}).get("valid", True)
+    dua_ok = True
+    if case.get("category") in ("dua", "dua_ext"):
+        dua_ok = _dua_answer_has_text(result.get("answer") or "")
+    passed = type_ok and answer_ok and not_ok and has_answer and dua_ok and result.get("validation", {}).get("valid", True)
 
     return {
         "question": question,

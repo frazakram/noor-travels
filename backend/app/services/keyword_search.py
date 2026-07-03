@@ -837,6 +837,49 @@ def _search_duas(terms: list[str], limit: int, dua_categories: list[str] | None 
     return results[:limit]
 
 
+def fetch_duas_by_categories(categories: list[str], limit: int = 2) -> list[dict]:
+    """Load dua chunks directly from DB when retrieval missed them."""
+    if not categories:
+        return []
+    placeholders = ", ".join("?" * len(categories))
+    sql = f"""
+        SELECT id, title_en, arabic, transliteration, translation_en, translation_ur, source, category
+        FROM duas WHERE category IN ({placeholders})
+        LIMIT ?
+    """
+    results: list[dict] = []
+    with get_cursor() as cur:
+        _run_query(cur, sql, [*categories, limit * 2])
+        rows = cur.fetchall()
+
+    for row in rows:
+        did, title, ar, tr, en, ur, src, row_cat = _row_fields(
+            row,
+            "id",
+            "title_en",
+            "arabic",
+            "transliteration",
+            "translation_en",
+            "translation_ur",
+            "source",
+            "category",
+        )
+        content = (
+            f"Dua {did}: {title}. Arabic: {ar}. Transliteration: {tr}. "
+            f"English: {en}. Urdu: {ur}. Source: {src}"
+        )
+        results.append(
+            {
+                "source_type": "dua",
+                "source_ref": f"Dua {did}",
+                "content": content,
+                "metadata": {"dua_id": did, "category": row_cat},
+                "similarity": 1.0,
+            }
+        )
+    return results[:limit]
+
+
 def _search_tafsir(terms: list[str], limit: int) -> list[dict]:
     if not terms:
         return []
@@ -1468,11 +1511,7 @@ def format_verse_range_answer(surah_number: int, start_ayah: int, end_ayah: int,
     if not surah or not rows:
         return f"Verses {surah_number}:{start_ayah}-{end_ayah} not found."
 
-    if use_sqlite():
-        name_en, name_tr = surah
-    else:
-        name_en = surah["name_en"]
-        name_tr = surah["name_en_translation"]
+    name_en, name_tr = _row_fields(surah, "name_en", "name_en_translation")
 
     if lang == "ur":
         header = f"سورہ {name_en} ({surah_number}:{start_ayah}-{end_ayah})"
@@ -1528,16 +1567,10 @@ def format_verse_answer(verse_key: str, lang: str) -> str:
     if not surah or not ayah:
         return f"Verse {verse_key} not found."
 
-    if use_sqlite():
-        name_en, name_tr = surah
-        arabic, trans_en, trans_ur, translit = ayah
-    else:
-        name_en = surah["name_en"]
-        name_tr = surah["name_en_translation"]
-        arabic = ayah["arabic"]
-        trans_en = ayah["translation_en"]
-        trans_ur = ayah["translation_ur"]
-        translit = ayah["transliteration"]
+    name_en, name_tr = _row_fields(surah, "name_en", "name_en_translation")
+    arabic, trans_en, trans_ur, translit = _row_fields(
+        ayah, "arabic", "translation_en", "translation_ur", "transliteration"
+    )
 
     if lang == "ur":
         header = f"سورہ {name_en} ({surah_number}:{ayah_number})"
