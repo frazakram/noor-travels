@@ -9,4 +9,4 @@ pydantic-settings==2.7.0
 websockets==14.1
 python-multipart==0.0.20
 indic-transliteration==2.3.82
-edge-tts==7.0.0
+edge-tts==7.2.8
