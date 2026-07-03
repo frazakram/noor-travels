@@ -71,6 +71,53 @@ async def test_tts_langs() -> bool:
     return ok_all
 
 
+def test_learn_quran_static() -> bool:
+    """Learn Quran course JSON (served from frontend/public in prod)."""
+    repo = Path(__file__).resolve().parents[2]
+    index = repo / "frontend" / "public" / "data" / "learn-quran" / "index.json"
+    lessons = repo / "frontend" / "public" / "data" / "learn-quran" / "lessons.json"
+    try:
+        idx = json.loads(index.read_text())
+        les = json.loads(lessons.read_text())
+        ok = (
+            index.exists()
+            and lessons.exists()
+            and len(idx.get("modules", [])) >= 6
+            and len(les) >= 20
+            and idx.get("meta", {}).get("total_lessons") == len(les)
+        )
+        print(f"[{'PASS' if ok else 'FAIL'}] learn-quran static ({len(les)} lessons)")
+        return ok
+    except Exception as exc:
+        print(f"[FAIL] learn-quran static: {exc}")
+        return False
+
+
+def test_question_library_static() -> bool:
+    repo = Path(__file__).resolve().parents[2]
+    index = repo / "frontend" / "public" / "data" / "question-library-index.json"
+    try:
+        data = json.loads(index.read_text())
+        ok = data.get("total", 0) >= 6000 and len(data.get("items", [])) >= 6000
+        print(f"[{'PASS' if ok else 'FAIL'}] question-library static ({data.get('total', 0)} items)")
+        return ok
+    except Exception as exc:
+        print(f"[FAIL] question-library static: {exc}")
+        return False
+
+
+def test_quran_audio() -> bool:
+    try:
+        r = httpx.get(f"{API}/api/quran/audio/surahs/1?reciter=ar.alafasy", timeout=30)
+        data = r.json()
+        ok = r.status_code == 200 and len(data.get("ayahs", [])) >= 1 and bool(data["ayahs"][0].get("audio"))
+        print(f"[{'PASS' if ok else 'FAIL'}] quran audio")
+        return ok
+    except Exception as exc:
+        print(f"[FAIL] quran audio: {exc}")
+        return False
+
+
 def test_chat_sample() -> bool:
     try:
         r = httpx.post(
@@ -106,6 +153,9 @@ def main():
         test_health(),
         test_duas(),
         test_quran_hi(),
+        test_quran_audio(),
+        test_learn_quran_static(),
+        test_question_library_static(),
         asyncio.run(test_tts_langs()),
         test_chat_sample(),
         run_chat_eval(),

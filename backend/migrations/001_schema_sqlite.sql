@@ -23,6 +23,8 @@ CREATE TABLE ayahs (
   transliteration TEXT,
   translation_en TEXT,
   translation_ur TEXT,
+  translation_hi TEXT,
+  transliteration_hi TEXT,
   juz INTEGER,
   page INTEGER,
   UNIQUE (surah_number, ayah_number)

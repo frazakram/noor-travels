@@ -14,6 +14,7 @@ from app.db import SQLITE_PATH, use_sqlite
 PG_SQL = Path(__file__).resolve().parents[1] / "migrations/001_schema.sql"
 PG_SQL_EXTRA = Path(__file__).resolve().parents[1] / "migrations/003_tafsir_hindi.sql"
 SQLITE_SQL = Path(__file__).resolve().parents[1] / "migrations/001_schema_sqlite.sql"
+SQLITE_SQL_EXTRA = Path(__file__).resolve().parents[1] / "migrations/003_tafsir_hindi_sqlite.sql"
 
 
 def migrate_postgres():
@@ -33,6 +34,14 @@ def migrate_sqlite():
     SQLITE_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(SQLITE_PATH)
     conn.executescript(SQLITE_SQL.read_text())
+    for stmt in SQLITE_SQL_EXTRA.read_text().split(";"):
+        stmt = stmt.strip()
+        if stmt:
+            try:
+                conn.execute(stmt)
+            except sqlite3.OperationalError as exc:
+                if "duplicate column" not in str(exc).lower():
+                    raise
     conn.commit()
     conn.close()
     print(f"SQLite migration applied at {SQLITE_PATH}")
