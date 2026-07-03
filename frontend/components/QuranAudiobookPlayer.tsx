@@ -34,7 +34,7 @@ type TranslationAudioInfo = {
 type AudioAyah = {
   ayah_number: number;
   verse_key: string;
-  audio: string;
+  audio: string | null;
   translation_audio?: string | null;
 };
 
@@ -73,8 +73,11 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [repeatPass, setRepeatPass] = useState(1);
   const [status, setStatus] = useState("");
+  const [playbackMode, setPlaybackMode] = useState<"ayah" | "surah">("ayah");
+  const [surahAudioAvailable, setSurahAudioAvailable] = useState(true);
   const stopRef = useRef(false);
   const sessionRef = useRef(0);
+  const surahArabicPlayedRef = useRef<string | null>(null);
   const includeTafsirRef = useRef(includeTafsir);
   const includeTranslationRef = useRef(includeTranslation);
   const tafsirSourceRef = useRef(tafsirSource);
@@ -130,6 +133,8 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
         api<{
           ayahs: AudioAyah[];
           reciter_name: string;
+          playback_mode?: "ayah" | "surah";
+          surah_audio_available?: boolean;
           translation_audio_info?: TranslationAudioInfo;
         }>(`/api/quran/audio/surahs/${surahNumber}?reciter=${encodeURIComponent(reciter)}${trParam}`),
         api<{ ayahs: TextAyah[]; surah: { name_en: string } }>(
@@ -137,6 +142,9 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
         ),
       ]);
       setReciters(editions.reciters);
+      setPlaybackMode(audio.playback_mode ?? "ayah");
+      setSurahAudioAvailable(audio.surah_audio_available ?? true);
+      surahArabicPlayedRef.current = null;
       setAudioAyahs(audio.ayahs);
       setTranslationAudioInfo(audio.translation_audio_info ?? null);
       setTextAyahs(text.ayahs);
@@ -190,10 +198,15 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
 
     setStatus(`${prefix}${text.verse_key} — ${t(lang, "arabic")}`);
     stopAllPlayback();
-    try {
-      await playAudioUrl(audio.audio, gen);
-    } catch {
-      /* skip broken ayah audio */
+    const skipSurahReplay =
+      playbackMode === "surah" && audio.audio && surahArabicPlayedRef.current === audio.audio;
+    if (audio.audio && !skipSurahReplay) {
+      surahArabicPlayedRef.current = audio.audio;
+      try {
+        await playAudioUrl(audio.audio, gen);
+      } catch {
+        /* skip broken ayah audio */
+      }
     }
     if (stopRef.current || sessionRef.current !== gen) return;
 
@@ -220,6 +233,7 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
 
   async function playFromIndex(start: number) {
     stopRef.current = false;
+    surahArabicPlayedRef.current = null;
     const gen = beginPlaybackSession();
     sessionRef.current = gen;
     setPlaying(true);
@@ -355,6 +369,15 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
               ))}
             </select>
           </label>
+
+          {playbackMode === "surah" && (
+            <p className="sm:col-span-2 text-xs text-muted">{t(lang, "reciterSurahMode")}</p>
+          )}
+          {playbackMode === "surah" && !surahAudioAvailable && (
+            <p className="sm:col-span-2 text-xs text-amber-700 dark:text-amber-400">
+              {t(lang, "reciterSurahUnavailable")}
+            </p>
+          )}
 
           <label className="block text-sm">
             <span className="text-noor-600">{t(lang, "translation")}</span>

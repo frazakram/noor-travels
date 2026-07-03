@@ -38,7 +38,7 @@ type Reciter = { id: string; name: string };
 type AudioAyah = {
   ayah_number: number;
   verse_key: string;
-  audio: string;
+  audio: string | null;
   translation_audio?: string | null;
 };
 
@@ -82,6 +82,8 @@ export function useSurahAudio({
   const [audioAyahs, setAudioAyahs] = useState<AudioAyah[]>([]);
   const [audioReady, setAudioReady] = useState(false);
   const [audioLoading, setAudioLoading] = useState(false);
+  const [playbackMode, setPlaybackMode] = useState<"ayah" | "surah">("ayah");
+  const [surahAudioAvailable, setSurahAudioAvailable] = useState(true);
   const [playing, setPlaying] = useState(false);
   const [playIndex, setPlayIndex] = useState(0);
   const [repeatPass, setRepeatPass] = useState(1);
@@ -92,6 +94,7 @@ export function useSurahAudio({
   const nativeModeRef = useRef(false);
   const playingRef = useRef(false);
   const playIndexRef = useRef(0);
+  const surahArabicPlayedRef = useRef<string | null>(null);
   const includeTafsirRef = useRef(includeTafsir);
   const includeTranslationRef = useRef(includeTranslation);
   const tafsirSourceRef = useRef(tafsirSource);
@@ -129,12 +132,18 @@ export function useSurahAudio({
       const trParam = includeTranslation ? `&translation_lang=${translation}` : "";
       const [editions, audio] = await Promise.all([
         api<{ reciters: Reciter[] }>("/api/quran/audio/editions"),
-        api<{ ayahs: AudioAyah[] }>(
+        api<{
+          ayahs: AudioAyah[];
+          playback_mode?: "ayah" | "surah";
+          surah_audio_available?: boolean;
+        }>(
           `/api/quran/audio/surahs/${surahNumber}?reciter=${encodeURIComponent(reciter)}${trParam}`
         ),
       ]);
       if (gen !== loadGenRef.current) return [];
       setReciters(editions.reciters);
+      setPlaybackMode(audio.playback_mode ?? "ayah");
+      setSurahAudioAvailable(audio.surah_audio_available ?? true);
       setAudioAyahs(audio.ayahs);
       setAudioReady(true);
       return audio.ayahs;
@@ -146,6 +155,9 @@ export function useSurahAudio({
   useEffect(() => {
     setAudioReady(false);
     setAudioAyahs([]);
+    setPlaybackMode("ayah");
+    setSurahAudioAvailable(true);
+    surahArabicPlayedRef.current = null;
   }, [surahNumber, reciter, translation, includeTranslation]);
 
   // Prefetch the audio list so the first tap on play starts immediately.
@@ -245,18 +257,22 @@ export function useSurahAudio({
     ayahRepeats: number
   ): Promise<NativeQueueItem[]> {
     const items: NativeQueueItem[] = [];
+    let lastArabicUrl: string | null = null;
     for (let pass = 1; pass <= surahPasses; pass++) {
       for (let i = start; i < audioList.length; i++) {
         const audio = audioList[i];
         const text = textAyahs[i];
         if (!audio?.audio || !text) continue;
         for (let r = 0; r < ayahRepeats; r++) {
-          items.push({
-            url: audio.audio,
-            title: text.verse_key,
-            ayahIndex: i,
-            kind: "arabic",
-          });
+          if (audio.audio !== lastArabicUrl) {
+            items.push({
+              url: audio.audio,
+              title: text.verse_key,
+              ayahIndex: i,
+              kind: "arabic",
+            });
+            lastArabicUrl = audio.audio;
+          }
           if (includeTranslationRef.current && audio.translation_audio) {
             items.push({
               url: audio.translation_audio,
@@ -295,10 +311,15 @@ export function useSurahAudio({
     updateNowPlaying(text.verse_key);
 
     stopAllPlayback();
-    try {
-      await playAudioUrl(audio.audio, gen);
-    } catch {
-      /* skip */
+    const skipSurahReplay =
+      playbackMode === "surah" && audio.audio && surahArabicPlayedRef.current === audio.audio;
+    if (audio.audio && !skipSurahReplay) {
+      surahArabicPlayedRef.current = audio.audio;
+      try {
+        await playAudioUrl(audio.audio, gen);
+      } catch {
+        /* skip */
+      }
     }
     if (stopRef.current || sessionRef.current !== gen) return;
 
@@ -331,6 +352,7 @@ export function useSurahAudio({
 
       stopRef.current = false;
       nativeModeRef.current = false;
+      surahArabicPlayedRef.current = null;
       const gen = beginPlaybackSession();
       sessionRef.current = gen;
       setPlaying(true);
@@ -396,6 +418,7 @@ export function useSurahAudio({
       repeatCount,
       includeTafsir,
       includeTranslation,
+      playbackMode,
       getTranslation,
       tafsirSource,
       textAyahs,
@@ -441,6 +464,8 @@ export function useSurahAudio({
     status,
     audioLoading,
     audioReady,
+    playbackMode,
+    surahAudioAvailable,
     pause,
     playFromIndex,
     togglePlay,

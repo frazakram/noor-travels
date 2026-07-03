@@ -1,5 +1,8 @@
 """Quran recitation + human translation audio via Al Quran Cloud CDN."""
+import re
+import urllib.request
 from functools import lru_cache
+from typing import Any
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query
@@ -26,21 +29,33 @@ EVERYAYAH_URDU = "https://everyayah.com/data/translations/urdu_shamshad_ali_khan
 DEFAULT_RECITERS = [
     {"id": "ar.alafasy", "name": "Mishary Alafasy"},
     {"id": "ar.yasseraldossary", "name": "Yasir Al-Dawsari"},
+    {"id": "ar.anasibnsalihalmalik", "name": "Anas ibn Salih Al-Malik"},
     {"id": "ar.abdurrahmaansudais", "name": "Abdur-Rahman As-Sudais"},
     {"id": "ar.abdulbasitmurattal", "name": "Abdul Basit (Murattal)"},
     {"id": "ar.shaatree", "name": "Abu Bakr Ash-Shatri"},
     {"id": "ar.husary", "name": "Mahmoud Khalil Al-Husary"},
 ]
 
-# Reciters not on alquran.cloud — verse audio from EveryAyah CDN
-CUSTOM_AUDIO_RECITERS: dict[str, dict[str, str]] = {
+# Reciters not on alquran.cloud — served from EveryAyah or Way2Quran CDN
+CUSTOM_AUDIO_RECITERS: dict[str, dict[str, Any]] = {
     "ar.yasseraldossary": {
         "name": "Yasir Al-Dawsari",
+        "source": "everyayah",
+        "playback_mode": "ayah",
         "everyayah_path": "Yasser_Ad-Dussary_128kbps",
+    },
+    "ar.anasibnsalihalmalik": {
+        "name": "Anas ibn Salih Al-Malik",
+        "source": "way2quran",
+        "playback_mode": "surah",
+        "way2quran_slug": "anas-bin-saleh-al-malik",
+        "way2quran_riwaya": "hafs-an-asim",
     },
 }
 
 EVERYAYAH_ARABIC = "https://everyayah.com/data/{path}/{file}.mp3"
+WAY2QURAN_SURAH = "https://media.way2quran.com/{slug}/{riwaya}/{surah}.mp3"
+WAY2QURAN_RECITER_PAGE = "https://way2quran.com/reciters/{slug}"
 
 router = APIRouter()
 
@@ -64,10 +79,11 @@ def _fetch_audio_editions() -> list[dict]:
         editions = list(DEFAULT_RECITERS)
 
     known = {e["id"] for e in editions}
+    insert_at = 1
     for rid, meta in CUSTOM_AUDIO_RECITERS.items():
         if rid not in known:
-            insert_at = 1 if editions else 0
-            editions.insert(insert_at, {"id": rid, "name": meta["name"]})
+            editions.insert(min(insert_at, len(editions)), {"id": rid, "name": meta["name"]})
+            insert_at += 1
     return editions
 
 
@@ -84,6 +100,123 @@ def _everyayah_arabic_url(path: str, surah_number: int, ayah_number: int) -> str
     return EVERYAYAH_ARABIC.format(path=path, file=file)
 
 
+def _way2quran_surah_url(slug: str, riwaya: str, surah_number: int) -> str:
+    return WAY2QURAN_SURAH.format(slug=slug, riwaya=riwaya, surah=surah_number)
+
+
+@lru_cache(maxsize=8)
+def _way2quran_available_surahs(slug: str, riwaya: str) -> frozenset[int]:
+    """Discover which surahs Way2Quran hosts for a reciter (cached)."""
+    pattern = re.compile(
+        rf'surahNumber\\":(\d+),\\"url\\":\\"https://media\.way2quran\.com/{re.escape(slug)}/{re.escape(riwaya)}/\d+\.mp3\\"'
+    )
+    found: set[int] = set()
+    base = WAY2QURAN_RECITER_PAGE.format(slug=slug)
+    for page in (1, 2, 3):
+        url = base if page == 1 else f"{base}?page={page}"
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; NoorSafar/1.0)"},
+            )
+            with urllib.request.urlopen(req, timeout=25) as resp:
+                html = resp.read().decode("utf-8", "replace")
+        except Exception:
+            continue
+        for num in pattern.findall(html):
+            found.add(int(num))
+    return frozenset(found)
+
+
+def _translation_payload(
+    client: httpx.Client,
+    surah_number: int,
+    translation_lang: str | None,
+) -> tuple[dict[int, str], str | None, dict | None]:
+    tr_by_num: dict[int, str] = {}
+    tr_edition = None
+    tr_info = None
+    if translation_lang and translation_lang in TRANSLATION_AUDIO_EDITIONS:
+        tr_meta = TRANSLATION_AUDIO_EDITIONS[translation_lang]
+        tr_edition = tr_meta["id"]
+        tr_payload = _fetch_surah_edition(client, surah_number, tr_edition)
+        for ayah in tr_payload.get("ayahs", []):
+            num = ayah.get("numberInSurah") or ayah.get("number")
+            audio = ayah.get("audio")
+            if num and audio:
+                tr_by_num[int(num)] = audio
+        tr_info = {**tr_meta, "fallback": "tts"}
+    elif translation_lang:
+        tr_info = {"lang": "hi", "fallback": "tts", "name": "AI voice (Hindi)"}
+    return tr_by_num, tr_edition, tr_info
+
+
+def _fetch_surah_custom(
+    client: httpx.Client,
+    surah_number: int,
+    reciter_id: str,
+    translation_lang: str | None,
+) -> dict:
+    meta = CUSTOM_AUDIO_RECITERS[reciter_id]
+    source = meta.get("source", "everyayah")
+    if source == "way2quran":
+        return _fetch_surah_way2quran(client, surah_number, reciter_id, translation_lang)
+    return _fetch_surah_everyayah(client, surah_number, reciter_id, translation_lang)
+
+
+def _fetch_surah_way2quran(
+    client: httpx.Client,
+    surah_number: int,
+    reciter_id: str,
+    translation_lang: str | None,
+) -> dict:
+    meta = CUSTOM_AUDIO_RECITERS[reciter_id]
+    slug = meta["way2quran_slug"]
+    riwaya = meta["way2quran_riwaya"]
+    available = _way2quran_available_surahs(slug, riwaya)
+    surah_audio = (
+        _way2quran_surah_url(slug, riwaya, surah_number) if surah_number in available else None
+    )
+
+    r = client.get(f"{ALQURAN}/surah/{surah_number}/quran-uthmani")
+    r.raise_for_status()
+    surah_data = r.json()["data"]
+    tr_by_num, tr_edition, tr_info = _translation_payload(client, surah_number, translation_lang)
+
+    ayahs = []
+    for ayah in surah_data.get("ayahs", []):
+        num = ayah.get("numberInSurah") or ayah.get("number")
+        if not num:
+            continue
+        num = int(num)
+        tr_audio = tr_by_num.get(num)
+        if translation_lang == "ur" and not tr_audio:
+            tr_audio = _everyayah_urdu_url(surah_number, num)
+
+        ayahs.append(
+            {
+                "ayah_number": num,
+                "verse_key": f"{surah_number}:{num}",
+                "audio": surah_audio,
+                "audio_secondary": [],
+                "translation_audio": tr_audio,
+            }
+        )
+
+    return {
+        "surah_number": surah_number,
+        "reciter": reciter_id,
+        "reciter_name": meta["name"],
+        "playback_mode": meta.get("playback_mode", "surah"),
+        "surah_audio_available": surah_audio is not None,
+        "available_surah_count": len(available),
+        "translation_lang": translation_lang,
+        "translation_edition": tr_edition,
+        "translation_audio_info": tr_info,
+        "ayahs": ayahs,
+    }
+
+
 def _fetch_surah_everyayah(
     client: httpx.Client,
     surah_number: int,
@@ -97,20 +230,7 @@ def _fetch_surah_everyayah(
     r.raise_for_status()
     surah_data = r.json()["data"]
 
-    tr_payload = None
-    tr_edition = None
-    if translation_lang and translation_lang in TRANSLATION_AUDIO_EDITIONS:
-        tr_meta = TRANSLATION_AUDIO_EDITIONS[translation_lang]
-        tr_edition = tr_meta["id"]
-        tr_payload = _fetch_surah_edition(client, surah_number, tr_edition)
-
-    tr_by_num: dict[int, str] = {}
-    if tr_payload:
-        for ayah in tr_payload.get("ayahs", []):
-            num = ayah.get("numberInSurah") or ayah.get("number")
-            audio = ayah.get("audio")
-            if num and audio:
-                tr_by_num[int(num)] = audio
+    tr_by_num, tr_edition, tr_info = _translation_payload(client, surah_number, translation_lang)
 
     ayahs = []
     for ayah in surah_data.get("ayahs", []):
@@ -132,17 +252,12 @@ def _fetch_surah_everyayah(
             }
         )
 
-    tr_info = None
-    if translation_lang:
-        if translation_lang in TRANSLATION_AUDIO_EDITIONS:
-            tr_info = {**TRANSLATION_AUDIO_EDITIONS[translation_lang], "fallback": "tts"}
-        else:
-            tr_info = {"lang": "hi", "fallback": "tts", "name": "AI voice (Hindi)"}
-
     return {
         "surah_number": surah_number,
         "reciter": reciter_id,
         "reciter_name": meta["name"],
+        "playback_mode": meta.get("playback_mode", "ayah"),
+        "surah_audio_available": True,
         "translation_lang": translation_lang,
         "translation_edition": tr_edition,
         "translation_audio_info": tr_info,
@@ -198,7 +313,7 @@ def get_surah_audio(
     if reciter in CUSTOM_AUDIO_RECITERS:
         try:
             with httpx.Client(timeout=45) as client:
-                return _fetch_surah_everyayah(client, surah_number, reciter, translation_lang)
+                return _fetch_surah_custom(client, surah_number, reciter, translation_lang)
         except httpx.HTTPStatusError as exc:
             raise HTTPException(502, f"Audio source error: {exc.response.status_code}") from exc
         except Exception as exc:

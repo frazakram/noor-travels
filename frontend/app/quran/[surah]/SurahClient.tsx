@@ -356,6 +356,14 @@ export default function SurahClient() {
                 )}
               </select>
             </div>
+            {audio.playbackMode === "surah" && (
+              <p className="text-[11px] text-muted">{t(lang, "reciterSurahMode")}</p>
+            )}
+            {audio.playbackMode === "surah" && !audio.surahAudioAvailable && (
+              <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                {t(lang, "reciterSurahUnavailable")}
+              </p>
+            )}
             <label className="flex items-center gap-2 text-xs">
               <input
                 type="checkbox"
