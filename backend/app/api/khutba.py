@@ -108,6 +108,8 @@ async def khutba_live_chunk(body: LiveChunkRequest):
     accumulated English text so khutbah matching stays stateless server-side.
     """
     settings = get_settings()
+    if not re.sub(r"[^\x21-\x7E]", "", settings.deepgram_api_key):
+        raise HTTPException(503, "Transcription unavailable: DEEPGRAM_API_KEY is not set on the server")
     try:
         data = base64.b64decode(body.audio_b64, validate=True)
     except Exception as exc:
@@ -122,8 +124,7 @@ async def khutba_live_chunk(body: LiveChunkRequest):
     except httpx.HTTPStatusError as exc:
         raise HTTPException(502, f"Transcription failed ({exc.response.status_code})") from exc
     except Exception as exc:
-        hint = "header" if "header" in str(exc).lower() else "other"
-        raise HTTPException(502, f"Transcription failed ({type(exc).__name__}:{hint}:v4)") from exc
+        raise HTTPException(502, f"Transcription failed ({type(exc).__name__})") from exc
     if not transcript.strip():
         return {"type": "empty", "message": "No speech detected"}
 
@@ -227,9 +228,9 @@ async def _transcribe_arabic(
     api_key: str, audio_bytes: bytes, content_type: str = "audio/webm"
 ) -> str:
     # nova-2 has no Arabic support; Deepgram serves Arabic through hosted Whisper.
-    # The key pasted into the env can carry invisible non-ASCII characters
-    # (zero-width spaces survive .strip()); h11 rejects them as illegal header
-    # bytes. API keys are printable ASCII, so drop everything else.
+    # Header values must be printable ASCII with no stray whitespace, or h11
+    # raises LocalProtocolError — an empty key yields "Token " (trailing space)
+    # and pasted keys can carry zero-width characters, so sanitize both.
     clean_key = re.sub(r"[^\x21-\x7E]", "", api_key)
     clean_ct = re.sub(r"[^\x20-\x7E]", "", content_type).strip() or "audio/webm"
     async with httpx.AsyncClient(timeout=60.0) as http:
