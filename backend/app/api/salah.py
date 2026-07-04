@@ -25,6 +25,18 @@ def _today_aladhan_date(tz: str | None = None) -> str:
     return datetime.now(timezone.utc).strftime("%d-%m-%Y")
 
 
+def _shift_time(hhmm: str, minutes: int) -> str:
+    """Shift an HH:MM string by whole minutes, wrapping within the day."""
+    if not hhmm or not minutes:
+        return hhmm
+    try:
+        h, m = (int(x) for x in hhmm.split(":"))
+    except ValueError:
+        return hhmm
+    total = (h * 60 + m + minutes) % (24 * 60)
+    return f"{total // 60:02d}:{total % 60:02d}"
+
+
 @router.get("/times")
 async def prayer_times(
     lat: float = Query(..., ge=-90, le=90),
@@ -33,6 +45,11 @@ async def prayer_times(
     school: int = Query(default=DEFAULT_SCHOOL, ge=0, le=1),
     date: str | None = Query(default=None, description="DD-MM-YYYY"),
     timezone: str | None = Query(default=None, description="IANA timezone for today's date"),
+    fajr_adj: int = Query(default=0, ge=-60, le=60),
+    dhuhr_adj: int = Query(default=0, ge=-60, le=60),
+    asr_adj: int = Query(default=0, ge=-60, le=60),
+    maghrib_adj: int = Query(default=0, ge=-60, le=60),
+    isha_adj: int = Query(default=0, ge=-60, le=60),
 ):
     day = date or _today_aladhan_date(timezone)
     url = f"https://api.aladhan.com/v1/timings/{day}"
@@ -59,14 +76,19 @@ async def prayer_times(
     def clean(t: str) -> str:
         return t.split()[0] if t else ""
 
-    fajr = clean(timings.get("Fajr", ""))
+    # Per-prayer minute adjustments let users match their local masjid
+    # timetable, which typically differs a few minutes from any calculation.
+    fajr = _shift_time(clean(timings.get("Fajr", "")), fajr_adj)
     sunrise = clean(timings.get("Sunrise", ""))
-    dhuhr = clean(timings.get("Dhuhr", ""))
-    asr = clean(timings.get("Asr", ""))
-    maghrib = clean(timings.get("Maghrib", ""))
-    isha = clean(timings.get("Isha", ""))
+    dhuhr = _shift_time(clean(timings.get("Dhuhr", "")), dhuhr_adj)
+    asr = _shift_time(clean(timings.get("Asr", "")), asr_adj)
+    maghrib = _shift_time(clean(timings.get("Maghrib", "")), maghrib_adj)
+    isha = _shift_time(clean(timings.get("Isha", "")), isha_adj)
     midnight = clean(timings.get("Midnight", ""))
 
+    # End times per fiqh consensus: Fajr ends at sunrise, each prayer ends
+    # when the next begins, Isha ends at Islamic midnight (midpoint of
+    # sunset to Fajr).
     prayers = [
         {"id": "fajr", "start": fajr, "end": sunrise},
         {"id": "dhuhr", "start": dhuhr, "end": asr},

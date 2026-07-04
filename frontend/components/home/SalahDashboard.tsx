@@ -324,7 +324,14 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                     </span>
                   )}
                 </span>
-                <span className={`font-mono text-sm text-gold-300 ${isPast ? "opacity-60" : ""}`}>{p.start}</span>
+                <span className={`text-right ${isPast ? "opacity-60" : ""}`}>
+                  <span className="block font-mono text-sm text-gold-300">{p.start}</span>
+                  {p.end && (
+                    <span className="block font-mono text-[10px] text-white/50">
+                      {t(lang, "salahUntil")} {p.end}
+                    </span>
+                  )}
+                </span>
                 <span
                   role="button"
                   tabIndex={0}

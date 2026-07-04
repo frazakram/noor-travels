@@ -46,6 +46,7 @@ export default function SurahClient() {
   const [repeatScope, setRepeatScope] = useState<RepeatScope>("ayah");
   const [audioRepeatCount, setAudioRepeatCount] = useState(1);
   const [showAudioOpts, setShowAudioOpts] = useState(false);
+  const [showTranslationText, setShowTranslationText] = useState(true);
   const [surahLoading, setSurahLoading] = useState(true);
   const [renderLimit, setRenderLimit] = useState(AYAH_RENDER_CHUNK);
 
@@ -110,6 +111,7 @@ export default function SurahClient() {
     if (savedAudioRepeat >= 1 && savedAudioRepeat <= MAX_REPEAT) {
       setAudioRepeatCount(savedAudioRepeat);
     }
+    if (localStorage.getItem("noor-read-translation") === "0") setShowTranslationText(false);
   }, []);
 
   useEffect(() => {
@@ -123,6 +125,7 @@ export default function SurahClient() {
     localStorage.setItem("noor-audio-tafsir-source", tafsirSource);
     localStorage.setItem("noor-audio-repeat-scope", repeatScope);
     localStorage.setItem("noor-audio-repeat-count", String(audioRepeatCount));
+    localStorage.setItem("noor-read-translation", showTranslationText ? "1" : "0");
   }, [
     translation,
     studyMode,
@@ -134,6 +137,7 @@ export default function SurahClient() {
     tafsirSource,
     repeatScope,
     audioRepeatCount,
+    showTranslationText,
   ]);
 
   useEffect(() => {
@@ -513,6 +517,14 @@ export default function SurahClient() {
 
       <div className="flex flex-wrap gap-4 text-sm text-muted">
         <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={showTranslationText}
+            onChange={(e) => setShowTranslationText(e.target.checked)}
+          />
+          {t(lang, "showTranslation")}
+        </label>
+        <label className="flex items-center gap-2">
           <input type="checkbox" checked={showRoman} onChange={(e) => setShowRoman(e.target.checked)} />
           {t(lang, "arabicRoman")}
         </label>
@@ -573,12 +585,14 @@ export default function SurahClient() {
                   {a.transliteration}
                 </p>
               )}
-              <p
-                className="mt-3 text-sm leading-relaxed text-body"
-                dir={translation === "ur" ? "rtl" : "ltr"}
-              >
-                {displayTranslation(a)}
-              </p>
+              {showTranslationText && (
+                <p
+                  className="mt-3 text-sm leading-relaxed text-body"
+                  dir={translation === "ur" ? "rtl" : "ltr"}
+                >
+                  {displayTranslation(a)}
+                </p>
+              )}
               {translation === "hi" && showHiRoman && a.transliteration_hi && (
                 <p className="mt-2 text-xs italic text-faint" dir="ltr">
                   {t(lang, "hindiRoman")}: {a.transliteration_hi}

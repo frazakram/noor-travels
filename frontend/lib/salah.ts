@@ -41,14 +41,27 @@ export type LocationSearchResult = {
   longitude: number;
 };
 
+export type PrayerOffsets = Record<PrayerId, number>;
+
 export type SalahSettings = {
   method: number;
   school: 0 | 1;
+  /** Per-prayer minute adjustments to match the local masjid timetable. */
+  offsets: PrayerOffsets;
+};
+
+export const DEFAULT_PRAYER_OFFSETS: PrayerOffsets = {
+  fajr: 0,
+  dhuhr: 0,
+  asr: 0,
+  maghrib: 0,
+  isha: 0,
 };
 
 export const DEFAULT_SALAH_SETTINGS: SalahSettings = {
   method: 1,
   school: 1,
+  offsets: DEFAULT_PRAYER_OFFSETS,
 };
 
 export const PRAYER_METHODS = [

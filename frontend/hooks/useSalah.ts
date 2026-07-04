@@ -61,9 +61,15 @@ function loadSettings(): SalahSettings {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return DEFAULT_SALAH_SETTINGS;
     const value = JSON.parse(raw);
+    const offsets = { ...DEFAULT_SALAH_SETTINGS.offsets };
+    for (const id of Object.keys(offsets) as (keyof typeof offsets)[]) {
+      const v = Number(value.offsets?.[id]);
+      if (Number.isInteger(v) && Math.abs(v) <= 60) offsets[id] = v;
+    }
     return {
       method: Number(value.method) || DEFAULT_SALAH_SETTINGS.method,
       school: value.school === 0 ? 0 : 1,
+      offsets,
     };
   } catch {
     return DEFAULT_SALAH_SETTINGS;
@@ -104,10 +110,12 @@ export function useSalah(): SalahState {
     try {
       const day = tzHint ? todayDateInTz(tzHint) : localTodayDate();
       const tzParam = tzHint ? `&timezone=${encodeURIComponent(tzHint)}` : "";
+      const o = opts.offsets ?? DEFAULT_SALAH_SETTINGS.offsets;
+      const adjParam = `&fajr_adj=${o.fajr}&dhuhr_adj=${o.dhuhr}&asr_adj=${o.asr}&maghrib_adj=${o.maghrib}&isha_adj=${o.isha}`;
       const [loc, prayerTimes] = await Promise.all([
         api<LocationResponse>(`/api/salah/location?lat=${lat}&lng=${lng}`),
         api<SalahTimesResponse>(
-          `/api/salah/times?lat=${lat}&lng=${lng}&method=${opts.method}&school=${opts.school}&date=${day}${tzParam}`,
+          `/api/salah/times?lat=${lat}&lng=${lng}&method=${opts.method}&school=${opts.school}&date=${day}${tzParam}${adjParam}`,
         ),
       ]);
       setLocationLabel(loc.label);

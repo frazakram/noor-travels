@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { DailyReflection } from "@/components/home/DailyReflection";
+import { HadithOfTheDay } from "@/components/home/HadithOfTheDay";
 import { FeaturedKhutba } from "@/components/home/FeaturedKhutba";
 import { QiblaHijriWidget } from "@/components/home/QiblaHijriWidget";
 import { SalahDashboard } from "@/components/home/SalahDashboard";
@@ -99,6 +100,8 @@ export default function HomePage() {
 
       <div className="space-y-4">
         <DailyReflection lang={lang} />
+
+        <HadithOfTheDay lang={lang} />
 
         <TasbeehWidget />
 

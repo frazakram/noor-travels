@@ -3,7 +3,13 @@
 import { useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { api } from "@/lib/api";
-import { PRAYER_METHODS, type LocationSearchResult, type SalahSettings } from "@/lib/salah";
+import {
+  DEFAULT_PRAYER_OFFSETS,
+  PRAYER_METHODS,
+  type LocationSearchResult,
+  type PrayerId,
+  type SalahSettings,
+} from "@/lib/salah";
 import { t } from "@/lib/i18n";
 
 type Props = {
@@ -13,11 +19,26 @@ type Props = {
   onUseGps: () => void;
 };
 
+const OFFSET_PRAYERS: { id: PrayerId; labelKey: "salahFajr" | "salahDhuhr" | "salahAsr" | "salahMaghrib" | "salahIsha" }[] = [
+  { id: "fajr", labelKey: "salahFajr" },
+  { id: "dhuhr", labelKey: "salahDhuhr" },
+  { id: "asr", labelKey: "salahAsr" },
+  { id: "maghrib", labelKey: "salahMaghrib" },
+  { id: "isha", labelKey: "salahIsha" },
+];
+
 export function SalahSettingsPanel({ settings, onSettings, onManualLocation, onUseGps }: Props) {
   const { lang } = useLang();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<LocationSearchResult[]>([]);
+
+  const offsets = settings.offsets ?? DEFAULT_PRAYER_OFFSETS;
+
+  function nudge(id: PrayerId, delta: number) {
+    const next = Math.max(-60, Math.min(60, (offsets[id] ?? 0) + delta));
+    onSettings({ ...settings, offsets: { ...offsets, [id]: next } });
+  }
 
   async function searchCity(e: React.FormEvent) {
     e.preventDefault();
@@ -98,6 +119,42 @@ export function SalahSettingsPanel({ settings, onSettings, onManualLocation, onU
               >
                 Hanafi
               </button>
+            </div>
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <label className="block text-xs font-medium text-muted">{t(lang, "masjidAdjustTitle")}</label>
+            <p className="text-xs text-faint">{t(lang, "masjidAdjustHint")}</p>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+              {OFFSET_PRAYERS.map(({ id, labelKey }) => (
+                <div
+                  key={id}
+                  className="flex items-center justify-between gap-2 rounded-xl border border-subtle bg-surface-muted/50 px-3 py-2"
+                >
+                  <span className="text-sm font-medium text-heading">{t(lang, labelKey)}</span>
+                  <div className="flex items-center gap-1.5" dir="ltr">
+                    <button
+                      type="button"
+                      onClick={() => nudge(id, -1)}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-subtle text-sm text-body active:scale-95"
+                      aria-label={`${t(lang, labelKey)} -1 min`}
+                    >
+                      −
+                    </button>
+                    <span className="min-w-10 text-center font-mono text-xs text-accent">
+                      {offsets[id] > 0 ? `+${offsets[id]}` : offsets[id]}m
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => nudge(id, 1)}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-subtle text-sm text-body active:scale-95"
+                      aria-label={`${t(lang, labelKey)} +1 min`}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
