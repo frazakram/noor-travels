@@ -97,6 +97,7 @@ class LiveChunkRequest(BaseModel):
     audio_b64: str = Field(min_length=1, max_length=4_000_000)
     content_type: str = "audio/webm"
     accumulated: str = Field(default="", max_length=8000)
+    accumulated_ar: str = Field(default="", max_length=8000)
 
 
 @router.post("/live-chunk")
@@ -144,6 +145,7 @@ async def khutba_live_chunk(body: LiveChunkRequest):
     result = json.loads(translation.choices[0].message.content or "{}")
     english = result.get("english", "").strip()
     accumulated_english = f"{body.accumulated} {english}".strip()[-4000:]
+    accumulated_arabic = f"{body.accumulated_ar} {transcript.strip()}".strip()[-4000:]
 
     response: dict = {
         "type": "translation",
@@ -151,17 +153,22 @@ async def khutba_live_chunk(body: LiveChunkRequest):
         "english": english,
         "urdu": result.get("urdu", ""),
         "accumulated": accumulated_english,
+        "accumulated_ar": accumulated_arabic,
         "match": None,
+        "suggestion": None,
     }
-    match = match_transcript(accumulated_english) if accumulated_english else None
+    match = match_transcript(accumulated_english, accumulated_arabic)
     if match:
-        response["match"] = {
+        payload = {
             "slug": match.khutbah.slug,
             "title": match.khutbah.title,
             "source_url": match.khutbah.source_url,
             "score": match.score,
             "matched_phrase": match.matched_phrase,
         }
+        # Fuzzy hits are likely-but-not-certain: surface as a tappable
+        # suggestion so live listening keeps going.
+        response["suggestion" if match.tier == "fuzzy" else "match"] = payload
     return response
 
 
@@ -208,7 +215,7 @@ async def khutba_live(ws: WebSocket):
             )
 
             match = match_transcript(accumulated_english)
-            if match:
+            if match and match.tier == "exact":
                 matched_slug = match.khutbah.slug
                 await ws.send_json(
                     {

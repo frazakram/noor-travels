@@ -33,11 +33,13 @@ export default function KhutbaPage() {
   const [sermonQuery, setSermonQuery] = useState("");
   const [selected, setSelected] = useState<SermonDetail | null>(null);
   const [matchNotice, setMatchNotice] = useState("");
+  const [suggestion, setSuggestion] = useState<{ slug: string; title: string } | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeRef = useRef(false);
   const accumulatedRef = useRef("");
+  const accumulatedArRef = useRef("");
   const uploadQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const loadSermons = useCallback(async (q = "") => {
@@ -97,18 +99,22 @@ export default function KhutbaPage() {
       english?: string;
       urdu?: string;
       accumulated?: string;
+      accumulated_ar?: string;
       match?: { slug: string; title: string } | null;
+      suggestion?: { slug: string; title: string } | null;
     }>("/api/khutba/live-chunk", {
       method: "POST",
       body: JSON.stringify({
         audio_b64: audioB64,
         content_type: blob.type || "audio/webm",
         accumulated: accumulatedRef.current,
+        accumulated_ar: accumulatedArRef.current,
       }),
     });
     if (!activeRef.current) return;
     if (data.type === "translation") {
       accumulatedRef.current = data.accumulated || accumulatedRef.current;
+      accumulatedArRef.current = data.accumulated_ar || accumulatedArRef.current;
       setLines((prev) =>
         [
           { arabic: data.arabic ?? "", english: data.english ?? "", urdu: data.urdu ?? "" },
@@ -119,8 +125,11 @@ export default function KhutbaPage() {
     }
     if (data.match) {
       stop();
+      setSuggestion(null);
       setMatchNotice(`${t(lang, "khutbaMatched")}: ${decodeHtmlEntities(data.match.title)}`);
       await openSermon(data.match.slug);
+    } else if (data.suggestion) {
+      setSuggestion(data.suggestion);
     }
   }
 
@@ -136,9 +145,11 @@ export default function KhutbaPage() {
   async function start() {
     try {
       setMatchNotice("");
+      setSuggestion(null);
       setSelected(null);
       setLines([]);
       accumulatedRef.current = "";
+      accumulatedArRef.current = "";
       uploadQueueRef.current = Promise.resolve();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -197,6 +208,24 @@ export default function KhutbaPage() {
           <div className="card border-gold-400 bg-gold-50 dark:border-gold-500 dark:bg-noor-900/80">
             <p className="font-medium text-heading">{matchNotice}</p>
             <p className="mt-1 text-sm text-muted">{t(lang, "khutbaMatchedHint")}</p>
+          </div>
+        )}
+        {suggestion && !matchNotice && (
+          <div className="card border-gold-400 bg-gold-50 dark:border-gold-500 dark:bg-noor-900/80">
+            <p className="font-medium text-heading">
+              {t(lang, "khutbaSuggested")}: {decodeHtmlEntities(suggestion.title)}
+            </p>
+            <button
+              type="button"
+              className="mt-2 text-sm font-medium text-accent hover:underline"
+              onClick={() => {
+                stop();
+                setSuggestion(null);
+                void openSermon(suggestion.slug);
+              }}
+            >
+              {t(lang, "khutbaOpenSuggestion")} →
+            </button>
           </div>
         )}
       </div>
