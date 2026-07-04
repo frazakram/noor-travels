@@ -120,19 +120,24 @@ async def khutba_live_chunk(body: LiveChunkRequest):
         )
     except httpx.HTTPStatusError as exc:
         raise HTTPException(502, f"Transcription failed ({exc.response.status_code})") from exc
+    except Exception as exc:
+        raise HTTPException(502, f"Transcription failed ({type(exc).__name__})") from exc
     if not transcript.strip():
         return {"type": "empty", "message": "No speech detected"}
 
-    client, model = _translation_client_and_model(settings)
-    translation = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": TRANSLATE_PROMPT},
-            {"role": "user", "content": transcript},
-        ],
-        response_format={"type": "json_object"},
-        temperature=0.2,
-    )
+    try:
+        client, model = _translation_client_and_model(settings)
+        translation = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": TRANSLATE_PROMPT},
+                {"role": "user", "content": transcript},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.2,
+        )
+    except Exception as exc:
+        raise HTTPException(502, f"Translation failed ({type(exc).__name__})") from exc
     result = json.loads(translation.choices[0].message.content or "{}")
     english = result.get("english", "").strip()
     accumulated_english = f"{body.accumulated} {english}".strip()[-4000:]
