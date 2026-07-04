@@ -121,7 +121,8 @@ async def khutba_live_chunk(body: LiveChunkRequest):
     except httpx.HTTPStatusError as exc:
         raise HTTPException(502, f"Transcription failed ({exc.response.status_code})") from exc
     except Exception as exc:
-        raise HTTPException(502, f"Transcription failed ({type(exc).__name__})") from exc
+        hint = "header" if "header" in str(exc).lower() else "other"
+        raise HTTPException(502, f"Transcription failed ({type(exc).__name__}:{hint}:v3)") from exc
     if not transcript.strip():
         return {"type": "empty", "message": "No speech detected"}
 
@@ -225,7 +226,10 @@ async def _transcribe_arabic(
     api_key: str, audio_bytes: bytes, content_type: str = "audio/webm"
 ) -> str:
     # nova-2 has no Arabic support; Deepgram serves Arabic through hosted Whisper.
-    # strip(): env values pasted with a trailing newline make the header illegal.
+    # Keys pasted into env vars can carry newlines anywhere; whitespace is never
+    # legal in an API key or header value, so drop it all.
+    clean_key = "".join(api_key.split())
+    clean_ct = "".join(content_type.split()) or "audio/webm"
     async with httpx.AsyncClient(timeout=60.0) as http:
         resp = await http.post(
             "https://api.deepgram.com/v1/listen",
@@ -236,8 +240,8 @@ async def _transcribe_arabic(
                 "smart_format": "true",
             },
             headers={
-                "Authorization": f"Token {api_key.strip()}",
-                "Content-Type": content_type.strip() or "audio/webm",
+                "Authorization": f"Token {clean_key}",
+                "Content-Type": clean_ct,
             },
             content=audio_bytes,
         )
