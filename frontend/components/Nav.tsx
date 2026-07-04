@@ -7,6 +7,7 @@ import { AppLogo } from "@/components/AppLogo";
 import { MobileNavDrawer } from "@/components/MobileNavDrawer";
 import { useLang } from "@/components/LangProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AUTH_CHANGED_EVENT, getUser } from "@/lib/auth";
 import { t, type Lang } from "@/lib/i18n";
 
 const links = [
@@ -18,6 +19,42 @@ const links = [
   { href: "/duas", key: "duas" as const },
   { href: "/khutba", key: "khutba" as const },
 ];
+
+function AccountButton() {
+  const { lang } = useLang();
+  const [initial, setInitial] = useState<string | null>(null);
+
+  useEffect(() => {
+    const refresh = () => {
+      const u = getUser();
+      setInitial(u ? (u.name || u.email)[0]?.toUpperCase() ?? null : null);
+    };
+    refresh();
+    window.addEventListener(AUTH_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(AUTH_CHANGED_EVENT, refresh);
+  }, []);
+
+  return (
+    <Link
+      href="/account"
+      aria-label={t(lang, "account")}
+      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:scale-105"
+    >
+      {initial ? (
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-emerald-600 text-sm font-bold text-white shadow-sm">
+          {initial}
+        </span>
+      ) : (
+        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-subtle bg-white/70 text-slate-500 dark:bg-slate-800/70 dark:text-slate-300">
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+            <circle cx="12" cy="8.2" r="3.4" />
+            <path d="M5 19.4c1.3-3 4-4.6 7-4.6s5.7 1.6 7 4.6" strokeLinecap="round" />
+          </svg>
+        </span>
+      )}
+    </Link>
+  );
+}
 
 export function Nav() {
   const pathname = usePathname();
@@ -100,6 +137,7 @@ export function Nav() {
             ))}
           </nav>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2" dir="ltr">
+            <AccountButton />
             <ThemeToggle variant="inline" />
             <div className="hidden rounded-full bg-slate-100 p-1 shadow-inner sm:flex dark:bg-slate-800">
               {(["en", "ur", "hi"] as Lang[]).map((l) => (

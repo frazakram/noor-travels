@@ -114,7 +114,7 @@ VOCAB_LESSONS: list[dict] = [
             {"ar": "ٱلْخَبِير", "tr": "al-Khabīr", "en": "the All-Aware", "ur": "خبیر", "hi": "पूरी ख़बर रखने वाला", "freq": 45},
             {"ar": "ٱلْقَدِير", "tr": "al-Qadīr", "en": "the All-Powerful", "ur": "قدرت والا", "hi": "सर्वशक्तिमान", "freq": 45},
             {"ar": "ٱلْغَفُور", "tr": "al-Ghafūr", "en": "the Oft-Forgiving", "ur": "بخشنے والا", "hi": "बहुत बख्शने वाला", "freq": 91},
-            {"ar": "ٱلرَّحِيم", "tr": "ar-Raḥīm", "en": "the Especially Merciful", "ur": "رحیم", "hi": "रहम करने वाला", "freq": 114},
+            {"ar": "ٱلسَّمِيع", "tr": "as-Samīʿ", "en": "the All-Hearing", "ur": "سب کچھ سننے والا", "hi": "सब कुछ सुनने वाला", "freq": 45},
         ],
     },
     {
@@ -934,12 +934,33 @@ def _attach_examples(lessons: list[dict]) -> None:
             word["examples"] = examples
 
 
+_GLOSS_STOPWORDS = {
+    "he", "she", "it", "they", "we", "you", "i", "the", "a", "an", "of", "to",
+    "in", "on", "for", "and", "or", "not", "no", "his", "her", "their", "is",
+    "was", "who", "one", "all",
+}
+
+
+def _content_words(gloss: str) -> set[str]:
+    return {w for w in re.split(r"[^a-z]+", gloss.lower()) if len(w) >= 3 and w not in _GLOSS_STOPWORDS}
+
+
+def _glosses_collide(a: str, b: str) -> bool:
+    """'he came' vs 'he came; brought' — sharing a content word makes two
+    quiz options both defensible, so such pairs can't face each other."""
+    return bool(_content_words(a) & _content_words(b))
+
+
 def _build_quiz_for_vocab(lesson: dict) -> list[dict]:
     words = lesson.get("words") or []
     quiz = []
     for i, w in enumerate(words[:8]):
         rnd = random.Random(f"{lesson['id']}:{w['ar']}")
-        others = [x["en"] for j, x in enumerate(words) if j != i and x["en"] != w["en"]]
+        others = [
+            x["en"]
+            for j, x in enumerate(words)
+            if j != i and x["en"] != w["en"] and not _glosses_collide(x["en"], w["en"])
+        ]
         rnd.shuffle(others)
         options = [w["en"]] + others[:3]
         if len(options) < 4:

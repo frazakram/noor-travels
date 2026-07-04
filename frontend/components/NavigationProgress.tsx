@@ -6,10 +6,19 @@ import { usePathname } from "next/navigation";
 type Phase = "idle" | "loading" | "done";
 
 const PAGE_LOADING_EVENT = "noor:page-loading";
+const NAV_INTENT_EVENT = "noor:nav-intent";
 
 export function emitPageLoading(active: boolean) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent(PAGE_LOADING_EVENT, { detail: { active } }));
+}
+
+/** Start the top progress bar for programmatic navigation (router.push).
+ *  Anchor clicks are caught automatically; buttons that navigate must call
+ *  this right before pushing so the user sees instant feedback. */
+export function startRouteProgress() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(NAV_INTENT_EVENT));
 }
 
 export function NavigationProgress() {
@@ -41,6 +50,17 @@ export function NavigationProgress() {
     timers.current.push(setTimeout(() => setPct(48), 350));
     timers.current.push(setTimeout(() => setPct(68), 1400));
     timers.current.push(setTimeout(() => setPct(78), 3000));
+    // Watchdog: a pointerdown that never becomes a navigation (drag away,
+    // long-press cancel, push to the same route) must not strand the bar.
+    timers.current.push(
+      setTimeout(() => {
+        if (pendingNav.current && pageLoadingCount.current === 0) {
+          pendingNav.current = false;
+          setPhaseSafe("idle");
+          setPct(0);
+        }
+      }, 8000),
+    );
   }
 
   function finish() {
@@ -80,8 +100,16 @@ export function NavigationProgress() {
       start();
     }
 
+    function onNavIntent() {
+      start();
+    }
+
     document.addEventListener("pointerdown", onIntent, true);
-    return () => document.removeEventListener("pointerdown", onIntent, true);
+    window.addEventListener(NAV_INTENT_EVENT, onNavIntent);
+    return () => {
+      document.removeEventListener("pointerdown", onIntent, true);
+      window.removeEventListener(NAV_INTENT_EVENT, onNavIntent);
+    };
   }, [pathname]);
 
   // Route changed → complete bar when page work is done

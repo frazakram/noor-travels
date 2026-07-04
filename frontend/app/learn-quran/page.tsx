@@ -6,18 +6,22 @@ import { useLang } from "@/components/LangProvider";
 import {
   completedCount,
   fetchLearnIndex,
+  levelForPoints,
+  levelTitle,
   loadProgress,
   moduleTitle,
+  saveProgress,
   type LearnModule,
   type LearnProgress,
   type LearnQuranIndex,
 } from "@/lib/learn-quran";
+import { LearnTrail } from "@/components/LearnTrail";
 import { t } from "@/lib/i18n";
 
 export default function LearnQuranPage() {
   const { lang } = useLang();
   const [index, setIndex] = useState<LearnQuranIndex | null>(null);
-  const [progress, setProgress] = useState<LearnProgress>({ lessons: {}, streak: 0 });
+  const [progress, setProgress] = useState<LearnProgress>({ lessons: {}, streak: 0, points: 0 });
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -25,6 +29,16 @@ export default function LearnQuranPage() {
     fetchLearnIndex()
       .then(setIndex)
       .catch(() => setError("learnQuranLoadError"));
+    // Signed in? Pull cloud progress so another device's work shows up here.
+    void import("@/lib/auth")
+      .then(async (auth) => {
+        if (!auth.isLoggedIn()) return;
+        const remote = await auth.pullRemoteProgress();
+        const merged = auth.mergeProgress(loadProgress(), remote);
+        saveProgress(merged);
+        setProgress(merged);
+      })
+      .catch(() => undefined);
   }, []);
 
   const totalCompleted = useMemo(() => {
@@ -35,6 +49,7 @@ export default function LearnQuranPage() {
 
   const totalLessons = index?.meta.total_lessons ?? 0;
   const pct = totalLessons ? Math.round((totalCompleted / totalLessons) * 100) : 0;
+  const levelInfo = levelForPoints(progress.points);
 
   if (error) {
     return (
@@ -55,6 +70,8 @@ export default function LearnQuranPage() {
         <p className="text-sm leading-relaxed text-muted">{t(lang, "learnQuranSubtitle")}</p>
       </header>
 
+      <LearnTrail index={index} progress={progress} lang={lang} />
+
       <div className="card border-l-4 border-l-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -65,15 +82,36 @@ export default function LearnQuranPage() {
               {progress.streak > 0 && ` · ${progress.streak} ${t(lang, "salahStreak")}`}
             </p>
           </div>
-          <div className="text-right text-xs text-muted">
-            <p>{t(lang, "learnQuranTarget")}: ~{index.meta.target_coverage_pct}%</p>
-            <p>{index.meta.total_vocabulary}+ {t(lang, "learnQuranWords")}</p>
+          <div className="text-right">
+            <p className="text-lg font-bold text-heading">
+              {levelInfo.level.icon} {progress.points} <span className="text-xs font-normal text-muted">{t(lang, "learnQuranPoints")}</span>
+            </p>
+            <p className="text-xs font-medium text-accent">{levelTitle(levelInfo.level, lang)}</p>
+            {levelInfo.next && (
+              <p className="text-[10px] text-faint">
+                {levelInfo.next.min - progress.points} → {levelTitle(levelInfo.next, lang)}
+              </p>
+            )}
           </div>
         </div>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/80 dark:bg-slate-800">
           <div className="h-full rounded-full bg-emerald-600 transition-all" style={{ width: `${pct}%` }} />
         </div>
       </div>
+
+      <Link
+        href="/learn-quran/test"
+        className="card flex items-center gap-3 border-dashed border-amber-300 transition hover:shadow-md dark:border-amber-800"
+      >
+        <span className="text-2xl">🧭</span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-heading">{t(lang, "learnQuranMockTest")}</span>
+          <span className="block text-xs text-muted">
+            {progress.placement ? t(lang, "learnQuranRetakeHint") : t(lang, "learnQuranMockTestHint")}
+          </span>
+        </span>
+        <span className="text-accent">→</span>
+      </Link>
 
       <p className="rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3 text-xs leading-relaxed text-body dark:border-amber-900 dark:bg-amber-950/20">
         {t(lang, "learnQuranPrereq")}

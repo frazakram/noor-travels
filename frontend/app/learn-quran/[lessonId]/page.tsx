@@ -8,15 +8,19 @@ import {
   fetchLearnIndex,
   fetchLessons,
   lessonTitle,
+  loadProgress,
   markLessonComplete,
   wordMeaning,
   type GrammarLesson,
   type LearnLesson,
+  type LearnProgress,
   type LearnQuranIndex,
   type ReadingLesson,
   type RootsLesson,
   type VocabLesson,
 } from "@/lib/learn-quran";
+import { LearnTrail } from "@/components/LearnTrail";
+import { startRouteProgress } from "@/components/NavigationProgress";
 import { t } from "@/lib/i18n";
 
 export default function LearnLessonPage() {
@@ -34,13 +38,22 @@ export default function LearnLessonPage() {
   const [quizDone, setQuizDone] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
   const [readingReveal, setReadingReveal] = useState<Record<string, boolean>>({});
+  const [progress, setProgress] = useState<LearnProgress>({ lessons: {}, streak: 0, points: 0 });
+  const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => {
-    Promise.all([fetchLearnIndex(), fetchLessons()]).then(([idx, all]) => {
-      setIndex(idx);
-      setLessons(all);
-    });
-  }, []);
+  const load = () => {
+    setLoadError(false);
+    setProgress(loadProgress());
+    Promise.all([fetchLearnIndex(), fetchLessons()])
+      .then(([idx, all]) => {
+        setIndex(idx);
+        setLessons(all);
+      })
+      .catch(() => setLoadError(true));
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(load, []);
 
   const lesson = lessons?.[lessonId];
   const module = index?.modules.find((m) => m.lesson_ids.includes(lessonId));
@@ -52,6 +65,7 @@ export default function LearnLessonPage() {
   const finishLesson = useCallback(
     (score?: number) => {
       markLessonComplete(lessonId, score);
+      startRouteProgress();
       if (nextId) router.push(`/learn-quran/${nextId}`);
       else router.push("/learn-quran");
     },
@@ -80,12 +94,34 @@ export default function LearnLessonPage() {
       if (quizIdx + 1 >= quizItems.length) {
         setQuizDone(true);
         const finalScore = correct ? quizScore + 1 : quizScore;
-        markLessonComplete(lessonId, Math.round((finalScore / quizItems.length) * 100));
+        setProgress(markLessonComplete(lessonId, Math.round((finalScore / quizItems.length) * 100)));
       } else {
         setQuizIdx((i) => i + 1);
         setSelected(null);
       }
     }, 700);
+  }
+
+  if (loadError) {
+    return (
+      <div className="card text-center">
+        <p className="text-sm text-muted">{t(lang, "learnQuranLoadError")}</p>
+        <button type="button" onClick={load} className="btn-primary mt-3 text-sm">
+          {t(lang, "learnQuranRetry")}
+        </button>
+      </div>
+    );
+  }
+
+  if (lessons && !lesson) {
+    return (
+      <div className="card text-center">
+        <p className="text-sm text-muted">{t(lang, "learnQuranLessonNotFound")}</p>
+        <Link href="/learn-quran" className="btn-primary mt-3 inline-block text-sm">
+          ← {t(lang, "learnQuranBackCourse")}
+        </Link>
+      </div>
+    );
   }
 
   if (!lesson) {
@@ -100,6 +136,8 @@ export default function LearnLessonPage() {
         </Link>
         {module && <span className="text-faint">/ {module.title_en}</span>}
       </div>
+
+      {index && <LearnTrail index={index} progress={progress} lang={lang} currentLessonId={lessonId} />}
 
       <header>
         <h1 className="text-xl font-bold text-heading sm:text-2xl">{lessonTitle(lesson, lang)}</h1>
@@ -201,6 +239,9 @@ export default function LearnLessonPage() {
                 {Math.round((quizScore / quizItems.length) * 100)}%
               </p>
               <p className="mt-1 text-sm text-muted">{t(lang, "learnQuranQuizDone")}</p>
+              <p className="mt-1 text-xs font-medium text-accent">
+                ⭐ {progress.points} {t(lang, "learnQuranPoints")}
+              </p>
               <button type="button" onClick={() => finishLesson(Math.round((quizScore / quizItems.length) * 100))} className="btn-primary mt-4">
                 {nextId ? t(lang, "learnQuranNextLesson") : t(lang, "learnQuranBackCourse")}
               </button>

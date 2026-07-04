@@ -21,10 +21,20 @@ type Dua = {
 export default function DuasPage() {
   const { lang } = useLang();
   const [duas, setDuas] = useState<Dua[]>([]);
+  const [status, setStatus] = useState<"loading" | "error" | "done">("loading");
 
-  useEffect(() => {
-    apiStatic<{ duas: Dua[] }>("/api/duas/travel").then((d) => setDuas(d.duas));
-  }, []);
+  const load = () => {
+    setStatus("loading");
+    apiStatic<{ duas: Dua[] }>("/api/duas/travel")
+      .then((d) => {
+        setDuas(d.duas);
+        setStatus("done");
+      })
+      .catch(() => setStatus("error"));
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(load, []);
 
   function title(d: Dua) {
     if (lang === "ur") return d.title_ur;
@@ -41,6 +51,27 @@ export default function DuasPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-heading">{t(lang, "duas")}</h1>
+
+      {status === "loading" && (
+        <div className="space-y-4">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="card animate-pulse space-y-3">
+              <div className="h-4 w-1/3 rounded bg-surface-muted" />
+              <div className="h-6 w-full rounded bg-surface-muted" />
+              <div className="h-4 w-2/3 rounded bg-surface-muted" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {status === "error" && (
+        <div className="card text-center">
+          <p className="text-sm text-muted">{t(lang, "learnQuranLoadError")}</p>
+          <button type="button" onClick={load} className="btn-primary mt-3 text-sm">
+            {t(lang, "learnQuranRetry")}
+          </button>
+        </div>
+      )}
 
       <div className="space-y-4">
         {duas.map((d) => (

@@ -7,6 +7,7 @@ import { ChatWidget } from "@/components/ChatWidget";
 import { Footer } from "@/components/Footer";
 import { LangProvider } from "@/components/LangProvider";
 import { Nav } from "@/components/Nav";
+import { AuthNudge } from "@/components/AuthNudge";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { PageWrapper } from "@/components/PageWrapper";
 import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
@@ -63,6 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <RegisterServiceWorker />
               <ChatWidget />
               <InstallAppBanner />
+              <AuthNudge />
             </ChatProvider>
           </LangProvider>
         </ThemeProvider>

@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     postgres_url: str = ""
     supabase_url: str = ""
     cors_origins: str = "http://localhost:3000"
+    # Signs auth tokens. Set AUTH_SECRET in prod; the fallback derives a
+    # stable secret from the DB URL so tokens survive cold starts either way.
+    auth_secret: str = ""
 
     # Chat: "local" (free template), "groq" (free LLM), or "openai" (paid LLM)
     chat_provider: str = "local"
