@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { NoticeCard } from "@/components/NoticeCard";
-import { api, apiForm } from "@/lib/api";
+import { api } from "@/lib/api";
 import { decodeHtmlEntities } from "@/lib/html";
 import { t } from "@/lib/i18n";
 
@@ -75,20 +75,37 @@ export default function KhutbaPage() {
     return "";
   }
 
+  function blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const s = String(reader.result || "");
+        resolve(s.slice(s.indexOf(",") + 1));
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  }
+
   async function sendChunk(blob: Blob) {
     if (!activeRef.current || blob.size < 1000) return;
-    const form = new FormData();
-    const ext = blob.type.includes("mp4") ? "m4a" : "webm";
-    form.append("audio", blob, `chunk.${ext}`);
-    form.append("accumulated", accumulatedRef.current);
-    const data = await apiForm<{
+    // Base64 in JSON: Vercel's Python runtime corrupts binary multipart bodies.
+    const audioB64 = await blobToBase64(blob);
+    const data = await api<{
       type: string;
       arabic?: string;
       english?: string;
       urdu?: string;
       accumulated?: string;
       match?: { slug: string; title: string } | null;
-    }>("/api/khutba/live-chunk", form);
+    }>("/api/khutba/live-chunk", {
+      method: "POST",
+      body: JSON.stringify({
+        audio_b64: audioB64,
+        content_type: blob.type || "audio/webm",
+        accumulated: accumulatedRef.current,
+      }),
+    });
     if (!activeRef.current) return;
     if (data.type === "translation") {
       accumulatedRef.current = data.accumulated || accumulatedRef.current;

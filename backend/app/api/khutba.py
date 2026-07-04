@@ -1,8 +1,10 @@
+import base64
 import json
 
 import httpx
-from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
 from openai import OpenAI
+from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
 from app.db import get_cursor
@@ -87,11 +89,17 @@ def match_sermon(q: str = Query(min_length=8)):
     }
 
 
+class LiveChunkRequest(BaseModel):
+    """Audio travels base64-in-JSON: Vercel's Python runtime corrupts binary
+    multipart bodies (text multipart parses fine, binary 500s)."""
+
+    audio_b64: str = Field(min_length=1, max_length=4_000_000)
+    content_type: str = "audio/webm"
+    accumulated: str = Field(default="", max_length=8000)
+
+
 @router.post("/live-chunk")
-async def khutba_live_chunk(
-    audio: UploadFile = File(...),
-    accumulated: str = Form(default=""),
-):
+async def khutba_live_chunk(body: LiveChunkRequest):
     """One ~10s recording segment → Arabic transcript + English/Urdu translation.
 
     Vercel's serverless runtime drops WebSocket data frames, so the live page
@@ -99,13 +107,16 @@ async def khutba_live_chunk(
     accumulated English text so khutbah matching stays stateless server-side.
     """
     settings = get_settings()
-    data = await audio.read()
+    try:
+        data = base64.b64decode(body.audio_b64, validate=True)
+    except Exception as exc:
+        raise HTTPException(400, "Invalid audio encoding") from exc
     if len(data) < 200:
         return {"type": "empty", "message": "No speech detected"}
 
     try:
         transcript = await _transcribe_arabic(
-            settings.deepgram_api_key, data, audio.content_type or "audio/webm"
+            settings.deepgram_api_key, data, body.content_type or "audio/webm"
         )
     except httpx.HTTPStatusError as exc:
         raise HTTPException(502, f"Transcription failed ({exc.response.status_code})") from exc
@@ -124,7 +135,7 @@ async def khutba_live_chunk(
     )
     result = json.loads(translation.choices[0].message.content or "{}")
     english = result.get("english", "").strip()
-    accumulated_english = f"{accumulated} {english}".strip()[-4000:]
+    accumulated_english = f"{body.accumulated} {english}".strip()[-4000:]
 
     response: dict = {
         "type": "translation",

@@ -33,5 +33,7 @@ backend/ingestion
 
 # Docs / misc
 PLAN.md
-*.png
+# Only repo-root screenshots — a bare *.png also strips frontend/public logos
+/*.png
+frontend/*.png
 VERCEL_DEPLOY.md
