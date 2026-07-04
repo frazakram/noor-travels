@@ -1,5 +1,6 @@
 import base64
 import json
+import re
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
@@ -122,7 +123,7 @@ async def khutba_live_chunk(body: LiveChunkRequest):
         raise HTTPException(502, f"Transcription failed ({exc.response.status_code})") from exc
     except Exception as exc:
         hint = "header" if "header" in str(exc).lower() else "other"
-        raise HTTPException(502, f"Transcription failed ({type(exc).__name__}:{hint}:v3)") from exc
+        raise HTTPException(502, f"Transcription failed ({type(exc).__name__}:{hint}:v4)") from exc
     if not transcript.strip():
         return {"type": "empty", "message": "No speech detected"}
 
@@ -226,10 +227,11 @@ async def _transcribe_arabic(
     api_key: str, audio_bytes: bytes, content_type: str = "audio/webm"
 ) -> str:
     # nova-2 has no Arabic support; Deepgram serves Arabic through hosted Whisper.
-    # Keys pasted into env vars can carry newlines anywhere; whitespace is never
-    # legal in an API key or header value, so drop it all.
-    clean_key = "".join(api_key.split())
-    clean_ct = "".join(content_type.split()) or "audio/webm"
+    # The key pasted into the env can carry invisible non-ASCII characters
+    # (zero-width spaces survive .strip()); h11 rejects them as illegal header
+    # bytes. API keys are printable ASCII, so drop everything else.
+    clean_key = re.sub(r"[^\x21-\x7E]", "", api_key)
+    clean_ct = re.sub(r"[^\x20-\x7E]", "", content_type).strip() or "audio/webm"
     async with httpx.AsyncClient(timeout=60.0) as http:
         resp = await http.post(
             "https://api.deepgram.com/v1/listen",

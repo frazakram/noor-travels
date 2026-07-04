@@ -1,4 +1,4 @@
-const CACHE = "noor-safar-v3";
+const CACHE = "noor-safar-v4";
 const ASSETS = ["/", "/quran", "/duas", "/hadith", "/khutba", "/logo.png", "/logo-sm.png", "/logo-192.png"];
 
 self.addEventListener("install", (event) => {
@@ -16,11 +16,16 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
+  // RSC payloads belong to one build; caching them serves stale route trees.
+  if (req.url.includes("_rsc=")) return;
   event.respondWith(
     fetch(req)
       .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((cache) => cache.put(req, copy));
+        // Never cache errors — a cached 404 poisons the offline fallback.
+        if (res.ok && req.url.startsWith(self.location.origin)) {
+          const copy = res.clone();
+          caches.open(CACHE).then((cache) => cache.put(req, copy));
+        }
         return res;
       })
       .catch(() => caches.match(req).then((cached) => cached || caches.match("/"))),
