@@ -45,7 +45,7 @@ def _deepgram_speak(text: str, model: str) -> bytes:
             "https://api.deepgram.com/v1/speak",
             params={"model": model},
             headers={
-                "Authorization": f"Token {settings.deepgram_api_key}",
+                "Authorization": f"Token {settings.deepgram_api_key.strip()}",
                 "Content-Type": "application/json",
             },
             json={"text": text},

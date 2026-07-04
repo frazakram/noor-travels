@@ -21,10 +21,10 @@ def _translation_client_and_model(settings) -> tuple[OpenAI, str]:
     """Prefer Groq (free tier) like the chat service; OpenAI only as fallback."""
     if settings.groq_api_key.strip():
         return (
-            OpenAI(api_key=settings.groq_api_key, base_url="https://api.groq.com/openai/v1"),
+            OpenAI(api_key=settings.groq_api_key.strip(), base_url="https://api.groq.com/openai/v1"),
             settings.groq_chat_model,
         )
-    return OpenAI(api_key=settings.openai_api_key), settings.chat_model
+    return OpenAI(api_key=settings.openai_api_key.strip()), settings.chat_model
 
 
 @router.get("/sermons")
@@ -225,6 +225,7 @@ async def _transcribe_arabic(
     api_key: str, audio_bytes: bytes, content_type: str = "audio/webm"
 ) -> str:
     # nova-2 has no Arabic support; Deepgram serves Arabic through hosted Whisper.
+    # strip(): env values pasted with a trailing newline make the header illegal.
     async with httpx.AsyncClient(timeout=60.0) as http:
         resp = await http.post(
             "https://api.deepgram.com/v1/listen",
@@ -235,8 +236,8 @@ async def _transcribe_arabic(
                 "smart_format": "true",
             },
             headers={
-                "Authorization": f"Token {api_key}",
-                "Content-Type": content_type,
+                "Authorization": f"Token {api_key.strip()}",
+                "Content-Type": content_type.strip() or "audio/webm",
             },
             content=audio_bytes,
         )
