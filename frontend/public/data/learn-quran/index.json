@@ -14,7 +14,8 @@
         "vocab-03",
         "vocab-04",
         "vocab-05",
-        "vocab-06"
+        "vocab-06",
+        "vocab-14"
       ]
     },
     {
@@ -27,7 +28,10 @@
       "icon": "📚",
       "lesson_ids": [
         "vocab-07",
-        "vocab-08"
+        "vocab-08",
+        "vocab-15",
+        "vocab-16",
+        "vocab-17"
       ]
     },
     {
@@ -40,7 +44,10 @@
       "icon": "⚡",
       "lesson_ids": [
         "vocab-09",
-        "vocab-10"
+        "vocab-10",
+        "vocab-11",
+        "vocab-12",
+        "vocab-13"
       ]
     },
     {
@@ -56,7 +63,14 @@
         "grammar-02",
         "grammar-03",
         "grammar-04",
-        "grammar-05"
+        "grammar-05",
+        "grammar-06",
+        "grammar-07",
+        "grammar-08",
+        "grammar-09",
+        "grammar-10",
+        "grammar-11",
+        "grammar-12"
       ]
     },
     {
@@ -70,7 +84,10 @@
       "lesson_ids": [
         "roots-01",
         "roots-02",
-        "roots-03"
+        "roots-03",
+        "roots-04",
+        "roots-05",
+        "roots-06"
       ]
     },
     {
@@ -87,15 +104,22 @@
         "read-03",
         "read-04",
         "read-05",
-        "read-06"
+        "read-06",
+        "read-07",
+        "read-08",
+        "read-09",
+        "read-10",
+        "read-11",
+        "read-12",
+        "read-13"
       ]
     }
   ],
   "meta": {
     "version": 1,
     "total_modules": 6,
-    "total_lessons": 24,
-    "total_vocabulary": 103,
+    "total_lessons": 48,
+    "total_vocabulary": 182,
     "target_coverage_pct": 82.6,
     "sources": {
       "version": 1,

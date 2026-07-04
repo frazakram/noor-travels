@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import random
 import re
 import sqlite3
 import time
@@ -249,6 +250,169 @@ VOCAB_LESSONS: list[dict] = [
             {"ar": "عَبَدَ", "tr": "ʿabada", "en": "he worshipped", "ur": "اس نے عبادت کی", "hi": "उसने इबादत की", "freq": 46, "root": "ع ب د"},
         ],
     },
+    {
+        "id": "vocab-11",
+        "module_id": "m3-verbs",
+        "order": 3,
+        "title_en": "Present tense: says, knows, wills",
+        "title_ur": "فعل مضارع: کہتا ہے، جانتا ہے",
+        "title_hi": "वर्तमान काल: कहता है, जानता है",
+        "coverage_pct": 66.0,
+        "intro_en": "The Quran shifts to present tense for ongoing truths. Spot the يـ / تـ / نـ prefixes you learned in grammar.",
+        "words": [
+            {"ar": "يَقُولُ", "tr": "yaqūlu", "en": "he says", "ur": "وہ کہتا ہے", "hi": "वह कहता है", "freq": 332, "root": "ق و ل"},
+            {"ar": "يَعْلَمُ", "tr": "yaʿlamu", "en": "he knows", "ur": "وہ جانتا ہے", "hi": "वह जानता है", "freq": 300, "root": "ع ل م"},
+            {"ar": "يَعْمَلُونَ", "tr": "yaʿmalūna", "en": "they do; they work", "ur": "وہ کرتے ہیں", "hi": "वे करते हैं", "freq": 250, "root": "ع م ل"},
+            {"ar": "يُؤْمِنُونَ", "tr": "yuʾminūna", "en": "they believe", "ur": "وہ ایمان رکھتے ہیں", "hi": "वे ईमान रखते हैं", "freq": 87, "root": "ء م ن"},
+            {"ar": "يَرَىٰ", "tr": "yarā", "en": "he sees", "ur": "وہ دیکھتا ہے", "hi": "वह देखता है", "freq": 100, "root": "ر أ ي"},
+            {"ar": "يَشَآءُ", "tr": "yashāʾu", "en": "He wills", "ur": "وہ چاہتا ہے", "hi": "वह चाहता है", "freq": 116, "root": "ش ي أ"},
+            {"ar": "يَهْدِي", "tr": "yahdī", "en": "He guides", "ur": "وہ ہدایت دیتا ہے", "hi": "वह हिदायत देता है", "freq": 78, "root": "ه د ي"},
+            {"ar": "يَدْعُو", "tr": "yadʿū", "en": "he calls; invokes", "ur": "وہ پکارتا ہے", "hi": "वह पुकारता है", "freq": 45, "root": "د ع و"},
+            {"ar": "يَتَّقُونَ", "tr": "yattaqūna", "en": "they are mindful of Allah", "ur": "وہ تقویٰ اختیار کرتے ہیں", "hi": "वे तक़वा रखते हैं", "freq": 49, "root": "و ق ي"},
+            {"ar": "يُنفِقُونَ", "tr": "yunfiqūna", "en": "they spend (in charity)", "ur": "وہ خرچ کرتے ہیں", "hi": "वे ख़र्च करते हैं", "freq": 33, "root": "ن ف ق"},
+        ],
+    },
+    {
+        "id": "vocab-12",
+        "module_id": "m3-verbs",
+        "order": 4,
+        "title_en": "Enter, take, find — everyday verbs",
+        "title_ur": "داخل ہونا، لینا، پانا",
+        "title_hi": "दाख़िल होना, लेना, पाना",
+        "coverage_pct": 69.0,
+        "intro_en": "Narrative verbs that drive the stories of the prophets.",
+        "words": [
+            {"ar": "دَخَلَ", "tr": "dakhala", "en": "he entered", "ur": "وہ داخل ہوا", "hi": "वह दाख़िल हुआ", "freq": 79, "root": "د خ ل"},
+            {"ar": "خَرَجَ", "tr": "kharaja", "en": "he went out", "ur": "وہ نکلا", "hi": "वह निकला", "freq": 61, "root": "خ ر ج"},
+            {"ar": "أَخَذَ", "tr": "akhadha", "en": "he took; seized", "ur": "اس نے لیا", "hi": "उसने लिया", "freq": 127, "root": "أ خ ذ"},
+            {"ar": "تَرَكَ", "tr": "taraka", "en": "he left (behind)", "ur": "اس نے چھوڑا", "hi": "उसने छोड़ा", "freq": 43, "root": "ت ر ك"},
+            {"ar": "وَجَدَ", "tr": "wajada", "en": "he found", "ur": "اس نے پایا", "hi": "उसने पाया", "freq": 107, "root": "و ج د"},
+            {"ar": "سَمِعَ", "tr": "samiʿa", "en": "he heard", "ur": "اس نے سنا", "hi": "उसने सुना", "freq": 100, "root": "س م ع"},
+            {"ar": "رَأَىٰ", "tr": "raʾā", "en": "he saw", "ur": "اس نے دیکھا", "hi": "उसने देखा", "freq": 271, "root": "ر أ ي"},
+            {"ar": "عَمِلَ", "tr": "ʿamila", "en": "he did; worked", "ur": "اس نے عمل کیا", "hi": "उसने अमल किया", "freq": 120, "root": "ع م ل"},
+            {"ar": "كَسَبَ", "tr": "kasaba", "en": "he earned", "ur": "اس نے کمایا", "hi": "उसने कमाया", "freq": 62, "root": "ك س ب"},
+            {"ar": "مَاتَ", "tr": "māta", "en": "he died", "ur": "وہ مر گیا", "hi": "वह मर गया", "freq": 80, "root": "م و ت"},
+        ],
+    },
+    {
+        "id": "vocab-13",
+        "module_id": "m3-verbs",
+        "order": 5,
+        "title_en": "Give, command, ask, follow",
+        "title_ur": "دینا، حکم دینا، مانگنا",
+        "title_hi": "देना, हुक्म देना, माँगना",
+        "coverage_pct": 72.0,
+        "intro_en": "Verbs of giving, guidance and response — how Allah deals with His servants.",
+        "words": [
+            {"ar": "ءَاتَىٰ", "tr": "ātā", "en": "he gave", "ur": "اس نے دیا", "hi": "उसने दिया", "freq": 274, "root": "أ ت ي"},
+            {"ar": "أَمَرَ", "tr": "amara", "en": "he commanded", "ur": "اس نے حکم دیا", "hi": "उसने हुक्म दिया", "freq": 77, "root": "أ م ر"},
+            {"ar": "سَأَلَ", "tr": "saʾala", "en": "he asked", "ur": "اس نے پوچھا", "hi": "उसने पूछा", "freq": 120, "root": "س أ ل"},
+            {"ar": "ٱسْتَجَابَ", "tr": "istajāba", "en": "he answered (a prayer)", "ur": "اس نے قبول کیا", "hi": "उसने क़बूल किया", "freq": 43, "root": "ج و ب"},
+            {"ar": "وَعَدَ", "tr": "waʿada", "en": "he promised", "ur": "اس نے وعدہ کیا", "hi": "उसने वादा किया", "freq": 50, "root": "و ع د"},
+            {"ar": "ٱتَّبَعَ", "tr": "ittabaʿa", "en": "he followed", "ur": "اس نے پیروی کی", "hi": "उसने पालन किया", "freq": 140, "root": "ت ب ع"},
+            {"ar": "دَعَا", "tr": "daʿā", "en": "he called; prayed", "ur": "اس نے پکارا؛ دعا کی", "hi": "उसने पुकारा; दुआ की", "freq": 60, "root": "د ع و"},
+            {"ar": "حَكَمَ", "tr": "ḥakama", "en": "he judged", "ur": "اس نے فیصلہ کیا", "hi": "उसने फ़ैसला किया", "freq": 45, "root": "ح ك م"},
+            {"ar": "بَعَثَ", "tr": "baʿatha", "en": "he raised; sent forth", "ur": "اس نے اٹھایا؛ بھیجا", "hi": "उसने उठाया; भेजा", "freq": 65, "root": "ب ع ث"},
+            {"ar": "رَزَقَ", "tr": "razaqa", "en": "he provided", "ur": "اس نے رزق دیا", "hi": "उसने रिज़्क़ दिया", "freq": 55, "root": "ر ز ق"},
+        ],
+    },
+    {
+        "id": "vocab-14",
+        "module_id": "m1-core",
+        "order": 7,
+        "title_en": "Connectors: then, or, if, until",
+        "title_ur": "حروف ربط: پھر، یا، اگر",
+        "title_hi": "जोड़ने वाले शब्द: फिर, या, अगर",
+        "coverage_pct": 75.0,
+        "intro_en": "Small particles that structure every passage. Knowing these makes long ayahs suddenly readable.",
+        "words": [
+            {"ar": "ثُمَّ", "tr": "thumma", "en": "then; afterwards", "ur": "پھر", "hi": "फिर", "freq": 338},
+            {"ar": "أَوْ", "tr": "aw", "en": "or", "ur": "یا", "hi": "या", "freq": 280},
+            {"ar": "إِذَا", "tr": "idhā", "en": "when; whenever", "ur": "جب", "hi": "जब", "freq": 409},
+            {"ar": "إِذْ", "tr": "idh", "en": "when (recalling the past)", "ur": "جب (ماضی)", "hi": "जब (अतीत)", "freq": 239},
+            {"ar": "إِن", "tr": "in", "en": "if", "ur": "اگر", "hi": "अगर", "freq": 578},
+            {"ar": "لَمْ", "tr": "lam", "en": "did not", "ur": "نہیں (ماضی کی نفی)", "hi": "नहीं (अतीत की नफ़ी)", "freq": 353},
+            {"ar": "لَن", "tr": "lan", "en": "never will", "ur": "ہرگز نہیں", "hi": "कभी नहीं", "freq": 106},
+            {"ar": "قَدْ", "tr": "qad", "en": "certainly; already", "ur": "تحقیق؛ یقیناً", "hi": "निश्चय; यक़ीनन", "freq": 406},
+            {"ar": "بَلْ", "tr": "bal", "en": "rather; nay", "ur": "بلکہ", "hi": "बल्कि", "freq": 127},
+            {"ar": "حَتَّىٰ", "tr": "ḥattā", "en": "until", "ur": "یہاں تک کہ", "hi": "यहाँ तक कि", "freq": 142},
+            {"ar": "لَعَلَّ", "tr": "laʿalla", "en": "so that perhaps", "ur": "تاکہ شاید", "hi": "ताकि शायद", "freq": 129},
+            {"ar": "سَوْفَ", "tr": "sawfa", "en": "will (in future)", "ur": "عنقریب", "hi": "जल्द ही", "freq": 42},
+            {"ar": "كُلّ", "tr": "kull", "en": "every; all", "ur": "ہر؛ سب", "hi": "हर; सब", "freq": 358},
+        ],
+    },
+    {
+        "id": "vocab-15",
+        "module_id": "m2-nouns",
+        "order": 3,
+        "title_en": "Creation & nature",
+        "title_ur": "تخلیق اور فطرت",
+        "title_hi": "सृष्टि और प्रकृति",
+        "coverage_pct": 77.0,
+        "intro_en": "The Quran constantly points to creation as signs (āyāt) of Allah.",
+        "words": [
+            {"ar": "شَمْس", "tr": "shams", "en": "sun", "ur": "سورج", "hi": "सूरज", "freq": 33},
+            {"ar": "قَمَر", "tr": "qamar", "en": "moon", "ur": "چاند", "hi": "चाँद", "freq": 27},
+            {"ar": "لَيْل", "tr": "layl", "en": "night", "ur": "رات", "hi": "रात", "freq": 92},
+            {"ar": "نَهَار", "tr": "nahār", "en": "daytime", "ur": "دن", "hi": "दिन", "freq": 57},
+            {"ar": "مَآء", "tr": "māʾ", "en": "water", "ur": "پانی", "hi": "पानी", "freq": 63},
+            {"ar": "بَحْر", "tr": "baḥr", "en": "sea", "ur": "سمندر", "hi": "समुद्र", "freq": 41},
+            {"ar": "جِبَال", "tr": "jibāl", "en": "mountains", "ur": "پہاڑ", "hi": "पहाड़", "freq": 39},
+            {"ar": "شَجَرَة", "tr": "shajarah", "en": "tree", "ur": "درخت", "hi": "पेड़", "freq": 26},
+            {"ar": "نُور", "tr": "nūr", "en": "light", "ur": "روشنی؛ نور", "hi": "रोशनी; नूर", "freq": 43},
+            {"ar": "ظُلُمَٰت", "tr": "ẓulumāt", "en": "darknesses", "ur": "اندھیرے", "hi": "अंधेरे", "freq": 23},
+            {"ar": "رِيح", "tr": "rīḥ", "en": "wind", "ur": "ہوا", "hi": "हवा", "freq": 29},
+            {"ar": "نَجْم", "tr": "najm", "en": "star", "ur": "ستارہ", "hi": "तारा", "freq": 13},
+        ],
+    },
+    {
+        "id": "vocab-16",
+        "module_id": "m2-nouns",
+        "order": 4,
+        "title_en": "Life, truth & the path",
+        "title_ur": "زندگی، حق اور راستہ",
+        "title_hi": "ज़िंदगी, हक़ और रास्ता",
+        "coverage_pct": 79.5,
+        "intro_en": "Abstract nouns at the heart of the Quran's message.",
+        "words": [
+            {"ar": "حَيَوٰة", "tr": "ḥayāh", "en": "life", "ur": "زندگی", "hi": "ज़िंदगी", "freq": 76},
+            {"ar": "مَوْت", "tr": "mawt", "en": "death", "ur": "موت", "hi": "मौत", "freq": 50},
+            {"ar": "رِزْق", "tr": "rizq", "en": "provision", "ur": "رزق", "hi": "रिज़्क़", "freq": 55},
+            {"ar": "أَجْر", "tr": "ajr", "en": "reward", "ur": "اجر؛ بدلہ", "hi": "इनाम; बदला", "freq": 105},
+            {"ar": "عَذَاب", "tr": "ʿadhāb", "en": "punishment", "ur": "عذاب", "hi": "अज़ाब", "freq": 322},
+            {"ar": "ذَنۢب", "tr": "dhanb", "en": "sin", "ur": "گناہ", "hi": "गुनाह", "freq": 37},
+            {"ar": "سَبِيل", "tr": "sabīl", "en": "way; path", "ur": "راستہ", "hi": "रास्ता", "freq": 176},
+            {"ar": "حَقّ", "tr": "ḥaqq", "en": "truth; right", "ur": "حق", "hi": "हक़", "freq": 247},
+            {"ar": "ءَايَة", "tr": "āyah", "en": "sign; verse", "ur": "نشانی؛ آیت", "hi": "निशानी; आयत", "freq": 86},
+            {"ar": "أَمْر", "tr": "amr", "en": "command; affair", "ur": "حکم؛ معاملہ", "hi": "हुक्म; मामला", "freq": 166},
+            {"ar": "فَضْل", "tr": "faḍl", "en": "bounty; grace", "ur": "فضل", "hi": "फ़ज़्ल", "freq": 84},
+            {"ar": "قِيَٰمَة", "tr": "qiyāmah", "en": "resurrection", "ur": "قیامت", "hi": "क़यामत", "freq": 70},
+        ],
+    },
+    {
+        "id": "vocab-17",
+        "module_id": "m2-nouns",
+        "order": 5,
+        "title_en": "Good, evil & the reckoning",
+        "title_ur": "نیکی، برائی اور حساب",
+        "title_hi": "नेकी, बुराई और हिसाब",
+        "coverage_pct": 82.0,
+        "intro_en": "The moral vocabulary of the Quran — deeds and their weighing.",
+        "words": [
+            {"ar": "خَيْر", "tr": "khayr", "en": "good; better", "ur": "بھلائی؛ بہتر", "hi": "भलाई; बेहतर", "freq": 186},
+            {"ar": "شَرّ", "tr": "sharr", "en": "evil", "ur": "برائی؛ شر", "hi": "बुराई", "freq": 30},
+            {"ar": "عَمَل", "tr": "ʿamal", "en": "deed; work", "ur": "عمل", "hi": "अमल", "freq": 71},
+            {"ar": "صَٰلِحَٰت", "tr": "ṣāliḥāt", "en": "righteous deeds", "ur": "نیک اعمال", "hi": "नेक काम", "freq": 63},
+            {"ar": "سَيِّئَة", "tr": "sayyiʾah", "en": "bad deed", "ur": "برائی؛ گناہ", "hi": "बुरा काम", "freq": 22},
+            {"ar": "ذِكْر", "tr": "dhikr", "en": "remembrance", "ur": "ذکر؛ یاد", "hi": "ज़िक्र; याद", "freq": 76},
+            {"ar": "صَبْر", "tr": "ṣabr", "en": "patience", "ur": "صبر", "hi": "सब्र", "freq": 103},
+            {"ar": "غَيْب", "tr": "ghayb", "en": "the unseen", "ur": "غیب", "hi": "ग़ैब", "freq": 49},
+            {"ar": "حِسَاب", "tr": "ḥisāb", "en": "reckoning; account", "ur": "حساب", "hi": "हिसाब", "freq": 39},
+            {"ar": "جَزَآء", "tr": "jazāʾ", "en": "recompense", "ur": "بدلہ؛ جزا", "hi": "बदला", "freq": 42},
+            {"ar": "تَقْوَىٰ", "tr": "taqwā", "en": "God-consciousness", "ur": "تقویٰ", "hi": "तक़वा", "freq": 17},
+            {"ar": "دُعَآء", "tr": "duʿāʾ", "en": "supplication", "ur": "دعا", "hi": "दुआ", "freq": 20},
+        ],
+    },
 ]
 
 GRAMMAR_LESSONS: list[dict] = [
@@ -358,6 +522,197 @@ GRAMMAR_LESSONS: list[dict] = [
             {"q_en": "إِنَّ usually means?", "options": ["indeed / verily", "if", "not"], "answer": 0},
         ],
     },
+    {
+        "id": "grammar-06",
+        "module_id": "m4-grammar",
+        "order": 6,
+        "title_en": "Attached pronouns: my, your, His",
+        "title_ur": "متصل ضمیریں: میرا، تیرا، اس کا",
+        "title_hi": "जुड़े सर्वनाम: मेरा, तेरा, उसका",
+        "intro_en": "Arabic attaches pronouns to the end of words. One suffix turns رَبّ (Lord) into رَبُّكَ (your Lord) — this happens in almost every ayah.",
+        "sections": [
+            {
+                "heading_en": "The suffix set",
+                "body_en": "ـهُ his · ـهَا her · ـهُمْ their · ـكَ your (m) · ـكُمْ your (pl) · ـنَا our · ـِي my. They attach to nouns (possession), verbs (object) and prepositions.",
+                "examples": [
+                    {"ar": "رَبُّكَ", "en": "your Lord", "note": "رَبّ + كَ"},
+                    {"ar": "رَبَّنَا", "en": "our Lord", "note": "the du'a opener — رَبّ + نَا"},
+                    {"ar": "قُلُوبُهُمْ", "en": "their hearts", "note": "قُلُوب + هُمْ"},
+                ],
+            },
+            {
+                "heading_en": "On verbs and prepositions",
+                "body_en": "خَلَقَكُمْ = He created you. لَكُمْ = for you. فِيهَا = in it. عَلَيْهِمْ = upon them.",
+                "examples": [
+                    {"ar": "خَلَقَكُمْ", "en": "He created you (pl)", "note": "خَلَقَ + كُمْ"},
+                    {"ar": "لَكُمْ دِينُكُمْ وَلِيَ دِينِ", "en": "For you is your religion, and for me is my religion", "note": "109:6 — four pronouns in one ayah"},
+                ],
+            },
+        ],
+        "practice": [
+            {"q_en": "رَبُّنَا means?", "options": ["our Lord", "your Lord", "their Lord"], "answer": 0},
+            {"q_en": "In قُلُوبُهُمْ, the ـهُمْ means?", "options": ["their", "our", "my"], "answer": 0},
+        ],
+    },
+    {
+        "id": "grammar-07",
+        "module_id": "m4-grammar",
+        "order": 7,
+        "title_en": "Possession: the iḍāfah",
+        "title_ur": "اضافت",
+        "title_hi": "इज़ाफ़त (संबंध)",
+        "intro_en": "Two nouns side by side = 'X of Y'. رَسُولُ اللَّهِ = Messenger of Allah. The first noun never takes ال; the second is genitive.",
+        "sections": [
+            {
+                "heading_en": "The pattern",
+                "body_en": "رَبِّ ٱلْعَٰلَمِينَ = Lord of the worlds. يَوْمِ ٱلدِّينِ = Day of Judgement. أَهْلِ ٱلْكِتَٰبِ = People of the Book. Notice: first word has no ال, second word ends in kasra.",
+                "examples": [
+                    {"ar": "رَبِّ ٱلْعَٰلَمِينَ", "en": "Lord of the worlds", "note": "1:2"},
+                    {"ar": "مَٰلِكِ يَوْمِ ٱلدِّينِ", "en": "Master of the Day of Judgement", "note": "a chain: Master → of Day → of Judgement"},
+                    {"ar": "أَصْحَٰبُ ٱلْجَنَّةِ", "en": "companions of Paradise", "note": ""},
+                ],
+            },
+        ],
+        "practice": [
+            {"q_en": "كِتَٰبُ اللَّهِ means?", "options": ["the Book of Allah", "Allah is a book", "the written Allah"], "answer": 0},
+            {"q_en": "In an iḍāfah, the FIRST noun…", "options": ["never takes ال", "always takes ال", "must be a verb"], "answer": 0},
+        ],
+    },
+    {
+        "id": "grammar-08",
+        "module_id": "m4-grammar",
+        "order": 8,
+        "title_en": "Present tense (فعل مضارع)",
+        "title_ur": "فعل مضارع",
+        "title_hi": "फ़ेल मुज़ारे (वर्तमान)",
+        "intro_en": "Present/future verbs start with أ / ن / ي / ت: I / we / he / you-she. Recognize the prefix and you instantly know who acts.",
+        "sections": [
+            {
+                "heading_en": "The four prefixes",
+                "body_en": "أَعْبُدُ I worship · نَعْبُدُ we worship · يَعْبُدُ he worships · تَعْبُدُ you worship (or she worships). Plural adds ونَ: يَعْلَمُونَ they know.",
+                "examples": [
+                    {"ar": "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ", "en": "You alone we worship, and You alone we ask for help", "note": "1:5 — both verbs start with نـ (we)"},
+                    {"ar": "قُلْ أَعُوذُ بِرَبِّ ٱلنَّاسِ", "en": "Say: I seek refuge in the Lord of mankind", "note": "أَعُوذُ starts with أ (I)"},
+                ],
+            },
+        ],
+        "practice": [
+            {"q_en": "نَعْلَمُ means?", "options": ["we know", "I know", "they know"], "answer": 0},
+            {"q_en": "A verb starting يَـ is done by?", "options": ["he / they", "I", "we"], "answer": 0},
+        ],
+    },
+    {
+        "id": "grammar-09",
+        "module_id": "m4-grammar",
+        "order": 9,
+        "title_en": "Negation: لا، ما، لم، لن",
+        "title_ur": "نفی: لا، ما، لم، لن",
+        "title_hi": "नफ़ी: ला, मा, लम, लन",
+        "intro_en": "Four ways to say 'not', each with its own time: لا (present/general), مَا (past), لَمْ (did not), لَنْ (never will).",
+        "sections": [
+            {
+                "heading_en": "Each particle's job",
+                "body_en": "لَا يَعْلَمُونَ they do not know · مَا كَانَ he was not · لَمْ يَلِدْ He did not beget · لَنْ تَنَالُوا you will never attain.",
+                "examples": [
+                    {"ar": "لَمْ يَلِدْ وَلَمْ يُولَدْ", "en": "He neither begets nor was born", "note": "112:3 — لَمْ + present form = past negation"},
+                    {"ar": "وَلَا ٱلضَّآلِّينَ", "en": "nor of those who are astray", "note": "1:7"},
+                    {"ar": "لَن تَنَالُوا۟ ٱلْبِرَّ حَتَّىٰ تُنفِقُوا۟", "en": "You will never attain righteousness until you spend", "note": "3:92"},
+                ],
+            },
+        ],
+        "practice": [
+            {"q_en": "لَنْ negates the…", "options": ["future (never will)", "past", "a noun"], "answer": 0},
+            {"q_en": "لَمْ يَعْلَمْ means?", "options": ["he did not know", "he will not know", "he knows"], "answer": 0},
+        ],
+    },
+    {
+        "id": "grammar-10",
+        "module_id": "m4-grammar",
+        "order": 10,
+        "title_en": "Commands & prohibitions",
+        "title_ur": "امر اور نہی",
+        "title_hi": "आदेश और निषेध",
+        "intro_en": "قُلْ (Say!) opens dozens of surahs. Commands (أمر) drop the prefix; prohibitions use لَا + present verb.",
+        "sections": [
+            {
+                "heading_en": "Commands",
+                "body_en": "قُلْ say! · ٱعْبُدُوا worship! · ٱتَّقُوا be mindful! · ٱهْدِنَا guide us! — plural commands end in وا.",
+                "examples": [
+                    {"ar": "قُلْ هُوَ ٱللَّهُ أَحَدٌ", "en": "Say: He is Allah, the One", "note": "112:1"},
+                    {"ar": "ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ", "en": "Guide us to the straight path", "note": "1:6 — command + نا (us)"},
+                ],
+            },
+            {
+                "heading_en": "Prohibitions (لَا الناهية)",
+                "body_en": "لَا تَحْزَنْ do not grieve · لَا تَقْرَبُوا do not approach · لَا تَقْنَطُوا do not despair.",
+                "examples": [
+                    {"ar": "لَا تَحْزَنْ إِنَّ ٱللَّهَ مَعَنَا", "en": "Do not grieve; indeed Allah is with us", "note": "9:40"},
+                ],
+            },
+        ],
+        "practice": [
+            {"q_en": "ٱعْبُدُوا means?", "options": ["worship! (you all)", "he worshipped", "we worship"], "answer": 0},
+            {"q_en": "لَا تَخَفْ means?", "options": ["do not fear", "he does not fear", "they feared"], "answer": 0},
+        ],
+    },
+    {
+        "id": "grammar-11",
+        "module_id": "m4-grammar",
+        "order": 11,
+        "title_en": "Plurals & duals",
+        "title_ur": "جمع اور تثنیہ",
+        "title_hi": "बहुवचन और द्विवचन",
+        "intro_en": "Sound plurals add ونَ/ينَ (m) or ات (f); Arabic also has a dual for exactly two. Many key Quran words are broken plurals to memorize.",
+        "sections": [
+            {
+                "heading_en": "Sound plurals",
+                "body_en": "مُسْلِمُونَ / مُسْلِمِينَ Muslims (m) · مُسْلِمَٰت Muslim women · مُؤْمِنُونَ believers. The ون/ين ending depends on grammatical case.",
+                "examples": [
+                    {"ar": "قَدْ أَفْلَحَ ٱلْمُؤْمِنُونَ", "en": "Successful indeed are the believers", "note": "23:1"},
+                ],
+            },
+            {
+                "heading_en": "Broken plurals & dual",
+                "body_en": "كِتَٰب → كُتُب books · رَسُول → رُسُل messengers · قَلْب → قُلُوب hearts. Dual: ـَانِ / ـَيْنِ = exactly two: جَنَّتَانِ two gardens (55:46).",
+                "examples": [
+                    {"ar": "وَلِمَنْ خَافَ مَقَامَ رَبِّهِۦ جَنَّتَانِ", "en": "For whoever fears standing before his Lord are two gardens", "note": "55:46 — dual"},
+                ],
+            },
+        ],
+        "practice": [
+            {"q_en": "قُلُوب is the plural of?", "options": ["قَلْب (heart)", "كِتَاب (book)", "رَسُول (messenger)"], "answer": 0},
+            {"q_en": "The ending ـَانِ signals?", "options": ["exactly two (dual)", "feminine", "past tense"], "answer": 0},
+        ],
+    },
+    {
+        "id": "grammar-12",
+        "module_id": "m4-grammar",
+        "order": 12,
+        "title_en": "Word patterns: doer & done",
+        "title_ur": "اوزان: فاعل اور مفعول",
+        "title_hi": "पैटर्न: करने वाला और किया हुआ",
+        "intro_en": "Arabic molds roots into patterns (أوزان). فَاعِل = the doer, مَفْعُول = the one done to. Recognize the pattern, guess the meaning.",
+        "sections": [
+            {
+                "heading_en": "فَاعِل — the doer",
+                "body_en": "كَافِر one who disbelieves · ظَالِم wrongdoer · عَابِد worshipper · صَادِق truthful one. From any root, this pattern names who does the action.",
+                "examples": [
+                    {"ar": "وَٱللَّهُ عَلِيمٌ بِٱلظَّٰلِمِينَ", "en": "And Allah is fully aware of the wrongdoers", "note": "ظَالِمِين = plural of ظَالِم"},
+                ],
+            },
+            {
+                "heading_en": "مَفْعُول and the مُـ patterns",
+                "body_en": "مَفْعُول = done: مَكْتُوب written. Longer verb forms use مُـ: مُسْلِم (one who submits), مُؤْمِن (one who believes), مُتَّقِين (those mindful of Allah).",
+                "examples": [
+                    {"ar": "هُدًى لِّلْمُتَّقِينَ", "en": "a guidance for the God-conscious", "note": "2:2 — مُتَّقِين from root و ق ي"},
+                ],
+            },
+        ],
+        "practice": [
+            {"q_en": "The pattern فَاعِل tells you the word is?", "options": ["the doer of the action", "the place of the action", "the past tense"], "answer": 0},
+            {"q_en": "مُؤْمِن means?", "options": ["one who believes", "belief", "he believed"], "answer": 0},
+        ],
+    },
 ]
 
 ROOT_LESSONS: list[dict] = [
@@ -418,6 +773,63 @@ ROOT_LESSONS: list[dict] = [
         ],
         "practice_ayah": "1:3",
     },
+    {
+        "id": "roots-04",
+        "module_id": "m5-roots",
+        "order": 4,
+        "title_en": "Root ع-ب-د (worship)",
+        "title_ur": "جذر ع-ب-د",
+        "title_hi": "जड़ अ-ब-द",
+        "intro_en": "The purpose of creation — one root covers the servant, the worship, and the worshipped.",
+        "roots": [
+            {"root": "ع ب د", "words": [
+                {"ar": "عَبَدَ", "en": "he worshipped"},
+                {"ar": "عَبْد", "en": "servant; slave"},
+                {"ar": "عِبَاد", "en": "servants"},
+                {"ar": "عَابِد", "en": "worshipper"},
+                {"ar": "نَعْبُدُ", "en": "we worship"},
+            ]},
+        ],
+        "practice_ayah": "51:56",
+    },
+    {
+        "id": "roots-05",
+        "module_id": "m5-roots",
+        "order": 5,
+        "title_en": "Root س-ل-م (peace & submission)",
+        "title_ur": "جذر س-ل-م",
+        "title_hi": "जड़ स-ल-म",
+        "intro_en": "Islam, Muslim, salam — the religion's own name comes from this root of peace and surrender.",
+        "roots": [
+            {"root": "س ل م", "words": [
+                {"ar": "سَلَٰم", "en": "peace"},
+                {"ar": "إِسْلَٰم", "en": "Islam; submission"},
+                {"ar": "مُسْلِم", "en": "one who submits"},
+                {"ar": "أَسْلَمَ", "en": "he submitted"},
+                {"ar": "سَلِيم", "en": "sound; unblemished (heart)"},
+            ]},
+        ],
+        "practice_ayah": "26:89",
+    },
+    {
+        "id": "roots-06",
+        "module_id": "m5-roots",
+        "order": 6,
+        "title_en": "Root ه-د-ي (guidance)",
+        "title_ur": "جذر ه-د-ي",
+        "title_hi": "जड़ ह-द-य",
+        "intro_en": "From the du'a you make seventeen times a day in salah: guide us.",
+        "roots": [
+            {"root": "ه د ي", "words": [
+                {"ar": "هَدَىٰ", "en": "he guided"},
+                {"ar": "هُدًى", "en": "guidance"},
+                {"ar": "يَهْدِي", "en": "He guides"},
+                {"ar": "ٱهْدِنَا", "en": "guide us!"},
+                {"ar": "مُهْتَدُونَ", "en": "the rightly guided"},
+            ]},
+        ],
+        "practice_ayah": "1:6",
+    },
 ]
 
 READING_LESSONS: list[dict] = [
@@ -427,6 +839,13 @@ READING_LESSONS: list[dict] = [
     {"id": "read-04", "module_id": "m6-reading", "order": 4, "title_en": "Surah An-Nas", "title_ur": "سورہ ناس", "title_hi": "सूरह नास", "verse_keys": ["114:1", "114:2", "114:3", "114:4", "114:5", "114:6"], "hide_translation_after": 2},
     {"id": "read-05", "module_id": "m6-reading", "order": 5, "title_en": "Ayat al-Kursi (2:255)", "title_ur": "آیت الکرسی", "title_hi": "आयतुल कुर्सी", "verse_keys": ["2:255"], "hide_translation_after": 0},
     {"id": "read-06", "module_id": "m6-reading", "order": 6, "title_en": "Last verses of Al-Baqarah", "title_ur": "آخر البقرہ", "title_hi": "अल-बक़रा की आख़िरी आयतें", "verse_keys": ["2:285", "2:286"], "hide_translation_after": 1},
+    {"id": "read-07", "module_id": "m6-reading", "order": 7, "title_en": "Surah Al-Asr", "title_ur": "سورہ عصر", "title_hi": "सूरह अस्र", "verse_keys": ["103:1", "103:2", "103:3"], "hide_translation_after": 1},
+    {"id": "read-08", "module_id": "m6-reading", "order": 8, "title_en": "Surah Al-Kawthar", "title_ur": "سورہ کوثر", "title_hi": "सूरह कौसर", "verse_keys": ["108:1", "108:2", "108:3"], "hide_translation_after": 1},
+    {"id": "read-09", "module_id": "m6-reading", "order": 9, "title_en": "Surah Al-Kafirun", "title_ur": "سورہ کافرون", "title_hi": "सूरह काफ़िरून", "verse_keys": ["109:1", "109:2", "109:3", "109:4", "109:5", "109:6"], "hide_translation_after": 2},
+    {"id": "read-10", "module_id": "m6-reading", "order": 10, "title_en": "Surah An-Nasr", "title_ur": "سورہ نصر", "title_hi": "सूरह नस्र", "verse_keys": ["110:1", "110:2", "110:3"], "hide_translation_after": 1},
+    {"id": "read-11", "module_id": "m6-reading", "order": 11, "title_en": "Surah Al-Fil", "title_ur": "سورہ فیل", "title_hi": "सूरह फ़ील", "verse_keys": ["105:1", "105:2", "105:3", "105:4", "105:5"], "hide_translation_after": 2},
+    {"id": "read-12", "module_id": "m6-reading", "order": 12, "title_en": "Surah Quraysh", "title_ur": "سورہ قریش", "title_hi": "सूरह क़ुरैश", "verse_keys": ["106:1", "106:2", "106:3", "106:4"], "hide_translation_after": 1},
+    {"id": "read-13", "module_id": "m6-reading", "order": 13, "title_en": "Surah Al-Ma'un", "title_ur": "سورہ ماعون", "title_hi": "सूरह माऊन", "verse_keys": ["107:1", "107:2", "107:3", "107:4", "107:5", "107:6", "107:7"], "hide_translation_after": 2},
 ]
 
 MODULES = [
@@ -480,43 +899,72 @@ def _ayah_from_db(verse_key: str) -> dict | None:
 
 
 def _attach_examples(lessons: list[dict]) -> None:
+    """Find up to 2 ayahs containing each vocab word.
+
+    Matching must happen on diacritic-stripped text on BOTH sides — the DB
+    ayahs keep full harakat, so a LIKE against the stripped word never hits.
+    """
     if not DB.exists():
         return
     conn = sqlite3.connect(DB)
     cur = conn.cursor()
+    cur.execute("SELECT verse_key, arabic FROM ayahs")
+    ayahs = [(vk, ar, f" {_norm_arabic(ar)} ") for vk, ar in cur.fetchall()]
+    conn.close()
+
     for lesson in lessons:
         for word in lesson.get("words") or []:
             ar = _norm_arabic(word["ar"])
             if not ar:
                 continue
-            cur.execute(
-                "SELECT verse_key, arabic FROM ayahs WHERE arabic LIKE ? LIMIT 2",
-                (f"%{ar}%",),
-            )
             examples = []
-            for vk, ayah_ar in cur.fetchall():
-                examples.append({"verse_key": vk, "snippet": ayah_ar[:120]})
+            # Prefer whole-word hits; the ٱ/ا variants both occur in ayahs.
+            needles = {f" {ar} ", f" ٱل{ar} ", f" ال{ar} ", f" و{ar} "}
+            for vk, original, norm in ayahs:
+                if any(n in norm for n in needles):
+                    examples.append({"verse_key": vk, "snippet": original[:120]})
+                    if len(examples) == 2:
+                        break
+            if not examples:  # fall back to substring (prefixed/suffixed forms)
+                for vk, original, norm in ayahs:
+                    if ar in norm:
+                        examples.append({"verse_key": vk, "snippet": original[:120]})
+                        if len(examples) == 2:
+                            break
             word["examples"] = examples
-    conn.close()
 
 
 def _build_quiz_for_vocab(lesson: dict) -> list[dict]:
     words = lesson.get("words") or []
     quiz = []
-    for i, w in enumerate(words[:5]):
-        others = [x for j, x in enumerate(words) if j != i][:3]
-        options = [w["en"]] + [x["en"] for x in others]
+    for i, w in enumerate(words[:8]):
+        rnd = random.Random(f"{lesson['id']}:{w['ar']}")
+        others = [x["en"] for j, x in enumerate(words) if j != i and x["en"] != w["en"]]
+        rnd.shuffle(others)
+        options = [w["en"]] + others[:3]
         if len(options) < 4:
-            options.extend(["and", "the", "in"])
+            options.extend(x for x in ("and", "the", "in") if x not in options)
         options = list(dict.fromkeys(options))[:4]
+        rnd.shuffle(options)
         quiz.append({
             "type": "vocab",
             "prompt_ar": w["ar"],
             "prompt_en": f"What does {w['tr']} mean?",
             "options": options,
-            "answer": 0,
+            "answer": options.index(w["en"]),
         })
     return quiz
+
+
+def _shuffle_practice(lesson: dict) -> None:
+    """Hand-written practice lists the correct option first; shuffle it away."""
+    for q in lesson.get("practice") or []:
+        rnd = random.Random(f"{lesson['id']}:{q['q_en']}")
+        correct = q["options"][q["answer"]]
+        options = list(q["options"])
+        rnd.shuffle(options)
+        q["options"] = options
+        q["answer"] = options.index(correct)
 
 
 def build(fetch_wbw: bool = True) -> dict:
@@ -529,7 +977,9 @@ def build(fetch_wbw: bool = True) -> dict:
         lessons[lesson["id"]] = payload
 
     for lesson in GRAMMAR_LESSONS:
-        lessons[lesson["id"]] = {**lesson, "type": "grammar"}
+        payload = {**lesson, "type": "grammar", "practice": [dict(q) for q in lesson["practice"]]}
+        _shuffle_practice(payload)
+        lessons[lesson["id"]] = payload
 
     for lesson in ROOT_LESSONS:
         lessons[lesson["id"]] = {**lesson, "type": "roots"}
