@@ -65,6 +65,8 @@ export default function QuranPage() {
     try {
       const d = await api<{ results: SearchResult[] }>(`/api/quran/search?q=${encodeURIComponent(query)}`);
       setResults(d.results);
+    } catch {
+      setResults([]);
     } finally {
       setSearching(false);
     }

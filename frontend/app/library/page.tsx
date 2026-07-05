@@ -253,10 +253,18 @@ export default function QuestionLibraryPage() {
     }
     setSelectedId(id);
     await loadAnswers();
+    // The answer expands under the tapped question — nudge it into view
+    // if the fold cuts it off, without yanking the page around.
+    requestAnimationFrame(() => {
+      document.getElementById(`lib-answer-${id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
   }
 
-  const selected = selectedId && answers ? answers[selectedId] : null;
-  const selectedQuestion = selectedId ? index?.items.find((i) => i.id === selectedId) : null;
+  function goToPage(next: number) {
+    setPage(next);
+    // Landing mid-list after a page flip reads as "nothing happened".
+    document.getElementById("library-list-top")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   if (loading) {
     return <p className="text-center text-muted py-12">{t(lang, "loading")}</p>;
@@ -313,9 +321,9 @@ export default function QuestionLibraryPage() {
         </div>
       </div>
 
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(280px,38%)] lg:items-start lg:gap-5">
-        <div className="space-y-2">
-          <p className="text-xs text-faint">
+      <div>
+        <div className="mx-auto max-w-3xl space-y-2">
+          <p id="library-list-top" className="scroll-mt-20 text-xs text-faint">
             {filtered.length.toLocaleString()} {t(lang, "libraryMatches")}
             {search ? ` · “${search}”` : ""}
           </p>
@@ -350,7 +358,7 @@ export default function QuestionLibraryPage() {
                     </div>
                   </button>
                   {isOpen && (
-                    <div className="mt-2 lg:hidden">
+                    <div className="mt-2" id={`lib-answer-${item.id}`}>
                       <AnswerPanel
                         lang={lang}
                         question={item.question}
@@ -371,7 +379,7 @@ export default function QuestionLibraryPage() {
               <button
                 type="button"
                 disabled={page === 0}
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                onClick={() => goToPage(Math.max(0, page - 1))}
                 className="rounded-lg border border-subtle px-3 py-1.5 text-xs font-medium text-muted disabled:opacity-40"
               >
                 {t(lang, "prevPage")}
@@ -382,7 +390,7 @@ export default function QuestionLibraryPage() {
               <button
                 type="button"
                 disabled={page >= totalPages - 1}
-                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                onClick={() => goToPage(Math.min(totalPages - 1, page + 1))}
                 className="rounded-lg border border-subtle px-3 py-1.5 text-xs font-medium text-muted disabled:opacity-40"
               >
                 {t(lang, "nextPage")}
@@ -390,21 +398,6 @@ export default function QuestionLibraryPage() {
             </div>
           )}
         </div>
-
-        <aside className="hidden lg:block lg:sticky lg:top-4">
-          {selectedId && selectedQuestion ? (
-            <AnswerPanel
-              lang={lang}
-              question={selectedQuestion.question}
-              answer={selected}
-              loading={answersLoading}
-            />
-          ) : (
-            <div className="rounded-xl border border-dashed border-subtle bg-surface-muted/30 p-6 text-center">
-              <p className="text-sm text-muted">{t(lang, "librarySelectQuestion")}</p>
-            </div>
-          )}
-        </aside>
       </div>
     </div>
   );

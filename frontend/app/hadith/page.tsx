@@ -110,9 +110,14 @@ export default function HadithPage() {
     setSearching(true);
     setSearched(true);
     clearBrowse();
-    const d = await api<{ results: Hadith[] }>(`/api/hadith/search?q=${encodeURIComponent(query)}`);
-    setSearchResults(d.results);
-    setSearching(false);
+    try {
+      const d = await api<{ results: Hadith[] }>(`/api/hadith/search?q=${encodeURIComponent(query)}`);
+      setSearchResults(d.results);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
   }
 
   function handleQueryChange(value: string) {
