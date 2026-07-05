@@ -1,8 +1,9 @@
 {
   "version": 1,
-  "total": 6000,
+  "total": 6071,
   "built": 6000,
   "verified": 6000,
   "failed": 0,
-  "failures": []
+  "failures": [],
+  "curated_count": 71
 }

@@ -56,6 +56,12 @@ function categoryLabel(lang: string, cat: string): string {
       ramadan: "Ramadan",
       prophets: "Prophets",
       etiquette: "Etiquette",
+      misconceptions: "Misconceptions",
+      god_and_purpose: "God & purpose",
+      islam_science: "Islam & science",
+      jesus_and_bible: "Jesus & the Bible",
+      new_muslim: "New Muslim",
+      modern_life: "Modern life",
     },
     ur: {
       beginner: "ابتدائی",
@@ -82,6 +88,12 @@ function categoryLabel(lang: string, cat: string): string {
       ramadan: "رمضان",
       prophets: "انبیاء",
       etiquette: "آداب",
+      misconceptions: "غلط فہمیاں",
+      god_and_purpose: "خدا اور مقصد",
+      islam_science: "اسلام اور سائنس",
+      jesus_and_bible: "عیسیٰؑ اور بائبل",
+      new_muslim: "نیا مسلمان",
+      modern_life: "جدید زندگی",
     },
     hi: {
       beginner: "शुरुआती",
@@ -108,6 +120,12 @@ function categoryLabel(lang: string, cat: string): string {
       ramadan: "रमज़ान",
       prophets: "पैग़म्बर",
       etiquette: "आदाब",
+      misconceptions: "ग़लतफ़हमियाँ",
+      god_and_purpose: "ख़ुदा और मक़सद",
+      islam_science: "इस्लाम और विज्ञान",
+      jesus_and_bible: "ईसा और बाइबिल",
+      new_muslim: "नए मुसलमान",
+      modern_life: "आधुनिक जीवन",
     },
   } as const;
   const table = labels[lang as keyof typeof labels] || labels.en;
