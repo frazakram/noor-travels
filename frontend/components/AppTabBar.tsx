@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { createPortal } from "react-dom";
 import { useChat } from "@/components/ChatProvider";
 import { useLang } from "@/components/LangProvider";
 import { t } from "@/lib/i18n";
@@ -90,7 +91,11 @@ export function AppTabBar() {
   const { lang } = useLang();
   const { isOpen: chatOpen } = useChat();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  /** Ignore backdrop dismiss for a beat after opening (mobile ghost-tap). */
+  const ignoreBackdropUntil = useRef(0);
 
+  useEffect(() => setMounted(true), []);
   useEffect(() => setMoreOpen(false), [pathname]);
 
   useEffect(() => {
@@ -116,69 +121,90 @@ export function AppTabBar() {
   const fixedLinks = [primary[0], primary[1], primary[2], primary[3]];
   const moreActive = moreLinks.some((item) => isActive(pathname, item.href));
 
+  function toggleMore(event: React.MouseEvent | React.PointerEvent) {
+    event.stopPropagation();
+    event.preventDefault();
+    setMoreOpen((open) => {
+      if (!open) ignoreBackdropUntil.current = Date.now() + 400;
+      return !open;
+    });
+  }
+
+  function dismissMore() {
+    if (Date.now() < ignoreBackdropUntil.current) return;
+    setMoreOpen(false);
+  }
+
+  const moreSheet =
+    mounted &&
+    createPortal(
+      <div className="md:hidden">
+        <div
+          className={`fixed inset-0 z-[200] bg-noor-950/55 backdrop-blur-[3px] transition-opacity duration-200 ${
+            moreOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+          }`}
+          aria-hidden={!moreOpen}
+          onClick={dismissMore}
+        />
+
+        <section
+          role="dialog"
+          aria-modal="true"
+          aria-label={t(lang, "more")}
+          className={`fixed inset-x-3 z-[210] mx-auto max-w-sm rounded-3xl border border-white/70 bg-white p-3 shadow-2xl shadow-noor-950/35 transition-all duration-200 dark:border-noor-600/80 dark:bg-noor-900 ${
+            moreOpen
+              ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
+              : "pointer-events-none translate-y-6 scale-95 opacity-0"
+          }`}
+          style={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))" }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="mb-2 flex items-center justify-between px-1">
+            <p className="text-sm font-extrabold text-heading">{t(lang, "more")}</p>
+            <button
+              type="button"
+              onClick={() => setMoreOpen(false)}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-noor-50 text-lg font-bold text-muted transition hover:rotate-90 dark:bg-noor-800"
+              aria-label={t(lang, "close")}
+            >
+              ×
+            </button>
+          </div>
+          <nav className="grid grid-cols-3 gap-2">
+            {moreLinks.map((item, index) => {
+              const active = isActive(pathname, item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`app-more-item relative flex min-h-20 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl border px-2 py-3 text-center transition active:scale-95 ${
+                    active
+                      ? "border-gold-300 bg-gold-50 text-noor-800 shadow-sm dark:border-gold-500/60 dark:bg-gold-500/15 dark:text-gold-200"
+                      : "border-noor-100 bg-noor-50 text-noor-800 hover:-translate-y-0.5 hover:bg-white dark:border-noor-700 dark:bg-noor-800 dark:text-noor-100 dark:hover:bg-noor-700"
+                  }`}
+                  style={{ animationDelay: `${index * 35}ms` }}
+                >
+                  <NavIcon name={item.icon} className="h-6 w-6" />
+                  <span className="max-w-full text-[11px] font-extrabold leading-tight">
+                    {t(lang, item.key)}
+                  </span>
+                  {item.key === "khutba" && (
+                    <span className="absolute right-2 top-2 h-2 w-2 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_7px_rgba(52,211,153,.8)]" />
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+        </section>
+      </div>,
+      document.body,
+    );
+
   return (
     <>
-      <div
-        className={`fixed inset-0 z-[55] bg-noor-950/45 backdrop-blur-[2px] transition-opacity duration-200 md:hidden ${
-          moreOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
-        }`}
-        aria-hidden={!moreOpen}
-        onClick={() => setMoreOpen(false)}
-      />
+      {moreSheet}
 
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-label={t(lang, "more")}
-        className={`liquid-glass-panel fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] z-[65] mx-auto max-w-sm origin-bottom rounded-3xl border border-white/60 bg-white/95 p-3 shadow-2xl shadow-noor-950/25 backdrop-blur-xl transition-all duration-250 md:hidden dark:border-noor-600/70 dark:bg-noor-900/95 ${
-          moreOpen
-            ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
-            : "pointer-events-none translate-y-5 scale-95 opacity-0"
-        }`}
-      >
-        <div className="mb-2 flex items-center justify-between px-1">
-          <p className="text-sm font-bold text-heading">{t(lang, "more")}</p>
-          <button
-            type="button"
-            onClick={() => setMoreOpen(false)}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-noor-50 text-lg text-muted transition hover:rotate-90 dark:bg-noor-800"
-            aria-label={t(lang, "close")}
-          >
-            ×
-          </button>
-        </div>
-        <nav className="grid grid-cols-3 gap-2">
-          {moreLinks.map((item, index) => {
-            const active = isActive(pathname, item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`liquid-glass app-more-item relative flex min-h-20 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl border px-2 py-3 text-center transition active:scale-95 ${
-                  active
-                    ? "border-gold-300 bg-gold-50 text-noor-800 shadow-sm dark:border-gold-500/60 dark:bg-gold-500/15 dark:text-gold-200"
-                    : "border-noor-100 bg-noor-50/80 text-noor-700 hover:-translate-y-0.5 hover:bg-white dark:border-noor-700 dark:bg-noor-800/70 dark:text-noor-200 dark:hover:bg-noor-800"
-                }`}
-                style={{ animationDelay: `${index * 35}ms` }}
-                onPointerMove={moveGlassReflection}
-                onPointerDown={moveGlassReflection}
-                onPointerLeave={resetGlassReflection}
-                onPointerUp={resetGlassReflection}
-              >
-                <NavIcon name={item.icon} className="h-6 w-6" />
-                <span className="max-w-full text-[11px] font-semibold leading-tight">
-                  {t(lang, item.key)}
-                </span>
-                {item.key === "khutba" && (
-                  <span className="absolute right-2 top-2 h-2 w-2 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_7px_rgba(52,211,153,.8)]" />
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-      </section>
-
-      <div className="fixed inset-x-0 bottom-0 z-[60] px-3 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)] md:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-[80] px-3 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)] md:hidden">
         <nav
           aria-label={t(lang, "mainNavigation")}
           className="app-tabbar mx-auto grid max-w-md grid-cols-5 items-end gap-1"
@@ -187,25 +213,29 @@ export function AppTabBar() {
             <TabLink key={item.href} item={item} pathname={pathname} lang={lang} />
           ))}
 
-          <div className="flex flex-col items-center justify-end">
+          <div className="relative z-[100] flex flex-col items-center justify-end">
             <button
               type="button"
-              onClick={() => setMoreOpen((value) => !value)}
+              onClick={toggleMore}
               aria-label={t(lang, "more")}
               aria-expanded={moreOpen}
-              className={`liquid-glass liquid-glass-plus app-plus-button -mt-7 mb-1 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-[3px] border-sand-50 bg-gradient-to-br from-teal-600 via-noor-600 to-noor-800 text-white shadow-[0_8px_20px_rgba(24,83,70,.4)] transition-all duration-300 dark:border-noor-950 ${
+              className={`relative app-plus-button -mt-7 mb-1 flex h-14 w-14 touch-manipulation items-center justify-center overflow-hidden rounded-full border-[3px] border-sand-50 bg-gradient-to-br from-teal-600 via-noor-600 to-noor-800 text-white shadow-[0_8px_20px_rgba(24,83,70,.4)] transition-all duration-300 dark:border-noor-950 ${
                 moreOpen ? "rotate-45 scale-105 ring-4 ring-gold-400/25" : "hover:-translate-y-1"
               } ${moreActive ? "ring-4 ring-gold-400/25" : ""}`}
               onPointerMove={moveGlassReflection}
-              onPointerDown={moveGlassReflection}
               onPointerLeave={resetGlassReflection}
-              onPointerUp={resetGlassReflection}
             >
-              <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
+              <svg viewBox="0 0 24 24" className="pointer-events-none h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden>
                 <path d="M12 5v14M5 12h14" />
               </svg>
             </button>
-            <span className={`text-[9px] font-semibold ${moreActive ? "text-gold-400 dark:text-gold-300" : "text-noor-400 dark:text-noor-500"}`}>
+            <span
+              className={`text-[11px] font-extrabold tracking-wide ${
+                moreActive || moreOpen
+                  ? "text-teal-700 dark:text-gold-300"
+                  : "text-noor-900 dark:text-white"
+              }`}
+            >
               {t(lang, "more")}
             </span>
           </div>
@@ -233,20 +263,20 @@ function TabLink({
     <Link
       href={item.href}
       aria-current={active ? "page" : undefined}
-      className={`app-tab-link group flex min-w-0 flex-col items-center justify-end gap-1 px-1 py-1 transition-all active:scale-90 ${
+      className={`app-tab-link group flex min-w-0 flex-col items-center justify-end gap-0.5 px-1 py-1 transition-all active:scale-90 ${
         active
-          ? "text-gold-400 dark:text-gold-300"
-          : "text-noor-300 hover:text-noor-100 dark:text-noor-400 dark:hover:text-noor-200"
+          ? "text-teal-700 dark:text-gold-300"
+          : "text-noor-900 hover:text-teal-700 dark:text-white dark:hover:text-gold-200"
       }`}
     >
       <NavIcon
         name={item.icon}
-        className={`transition-all ${active ? "app-tab-icon-active h-6 w-6" : "h-5 w-5 opacity-75 group-hover:opacity-100"}`}
+        className={`transition-all ${active ? "app-tab-icon-active h-6 w-6 stroke-[2.2]" : "h-5 w-5 opacity-95 group-hover:opacity-100"}`}
       />
-      <span className="max-w-full truncate text-[9px] font-semibold leading-tight">
+      <span className="max-w-full truncate text-[11px] font-extrabold leading-tight tracking-wide dark:drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]">
         {t(lang, item.key)}
       </span>
-      {active && <span className="h-1 w-1 rounded-full bg-gold-400" />}
+      {active && <span className="h-1.5 w-1.5 rounded-full bg-gold-500 dark:bg-gold-400" />}
     </Link>
   );
 }

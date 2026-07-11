@@ -497,7 +497,8 @@
   --glass-x: 50%;
   --glass-y: 20%;
   --glass-intensity: 0;
-  position: relative;
+  /* Do NOT set position here — it overrides Tailwind `fixed`/`absolute`
+     and breaks overlays (e.g. the More sheet). Callers must set position. */
   isolation: isolate;
   -webkit-backdrop-filter: blur(18px) saturate(165%);
   backdrop-filter: blur(18px) saturate(165%);
