@@ -39,7 +39,7 @@ export function AuthNudge() {
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-x-3 bottom-20 z-50 mx-auto max-w-sm animate-[nudge-in_.4s_cubic-bezier(.34,1.56,.64,1)] sm:bottom-6">
+    <div className="fixed inset-x-3 bottom-[calc(6rem+env(safe-area-inset-bottom,0px))] z-50 mx-auto max-w-sm animate-[nudge-in_.4s_cubic-bezier(.34,1.56,.64,1)] md:bottom-6">
       <style>{`@keyframes nudge-in { from { opacity: 0; transform: translateY(16px) scale(.95); } to { opacity: 1; transform: none; } }`}</style>
       <div className="rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl dark:border-emerald-800 dark:bg-slate-900">
         <div className="flex items-start gap-3">

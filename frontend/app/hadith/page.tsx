@@ -1,9 +1,16 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { api } from "@/lib/api";
 import { HADITH_TOPICS, type HadithTopic } from "@/lib/hadith-topics";
+import {
+  isHadithFavorite,
+  loadHadithFavorites,
+  toggleHadithFavorite,
+  type FavoriteHadith,
+} from "@/lib/hadith-library";
 import { t, type Lang } from "@/lib/i18n";
 
 type Hadith = {
@@ -43,12 +50,35 @@ function topicLabel(lang: Lang, topicId: string): string {
   return key ? t(lang, key) : topicId;
 }
 
-function HadithCard({ h }: { h: Hadith }) {
+function HadithCard({
+  h,
+  saved,
+  onToggleSave,
+}: {
+  h: Hadith | FavoriteHadith;
+  saved: boolean;
+  onToggleSave: () => void;
+}) {
+  const { lang } = useLang();
   return (
     <article className="card">
-      <p className="text-xs text-accent">
-        {h.reference} · {h.chapter_en}
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs text-accent">
+          {h.reference}
+          {"chapter_en" in h && h.chapter_en ? ` · ${h.chapter_en}` : ""}
+        </p>
+        <button
+          type="button"
+          onClick={onToggleSave}
+          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
+            saved
+              ? "bg-gold-500 text-white dark:bg-gold-400 dark:text-noor-950"
+              : "border border-subtle text-muted"
+          }`}
+        >
+          {saved ? t(lang, "savedHadith") : t(lang, "saveHadith")}
+        </button>
+      </div>
       <p className="font-arabic mt-2 text-right" dir="rtl">
         {h.arabic}
       </p>
@@ -69,6 +99,12 @@ export default function HadithPage() {
   const [browseResults, setBrowseResults] = useState<Hadith[]>([]);
   const [browseTotal, setBrowseTotal] = useState(0);
   const [browseLoading, setBrowseLoading] = useState(false);
+  const [favorites, setFavorites] = useState<FavoriteHadith[]>([]);
+  const [showFavorites, setShowFavorites] = useState(false);
+
+  useEffect(() => {
+    setFavorites(loadHadithFavorites());
+  }, []);
 
   const loadChapter = useCallback(async (chapter: string, offset = 0) => {
     setBrowseLoading(true);
@@ -94,6 +130,7 @@ export default function HadithPage() {
     setSearched(false);
     setSearchResults([]);
     setQuery("");
+    setShowFavorites(false);
     void loadChapter(topic.chapters[0], 0);
   }
 
@@ -110,6 +147,7 @@ export default function HadithPage() {
     setSearching(true);
     setSearched(true);
     clearBrowse();
+    setShowFavorites(false);
     try {
       const d = await api<{ results: Hadith[] }>(`/api/hadith/search?q=${encodeURIComponent(query)}`);
       setSearchResults(d.results);
@@ -128,14 +166,52 @@ export default function HadithPage() {
     }
   }
 
-  const showBrowse = !searched;
+  function handleToggleSave(h: Hadith | FavoriteHadith) {
+    const next = toggleHadithFavorite({
+      id: h.id,
+      reference: h.reference,
+      chapter_en: "chapter_en" in h ? h.chapter_en : undefined,
+      arabic: h.arabic,
+      english: h.english,
+    });
+    setFavorites(next);
+  }
+
+  const showBrowse = !searched && !showFavorites;
   const canLoadMore = browseResults.length < browseTotal;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-heading">{t(lang, "hadith")}</h1>
-        <p className="text-sm text-muted">{t(lang, "hadithSubtitle")}</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-heading">{t(lang, "hadith")}</h1>
+          <p className="text-sm text-muted">{t(lang, "hadithSubtitle")}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setShowFavorites(true);
+              setSearched(false);
+              clearBrowse();
+              setFavorites(loadHadithFavorites());
+            }}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+              showFavorites
+                ? "bg-gold-500 text-white dark:bg-gold-400 dark:text-noor-950"
+                : "border border-subtle text-muted"
+            }`}
+          >
+            {t(lang, "hadithFavorites")}
+            {favorites.length ? ` (${favorites.length})` : ""}
+          </button>
+          <Link
+            href="/hadith-of-day"
+            className="rounded-full border border-subtle px-3 py-1.5 text-xs font-medium text-muted hover:border-noor-300"
+          >
+            {t(lang, "hadithOfTheDay")}
+          </Link>
+        </div>
       </div>
 
       <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row">
@@ -150,6 +226,26 @@ export default function HadithPage() {
         </button>
       </form>
 
+      {showFavorites && (
+        <section className="space-y-4">
+          <button type="button" onClick={() => setShowFavorites(false)} className="text-sm text-accent hover:underline">
+            ← {t(lang, "hadithBrowseTopics")}
+          </button>
+          {favorites.length === 0 ? (
+            <p className="text-sm text-faint">{t(lang, "noSavedHadiths")}</p>
+          ) : (
+            favorites.map((h) => (
+              <HadithCard
+                key={h.id}
+                h={h}
+                saved
+                onToggleSave={() => handleToggleSave(h)}
+              />
+            ))
+          )}
+        </section>
+      )}
+
       {searched && searchResults.length === 0 && !searching && (
         <p className="text-faint">{t(lang, "noResults")}</p>
       )}
@@ -157,7 +253,12 @@ export default function HadithPage() {
       {searched && searchResults.length > 0 && (
         <div className="space-y-4">
           {searchResults.map((h) => (
-            <HadithCard key={h.id} h={h} />
+            <HadithCard
+              key={h.id}
+              h={h}
+              saved={isHadithFavorite(h.id)}
+              onToggleSave={() => handleToggleSave(h)}
+            />
           ))}
         </div>
       )}
@@ -234,7 +335,12 @@ export default function HadithPage() {
 
           <div className="space-y-4">
             {browseResults.map((h) => (
-              <HadithCard key={h.id} h={h} />
+              <HadithCard
+                key={h.id}
+                h={h}
+                saved={isHadithFavorite(h.id)}
+                onToggleSave={() => handleToggleSave(h)}
+              />
             ))}
           </div>
 

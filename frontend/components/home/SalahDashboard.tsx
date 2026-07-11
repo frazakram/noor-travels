@@ -6,8 +6,10 @@ import { NoticeCard } from "@/components/NoticeCard";
 import {
   countToday,
   getMissedToday,
+  getMonthStats,
   getTodayLog,
   getWeekLogs,
+  getYearStats,
   loadStreak,
   togglePrayer,
   type StreakStore,
@@ -73,16 +75,27 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
   const [notifySet, setNotifySet] = useState<Record<string, boolean>>(() => loadNotificationPrefs().adhan);
   const [shareStatus, setShareStatus] = useState("");
   const [showWeek, setShowWeek] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [showAllPrayers, setShowAllPrayers] = useState(false);
+  const [showWeeklyHistory, setShowWeeklyHistory] = useState(true);
   const tz = times?.timezone ?? "UTC";
 
   useEffect(() => {
     setNow(new Date());
     setStreak(loadStreak());
     setNotifySet(loadNotificationPrefs().adhan);
+    if (localStorage.getItem("noor-salah-weekly-history") === "0") {
+      setShowWeeklyHistory(false);
+    }
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  function setWeeklyHistoryVisible(visible: boolean) {
+    setShowWeeklyHistory(visible);
+    localStorage.setItem("noor-salah-weekly-history", visible ? "1" : "0");
+    if (!visible) setShowWeek(false);
+  }
 
   useEffect(() => {
     if (!now) return;
@@ -96,6 +109,8 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
   const todayCount = countToday(todayLog);
   const weekLogs = now ? getWeekLogs(tz, lang) : [];
   const missedToday = now ? getMissedToday(tz) : 0;
+  const monthStats = now ? getMonthStats(tz) : null;
+  const yearStats = now ? getYearStats(tz) : null;
 
   function handleToggle(prayer: PrayerId) {
     setStreak(togglePrayer(prayer, tz));
@@ -259,8 +274,12 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
       {error && (
         <NoticeCard
           tone="warning"
-          title="Prayer times need your location"
-          message={error}
+          title={t(lang, "salahNeedsLocation")}
+          message={
+            error.startsWith("salahError")
+              ? t(lang, error as "salahErrorLoad" | "salahErrorUnsupported" | "salahErrorPermission")
+              : error
+          }
           actionLabel={t(lang, "salahRetryLocation")}
           onAction={onRefresh}
         />
@@ -457,19 +476,30 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
         </div>
       )}
 
-      {weekLogs.length > 0 && (
+      {weekLogs.length > 0 && showWeeklyHistory && (
         <div className="rounded-2xl bg-white/10 backdrop-blur-md">
-          <button
-            type="button"
-            onClick={() => setShowWeek((v) => !v)}
-            className="flex w-full items-center justify-between gap-2 p-3 text-left sm:p-4"
-          >
-            <p className="text-sm font-semibold text-white">{t(lang, "weeklyPrayerHistory")}</p>
-            <span className="flex items-center gap-2 text-xs text-white/60">
-              {weekLogs.reduce((sum, d) => sum + d.prayed, 0)}/{weekLogs.length * 5}
-              <span aria-hidden>{showWeek ? "▴" : "▾"}</span>
-            </span>
-          </button>
+          <div className="flex w-full items-center gap-2 p-3 sm:p-4">
+            <button
+              type="button"
+              onClick={() => setShowWeek((v) => !v)}
+              className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
+            >
+              <p className="text-sm font-semibold text-white">{t(lang, "weeklyPrayerHistory")}</p>
+              <span className="flex items-center gap-2 text-xs text-white/60">
+                {weekLogs.reduce((sum, d) => sum + d.prayed, 0)}/{weekLogs.length * 5}
+                <span aria-hidden>{showWeek ? "▴" : "▾"}</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setWeeklyHistoryVisible(false)}
+              className="shrink-0 rounded-full px-2 py-1 text-[11px] font-medium text-white/55 hover:bg-white/10 hover:text-white/80"
+              title={t(lang, "hideWeeklyHistory")}
+              aria-label={t(lang, "hideWeeklyHistory")}
+            >
+              {t(lang, "hide")}
+            </button>
+          </div>
           {showWeek && (
             <div className="animate-fade-in px-3 pb-3 sm:px-4 sm:pb-4">
               <p className="mb-3 text-xs text-white/60">{t(lang, "qadaReminder")}</p>
@@ -488,6 +518,58 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                     <p className="mt-1 text-[10px] text-white/50">{d.prayed}/5</p>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {weekLogs.length > 0 && !showWeeklyHistory && (
+        <button
+          type="button"
+          onClick={() => setWeeklyHistoryVisible(true)}
+          className="mx-auto block text-center text-[11px] font-medium text-white/50 underline-offset-2 hover:text-white/75 hover:underline"
+        >
+          {t(lang, "showWeeklyHistory")}
+        </button>
+      )}
+
+      {monthStats && yearStats && (monthStats.daysTracked > 0 || yearStats.daysTracked > 0) && (
+        <div className="rounded-2xl bg-white/10 backdrop-blur-md">
+          <button
+            type="button"
+            onClick={() => setShowStats((v) => !v)}
+            className="flex w-full items-center justify-between gap-2 p-3 text-left sm:p-4"
+          >
+            <p className="text-sm font-semibold text-white">{t(lang, "prayerStats")}</p>
+            <span className="flex items-center gap-2 text-xs text-white/60">
+              {monthStats.completionPct}%
+              <span aria-hidden>{showStats ? "▴" : "▾"}</span>
+            </span>
+          </button>
+          {showStats && (
+            <div className="animate-fade-in grid gap-3 px-3 pb-3 sm:grid-cols-2 sm:px-4 sm:pb-4">
+              <div className="rounded-xl bg-white/10 p-3">
+                <p className="text-xs font-medium uppercase text-white/60">{t(lang, "monthStats")}</p>
+                <p className="mt-1 text-2xl font-bold text-gold-300">{monthStats.completionPct}%</p>
+                <p className="mt-1 text-xs text-white/70">
+                  {monthStats.prayersPrayed}/{monthStats.prayersPossible || 0} {t(lang, "prayersLogged")}
+                </p>
+                <p className="text-xs text-white/60">
+                  {monthStats.daysComplete} {t(lang, "daysComplete")} · {monthStats.qadaRemaining}{" "}
+                  {t(lang, "qadaLeft")}
+                </p>
+              </div>
+              <div className="rounded-xl bg-white/10 p-3">
+                <p className="text-xs font-medium uppercase text-white/60">{t(lang, "yearStats")}</p>
+                <p className="mt-1 text-2xl font-bold text-gold-300">{yearStats.completionPct}%</p>
+                <p className="mt-1 text-xs text-white/70">
+                  {yearStats.prayersPrayed}/{yearStats.prayersPossible || 0} {t(lang, "prayersLogged")}
+                </p>
+                <p className="text-xs text-white/60">
+                  {yearStats.daysComplete} {t(lang, "daysComplete")} · {yearStats.qadaRemaining}{" "}
+                  {t(lang, "qadaLeft")}
+                </p>
               </div>
             </div>
           )}

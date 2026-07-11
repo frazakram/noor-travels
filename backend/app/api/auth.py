@@ -11,7 +11,10 @@ import hmac
 import json
 import os
 import re
+import sqlite3
 import time
+
+import psycopg2
 
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
@@ -134,19 +137,23 @@ def signup(body: SignupRequest):
         raise HTTPException(400, "Please enter a valid email address")
     lang = body.lang if body.lang in ("en", "ur", "hi") else "en"
 
-    with get_cursor() as cur:
-        cur.execute("SELECT id FROM users WHERE email = %s", (email,))
-        if cur.fetchone():
-            raise HTTPException(409, "An account with this email already exists — try signing in")
-        cur.execute(
-            """
-            INSERT INTO users (email, password_hash, display_name, preferred_lang)
-            VALUES (%s, %s, %s, %s)
-            """,
-            (email, hash_password(body.password), body.name.strip(), lang),
-        )
-        cur.execute("SELECT * FROM users WHERE email = %s", (email,))
-        row = cur.fetchone()
+    try:
+        with get_cursor() as cur:
+            cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+            if cur.fetchone():
+                raise HTTPException(409, "An account with this email already exists — try signing in")
+            cur.execute(
+                """
+                INSERT INTO users (email, password_hash, display_name, preferred_lang)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (email, hash_password(body.password), body.name.strip(), lang),
+            )
+            cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+            row = cur.fetchone()
+    except (sqlite3.IntegrityError, psycopg2.IntegrityError):
+        # Concurrent signup can slip past the SELECT and hit the UNIQUE index.
+        raise HTTPException(409, "An account with this email already exists — try signing in")
     return {"token": issue_token(row["id"]), "user": _public_user(row)}
 
 

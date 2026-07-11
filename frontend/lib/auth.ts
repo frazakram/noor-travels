@@ -140,5 +140,13 @@ export function mergeProgress(local: LearnProgress, remote: LearnProgress | null
     points: Math.max(local.points, remote.points ?? 0),
     placement:
       (localPlacement?.date ?? "") > (remotePlacement?.date ?? "") ? localPlacement : remotePlacement,
+    badges: { ...(remote.badges ?? {}), ...(local.badges ?? {}) },
+    moduleQuizzes: (() => {
+      const out = { ...(remote.moduleQuizzes ?? {}) };
+      for (const [id, score] of Object.entries(local.moduleQuizzes ?? {})) {
+        out[id] = Math.max(out[id] ?? 0, score);
+      }
+      return out;
+    })(),
   };
 }

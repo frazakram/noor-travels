@@ -8,16 +8,16 @@ router = APIRouter()
 
 class ChatMessage(BaseModel):
     role: str = Field(pattern="^(user|assistant)$")
-    content: str = Field(min_length=1)
+    content: str = Field(min_length=1, max_length=8000)
 
 
 class AskRequest(BaseModel):
-    question: str = Field(min_length=2)
+    question: str = Field(min_length=2, max_length=4000)
     lang: str = "en"
 
 
 class ChatRequest(BaseModel):
-    message: str = Field(min_length=2)
+    message: str = Field(min_length=2, max_length=4000)
     lang: str = "en"
     response_lang: str | None = None
     include_transliteration: bool = True

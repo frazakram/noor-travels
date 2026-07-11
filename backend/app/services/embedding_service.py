@@ -90,6 +90,12 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
         )
         return [v.tolist() for v in vectors]
 
+    if _provider() != "openai":
+        raise RuntimeError(
+            f"Unknown EMBEDDING_PROVIDER '{settings.embedding_provider}' — "
+            "expected 'local', 'xenova', or 'openai'."
+        )
+
     from openai import OpenAI
     client = OpenAI(api_key=settings.openai_api_key)
     resp = client.embeddings.create(model=settings.embedding_model, input=safe)

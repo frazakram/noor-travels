@@ -5,6 +5,7 @@ import { useLang } from "@/components/LangProvider";
 import { api } from "@/lib/api";
 import {
   DEFAULT_PRAYER_OFFSETS,
+  HIGH_LATITUDE_METHODS,
   PRAYER_METHODS,
   type LocationSearchResult,
   type PrayerId,
@@ -65,12 +66,12 @@ export function SalahSettingsPanel({ settings, onSettings, onManualLocation, onU
       {open && (
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <form onSubmit={searchCity} className="space-y-2">
-            <label className="text-xs font-medium text-muted">City / area override</label>
+            <label className="text-xs font-medium text-muted">{t(lang, "cityOverride")}</label>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <input className="input min-w-0" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search city or local area" />
-              <button className="btn-primary min-h-11 shrink-0 px-4 sm:min-h-0" type="submit">Find</button>
+              <input className="input min-w-0" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t(lang, "searchCityPlaceholder")} />
+              <button className="btn-primary min-h-11 shrink-0 px-4 sm:min-h-0" type="submit">{t(lang, "findCity")}</button>
             </div>
-            <button type="button" onClick={onUseGps} className="text-xs text-accent hover:underline">Use precise GPS again</button>
+            <button type="button" onClick={onUseGps} className="text-xs text-accent hover:underline">{t(lang, "useGpsAgain")}</button>
             {results.length > 0 && (
               <div className="space-y-2">
                 {results.map((r) => (
@@ -93,7 +94,7 @@ export function SalahSettingsPanel({ settings, onSettings, onManualLocation, onU
           </form>
 
           <div className="space-y-3">
-            <label className="block text-xs font-medium text-muted">Calculation method</label>
+            <label className="block text-xs font-medium text-muted">{t(lang, "calcMethod")}</label>
             <select
               className="input"
               value={settings.method}
@@ -103,7 +104,7 @@ export function SalahSettingsPanel({ settings, onSettings, onManualLocation, onU
                 <option key={m.id} value={m.id}>{m.label}</option>
               ))}
             </select>
-            <label className="block text-xs font-medium text-muted">Asr madhab</label>
+            <label className="block text-xs font-medium text-muted">{t(lang, "asrMadhab")}</label>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -120,6 +121,24 @@ export function SalahSettingsPanel({ settings, onSettings, onManualLocation, onU
                 Hanafi
               </button>
             </div>
+            <label className="block text-xs font-medium text-muted">{t(lang, "highLatTitle")}</label>
+            <p className="text-[11px] text-faint">{t(lang, "highLatHint")}</p>
+            <select
+              className="input"
+              value={settings.latitudeAdjustment ?? 0}
+              onChange={(e) =>
+                onSettings({
+                  ...settings,
+                  latitudeAdjustment: Number(e.target.value) as 0 | 1 | 2 | 3,
+                })
+              }
+            >
+              {HIGH_LATITUDE_METHODS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {t(lang, m.labelKey)}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="space-y-2 md:col-span-2">

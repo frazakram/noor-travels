@@ -117,6 +117,36 @@ export function NotificationSettings({ times }: Props) {
     setPrefs(next);
   }
 
+  function setLearnDaily(enabled: boolean) {
+    void (async () => {
+      if (!native && enabled) await requestPermission();
+      const next = updateNotificationPrefs({ learnQuranDaily: enabled }, prayerStarts, cityTz);
+      setPrefs(next);
+    })();
+  }
+
+  function setLearnTime(hour: number, minute: number) {
+    const next = updateNotificationPrefs({ learnHour: hour, learnMinute: minute }, prayerStarts, cityTz);
+    setPrefs(next);
+  }
+
+  function setGratitudeDaily(enabled: boolean) {
+    void (async () => {
+      if (!native && enabled) await requestPermission();
+      const next = updateNotificationPrefs({ gratitudeDaily: enabled }, prayerStarts, cityTz);
+      setPrefs(next);
+    })();
+  }
+
+  function setGratitudeTime(hour: number, minute: number) {
+    const next = updateNotificationPrefs(
+      { gratitudeHour: hour, gratitudeMinute: minute },
+      prayerStarts,
+      cityTz
+    );
+    setPrefs(next);
+  }
+
   function setUseCityTimezone(enabled: boolean) {
     const next = updateNotificationPrefs({ useCityTimezone: enabled }, prayerStarts, cityTz);
     setPrefs(next);
@@ -131,7 +161,11 @@ export function NotificationSettings({ times }: Props) {
     })();
   }
 
-  const anyOn = Object.values(prefs.adhan).some(Boolean) || prefs.hadithDaily;
+  const anyOn =
+    Object.values(prefs.adhan).some(Boolean) ||
+    prefs.hadithDaily ||
+    prefs.learnQuranDaily ||
+    prefs.gratitudeDaily;
 
   return (
     <section className="card overflow-hidden border-teal-100 p-0 dark:border-teal-800/60">
@@ -241,6 +275,60 @@ export function NotificationSettings({ times }: Props) {
                   {HOURS.map((h) => (
                     <option key={h} value={h}>
                       {String(h).padStart(2, "0")}:{String(prefs.hadithMinute).padStart(2, "0")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-subtle bg-surface-muted/40 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-heading">{t(lang, "learnNotify")}</h3>
+                <p className="mt-0.5 text-xs text-muted">{t(lang, "learnNotifyHint")}</p>
+              </div>
+              <Toggle on={prefs.learnQuranDaily} onChange={setLearnDaily} label={t(lang, "learnNotify")} />
+            </div>
+            {prefs.learnQuranDaily && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <select
+                  className="input w-auto py-1.5 text-sm"
+                  value={prefs.learnHour}
+                  onChange={(e) => setLearnTime(Number(e.target.value), prefs.learnMinute)}
+                >
+                  {HOURS.map((h) => (
+                    <option key={h} value={h}>
+                      {String(h).padStart(2, "0")}:{String(prefs.learnMinute).padStart(2, "0")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-subtle bg-surface-muted/40 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-heading">{t(lang, "gratitudeNotify")}</h3>
+                <p className="mt-0.5 text-xs text-muted">{t(lang, "gratitudeNotifyHint")}</p>
+              </div>
+              <Toggle
+                on={prefs.gratitudeDaily}
+                onChange={setGratitudeDaily}
+                label={t(lang, "gratitudeNotify")}
+              />
+            </div>
+            {prefs.gratitudeDaily && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <select
+                  className="input w-auto py-1.5 text-sm"
+                  value={prefs.gratitudeHour}
+                  onChange={(e) => setGratitudeTime(Number(e.target.value), prefs.gratitudeMinute)}
+                >
+                  {HOURS.map((h) => (
+                    <option key={h} value={h}>
+                      {String(h).padStart(2, "0")}:{String(prefs.gratitudeMinute).padStart(2, "0")}
                     </option>
                   ))}
                 </select>

@@ -75,9 +75,13 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
   const [status, setStatus] = useState("");
   const [playbackMode, setPlaybackMode] = useState<"ayah" | "surah">("ayah");
   const [surahAudioAvailable, setSurahAudioAvailable] = useState(true);
+  const [bismillahAudio, setBismillahAudio] = useState<string | null>(null);
+  const [needsBismillah, setNeedsBismillah] = useState(false);
+  const [prefsHydrated, setPrefsHydrated] = useState(false);
   const stopRef = useRef(false);
   const sessionRef = useRef(0);
   const surahArabicPlayedRef = useRef<string | null>(null);
+  const bismillahPlayedRef = useRef(false);
   const includeTafsirRef = useRef(includeTafsir);
   const includeTranslationRef = useRef(includeTranslation);
   const tafsirSourceRef = useRef(tafsirSource);
@@ -105,20 +109,23 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
     if (savedScope === "ayah" || savedScope === "surah") setRepeatScope(savedScope);
     const savedRepeat = Number(localStorage.getItem("noor-audio-repeat-count"));
     if (savedRepeat >= 1 && savedRepeat <= MAX_REPEAT) setRepeatCount(savedRepeat);
+    setPrefsHydrated(true);
   }, []);
 
   useEffect(() => {
+    if (!prefsHydrated) return;
     localStorage.setItem("noor-reciter", reciter);
-  }, [reciter]);
+  }, [prefsHydrated, reciter]);
 
   useEffect(() => {
+    if (!prefsHydrated) return;
     localStorage.setItem("noor-quran-translation", translationLang);
     localStorage.setItem("noor-audio-translation", includeTranslation ? "1" : "0");
     localStorage.setItem("noor-audio-tafsir", includeTafsir ? "1" : "0");
     localStorage.setItem("noor-audio-repeat-scope", repeatScope);
     localStorage.setItem("noor-audio-repeat-count", String(repeatCount));
     localStorage.setItem("noor-audio-tafsir-source", tafsirSource);
-  }, [translationLang, includeTranslation, includeTafsir, repeatScope, repeatCount, tafsirSource]);
+  }, [prefsHydrated, translationLang, includeTranslation, includeTafsir, repeatScope, repeatCount, tafsirSource]);
 
   const loadSurah = useCallback(async () => {
     setLoading(true);
@@ -136,15 +143,28 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
           playback_mode?: "ayah" | "surah";
           surah_audio_available?: boolean;
           translation_audio_info?: TranslationAudioInfo;
+          bismillah_audio?: string | null;
+          needs_bismillah?: boolean;
         }>(`/api/quran/audio/surahs/${surahNumber}?reciter=${encodeURIComponent(reciter)}${trParam}`),
         api<{ ayahs: TextAyah[]; surah: { name_en: string } }>(
           `/api/quran/surahs/${surahNumber}?translation=${translationLang}`
         ),
       ]);
-      setReciters(editions.reciters);
+      setReciters(
+        (editions.reciters || []).filter(
+          (r, i, arr) =>
+            r?.id &&
+            !r.id.endsWith("-2") &&
+            arr.findIndex((x) => x.id === r.id) === i &&
+            arr.findIndex((x) => (x.name || "").toLowerCase() === (r.name || "").toLowerCase()) === i
+        )
+      );
       setPlaybackMode(audio.playback_mode ?? "ayah");
       setSurahAudioAvailable(audio.surah_audio_available ?? true);
+      setBismillahAudio(audio.bismillah_audio ?? null);
+      setNeedsBismillah(Boolean(audio.needs_bismillah && audio.bismillah_audio));
       surahArabicPlayedRef.current = null;
+      bismillahPlayedRef.current = false;
       setAudioAyahs(audio.ayahs);
       setTranslationAudioInfo(audio.translation_audio_info ?? null);
       setTextAyahs(text.ayahs);
@@ -198,6 +218,18 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
 
     setStatus(`${prefix}${text.verse_key} — ${t(lang, "arabic")}`);
     stopAllPlayback();
+    if (i === 0 && needsBismillah && bismillahAudio && !bismillahPlayedRef.current) {
+      bismillahPlayedRef.current = true;
+      setStatus(`${prefix}Bismillah`);
+      try {
+        await playAudioUrl(bismillahAudio, gen);
+      } catch {
+        /* Continue with the ayah if the optional clip fails. */
+      }
+      if (stopRef.current || sessionRef.current !== gen) return;
+      stopAllPlayback();
+      setStatus(`${prefix}${text.verse_key} — ${t(lang, "arabic")}`);
+    }
     const skipSurahReplay =
       playbackMode === "surah" && audio.audio && surahArabicPlayedRef.current === audio.audio;
     if (audio.audio && !skipSurahReplay) {
@@ -234,6 +266,7 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
   async function playFromIndex(start: number) {
     stopRef.current = false;
     surahArabicPlayedRef.current = null;
+    bismillahPlayedRef.current = false;
     const gen = beginPlaybackSession();
     sessionRef.current = gen;
     setPlaying(true);
@@ -245,6 +278,10 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
       if (stopRef.current || sessionRef.current !== gen) break;
       if (repeatScope === "surah" && surahPasses > 1) {
         setRepeatPass(pass);
+      }
+      if (pass > 1) {
+        surahArabicPlayedRef.current = null;
+        bismillahPlayedRef.current = false;
       }
 
       const passLabel =

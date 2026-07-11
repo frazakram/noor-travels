@@ -4,8 +4,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import {
+  BADGE_DEFS,
+  badgeTitle,
   completedCount,
   fetchLearnIndex,
+  isModuleComplete,
   levelForPoints,
   levelTitle,
   loadProgress,
@@ -97,6 +100,33 @@ export default function LearnQuranPage() {
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/80 dark:bg-slate-800">
           <div className="h-full rounded-full bg-emerald-600 transition-all" style={{ width: `${pct}%` }} />
         </div>
+        {Object.keys(progress.badges ?? {}).length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {BADGE_DEFS.filter((b) => progress.badges?.[b.id]).map((b) => (
+              <span
+                key={b.id}
+                className="inline-flex items-center gap-1 rounded-full bg-white/80 px-2.5 py-1 text-xs font-medium text-heading dark:bg-slate-900/50"
+                title={badgeTitle(b, lang)}
+              >
+                {b.icon} {badgeTitle(b, lang)}
+              </span>
+            ))}
+            {Object.keys(progress.badges ?? {})
+              .filter((id) => id.startsWith("module:"))
+              .map((id) => {
+                const mid = id.replace("module:", "");
+                const mod = index.modules.find((m) => m.id === mid);
+                return (
+                  <span
+                    key={id}
+                    className="inline-flex items-center gap-1 rounded-full bg-gold-100 px-2.5 py-1 text-xs font-medium text-noor-900 dark:bg-gold-900/30 dark:text-gold-200"
+                  >
+                    🏅 {mod ? moduleTitle(mod, lang) : mid}
+                  </span>
+                );
+              })}
+          </div>
+        )}
       </div>
 
       <Link
@@ -157,6 +187,8 @@ function ModuleCard({
   const done = completedCount(progress, mod.lesson_ids);
   const total = mod.lesson_ids.length;
   const nextId = mod.lesson_ids.find((id) => !progress.lessons[id]?.completed) ?? mod.lesson_ids[0];
+  const complete = isModuleComplete(progress, mod);
+  const quizScore = progress.moduleQuizzes?.[mod.id];
 
   return (
     <article className="card flex flex-col gap-3 transition hover:shadow-md">
@@ -169,6 +201,7 @@ function ModuleCard({
           <p className="mt-0.5 text-xs text-muted">{mod.desc_en}</p>
           <p className="mt-2 text-xs font-medium text-accent">
             {done}/{total} {t(lang as "en", "learnQuranLessonsDone")}
+            {typeof quizScore === "number" ? ` · ${quizScore}%` : ""}
           </p>
         </div>
       </div>
@@ -182,6 +215,14 @@ function ModuleCard({
         >
           {t(lang as "en", "learnQuranStartModule")}
         </Link>
+        {complete && (
+          <Link
+            href={`/learn-quran/module-quiz/${mod.id}`}
+            className="rounded-full border border-gold-300 bg-gold-50 px-4 py-2 text-sm font-medium text-noor-900 dark:border-gold-600 dark:bg-noor-900 dark:text-gold-300"
+          >
+            {t(lang as "en", "moduleQuiz")}
+          </Link>
+        )}
       </div>
     </article>
   );

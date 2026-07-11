@@ -68,26 +68,62 @@ def search_hadith(q: str = Query(min_length=2)):
 
 
 @router.get("/daily")
-def daily_hadith():
+def daily_hadith(topic: str | None = Query(default=None, max_length=32)):
+    import hashlib
     from datetime import datetime, timezone
 
-    day_index = int(datetime.now(timezone.utc).strftime("%j"))
+    from app.api.hadith_topics import chapters_for_topic
+
+    # Seed by full date (+ topic) and scatter with a hash so consecutive days
+    # jump across the whole collection. A plain day-of-year offset walks one
+    # row per day and stays inside a single chapter for weeks.
+    date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    seed = int(hashlib.md5(f"{date_key}:{topic or 'all'}".encode()).hexdigest(), 16)
+    chapters = chapters_for_topic(topic) if topic and topic != "all" else None
+
     with get_cursor() as cur:
-        cur.execute("SELECT COUNT(*) AS total FROM hadiths")
-        total_row = cur.fetchone()
-        total = int(total_row["total"] if total_row else 0)
+        if chapters:
+            placeholders = ",".join(["%s"] * len(chapters))
+            cur.execute(
+                f"SELECT COUNT(*) AS total FROM hadiths WHERE chapter_en IN ({placeholders})",
+                tuple(chapters),
+            )
+            total_row = cur.fetchone()
+            total = int(total_row["total"] if total_row else 0)
+            if not total:
+                chapters = None
+
+        if not chapters:
+            cur.execute("SELECT COUNT(*) AS total FROM hadiths")
+            total_row = cur.fetchone()
+            total = int(total_row["total"] if total_row else 0)
+
         if not total:
             raise HTTPException(404, "Hadith collection not loaded")
-        offset = day_index % total
-        cur.execute(
-            """
-            SELECT id, collection, chapter_en, hadith_number, arabic, english, reference
-            FROM hadiths
-            ORDER BY id
-            LIMIT 1 OFFSET %s
-            """,
-            (offset,),
-        )
+        offset = seed % total
+
+        if chapters:
+            placeholders = ",".join(["%s"] * len(chapters))
+            cur.execute(
+                f"""
+                SELECT id, collection, chapter_en, hadith_number, arabic, english, reference
+                FROM hadiths
+                WHERE chapter_en IN ({placeholders})
+                ORDER BY id
+                LIMIT 1 OFFSET %s
+                """,
+                (*chapters, offset),
+            )
+        else:
+            cur.execute(
+                """
+                SELECT id, collection, chapter_en, hadith_number, arabic, english, reference
+                FROM hadiths
+                ORDER BY id
+                LIMIT 1 OFFSET %s
+                """,
+                (offset,),
+            )
         row = cur.fetchone()
     if not row:
         raise HTTPException(404, "Hadith not found")

@@ -182,7 +182,7 @@ export function ChatWidget() {
 
   return (
     <>
-      <div className={`bottom-safe-5 fixed end-5 z-50 transition-opacity duration-300 ${isOpen ? "pointer-events-none opacity-0" : "opacity-100"}`}>
+      <div className={`fixed bottom-[calc(6rem+env(safe-area-inset-bottom,0px))] end-5 z-50 transition-opacity duration-300 md:bottom-5 ${isOpen ? "pointer-events-none opacity-0" : "opacity-100"}`}>
         <Tooltip label={t(lang, "chat")} side="top">
           <button
             type="button"

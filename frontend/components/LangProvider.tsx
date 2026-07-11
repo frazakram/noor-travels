@@ -9,19 +9,22 @@ const LangContext = createContext<LangContextType>({ lang: "en", setLang: () => 
 
 export function LangProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>("en");
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("noor-lang") as Lang | null;
     if (saved && ["en", "ur", "hi"].includes(saved)) setLangState(saved);
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
     localStorage.setItem("noor-lang", lang);
     document.documentElement.lang = lang === "ur" ? "ur" : lang === "hi" ? "hi" : "en";
     document.documentElement.dataset.uiLang = lang;
     // Keep layout chrome LTR — Urdu text blocks set dir="rtl" locally
     document.documentElement.dir = "ltr";
-  }, [lang]);
+  }, [lang, hydrated]);
 
   const setLang = useCallback((next: Lang) => {
     startTransition(() => setLangState(next));

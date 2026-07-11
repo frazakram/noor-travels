@@ -3,19 +3,27 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import { AyahWordText, type AyahWord } from "@/components/AyahWordText";
 import { useLang } from "@/components/LangProvider";
 import { IconButton, Icons } from "@/components/IconButton";
 import { emitPageLoading } from "@/components/NavigationProgress";
 import { useSurahAudio, type RepeatScope } from "@/hooks/useSurahAudio";
-import { api, apiStatic } from "@/lib/api";
+import { api } from "@/lib/api";
 import { t } from "@/lib/i18n";
-import { cleanQuranText, displaySurahName } from "@/lib/quran-display";
+import { isBookmarked, saveLastRead, toggleBookmark } from "@/lib/quran-bookmarks";
+import { cleanQuranText, displaySurahName, stripLeadingBismillah } from "@/lib/quran-display";
 import type { Ayah, TranslationLang } from "@/lib/quran-types";
 import { sourcesForPref, type TafsirPref, type TafsirSource } from "@/lib/tafsir";
 
 const MAX_REPEAT = 5;
 const MAX_SURAH = 114;
 const AYAH_RENDER_CHUNK = 18;
+const BISMILLAH_WORDS: AyahWord[] = [
+  { ar: "بِسْمِ", tr: "Bismi", en: "In the name" },
+  { ar: "ٱللَّهِ", tr: "Allāhi", en: "of Allah" },
+  { ar: "ٱلرَّحْمَـٰنِ", tr: "ar-Raḥmāni", en: "the Most Gracious" },
+  { ar: "ٱلرَّحِيمِ", tr: "ar-Raḥīm", en: "the Most Merciful" },
+];
 
 type TafsirRow = { verse_key: string; source: string; text: string };
 
@@ -35,8 +43,6 @@ export default function SurahClient() {
   const [loadingTafsir, setLoadingTafsir] = useState<string | null>(null);
   const [studyMode, setStudyMode] = useState(false);
   const [viewIndex, setViewIndex] = useState(0);
-  const [repeatTotal, setRepeatTotal] = useState(1);
-  const [repeatCurrent, setRepeatCurrent] = useState(1);
   const [tafsirPref, setTafsirPref] = useState<TafsirPref>("en");
 
   const [reciter, setReciter] = useState("ar.alafasy");
@@ -45,24 +51,48 @@ export default function SurahClient() {
   const [tafsirSource, setTafsirSource] = useState<TafsirSource>("ibn_kathir_en");
   const [repeatScope, setRepeatScope] = useState<RepeatScope>("ayah");
   const [audioRepeatCount, setAudioRepeatCount] = useState(1);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [showAudioOpts, setShowAudioOpts] = useState(false);
+  const [shareStatus, setShareStatus] = useState("");
   const [showTranslationText, setShowTranslationText] = useState(true);
   const [surahLoading, setSurahLoading] = useState(true);
+  const [surahError, setSurahError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [renderLimit, setRenderLimit] = useState(AYAH_RENDER_CHUNK);
+  const [wordsByVerse, setWordsByVerse] = useState<Record<string, AyahWord[]>>({});
+  const [bookmarkedKeys, setBookmarkedKeys] = useState<Record<string, boolean>>({});
 
   const ayahRefs = useRef<Record<string, HTMLElement | null>>({});
+  const bismillahRef = useRef<HTMLDivElement | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const followPlaybackRef = useRef(true);
+  const programmaticScrollRef = useRef(false);
+  const lastReadTimer = useRef<number | undefined>(undefined);
+  const pendingScrollRef = useRef(false);
+  const [prefsHydrated, setPrefsHydrated] = useState(false);
 
   const scrollToAyah = useCallback(
     (index: number) => {
       if (studyMode || index < 0 || index >= ayahs.length) return;
+      if (!followPlaybackRef.current) return;
       const key = ayahs[index]?.verse_key;
       if (!key) return;
+      // Progressive render: ensure the target ayah is mounted before scrolling.
+      if (index >= renderLimit) {
+        setRenderLimit((limit) => Math.min(ayahs.length, Math.max(limit, index + 6)));
+      }
+      programmaticScrollRef.current = true;
       requestAnimationFrame(() => {
-        ayahRefs.current[key]?.scrollIntoView({ behavior: "smooth", block: "start" });
+        const el = ayahRefs.current[key];
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        window.setTimeout(() => {
+          programmaticScrollRef.current = false;
+        }, 700);
       });
     },
-    [studyMode, ayahs]
+    [studyMode, ayahs, renderLimit]
   );
 
   const audio = useSurahAudio({
@@ -76,21 +106,57 @@ export default function SurahClient() {
     tafsirSource,
     repeatScope,
     repeatCount: audioRepeatCount,
-    onPlayIndex: (i) => setViewIndex(i),
+    playbackSpeed,
+    onPlayIndex: (i) => {
+      setViewIndex(i);
+      if (followPlaybackRef.current) scrollToAyah(i);
+    },
+    onBismillahPlay: () => {
+      if (!followPlaybackRef.current) return;
+      programmaticScrollRef.current = true;
+      requestAnimationFrame(() => {
+        bismillahRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        window.setTimeout(() => {
+          programmaticScrollRef.current = false;
+        }, 700);
+      });
+    },
   });
 
+  // Follow playback until the user intentionally scrolls; ignore our own scrollIntoView.
   useEffect(() => {
-    if (ayahs.length === 0) return;
-    scrollToAyah(viewIndex);
-  }, [viewIndex, ayahs.length, scrollToAyah]);
+    if (!audio.playing) {
+      followPlaybackRef.current = true;
+      return;
+    }
+
+    const markUserScroll = () => {
+      if (programmaticScrollRef.current) return;
+      followPlaybackRef.current = false;
+    };
+
+    window.addEventListener("wheel", markUserScroll, { passive: true });
+    window.addEventListener("touchmove", markUserScroll, { passive: true });
+    return () => {
+      window.removeEventListener("wheel", markUserScroll);
+      window.removeEventListener("touchmove", markUserScroll);
+    };
+  }, [audio.playing]);
+
+  // Retry scroll once progressive rendering catches up to the playing ayah.
+  const prevRenderLimitRef = useRef(renderLimit);
+  useEffect(() => {
+    const grew = renderLimit > prevRenderLimitRef.current;
+    prevRenderLimitRef.current = renderLimit;
+    if (!grew || !audio.playing || !followPlaybackRef.current) return;
+    if (audio.playIndex < renderLimit) scrollToAyah(audio.playIndex);
+  }, [renderLimit, audio.playIndex, audio.playing, scrollToAyah]);
 
   useEffect(() => {
     const saved = localStorage.getItem("noor-quran-translation") as TranslationLang | null;
     if (saved && ["en", "ur", "hi"].includes(saved)) setTranslation(saved);
     const savedStudy = localStorage.getItem("noor-quran-study-mode");
     if (savedStudy === "1") setStudyMode(true);
-    const savedRepeat = Number(localStorage.getItem("noor-quran-study-repeat"));
-    if (savedRepeat >= 1 && savedRepeat <= MAX_REPEAT) setRepeatTotal(savedRepeat);
     const savedTafsir = localStorage.getItem("noor-quran-tafsir-pref");
     if (savedTafsir === "en" || savedTafsir === "ur" || savedTafsir === "both") {
       setTafsirPref(savedTafsir);
@@ -111,13 +177,16 @@ export default function SurahClient() {
     if (savedAudioRepeat >= 1 && savedAudioRepeat <= MAX_REPEAT) {
       setAudioRepeatCount(savedAudioRepeat);
     }
+    const savedSpeed = Number(localStorage.getItem("noor-audio-speed"));
+    if ([0.75, 1, 1.25, 1.5].includes(savedSpeed)) setPlaybackSpeed(savedSpeed);
     if (localStorage.getItem("noor-read-translation") === "0") setShowTranslationText(false);
+    setPrefsHydrated(true);
   }, []);
 
   useEffect(() => {
+    if (!prefsHydrated) return;
     localStorage.setItem("noor-quran-translation", translation);
     localStorage.setItem("noor-quran-study-mode", studyMode ? "1" : "0");
-    localStorage.setItem("noor-quran-study-repeat", String(repeatTotal));
     localStorage.setItem("noor-quran-tafsir-pref", tafsirPref);
     localStorage.setItem("noor-reciter", reciter);
     localStorage.setItem("noor-audio-translation", includeTranslation ? "1" : "0");
@@ -125,11 +194,12 @@ export default function SurahClient() {
     localStorage.setItem("noor-audio-tafsir-source", tafsirSource);
     localStorage.setItem("noor-audio-repeat-scope", repeatScope);
     localStorage.setItem("noor-audio-repeat-count", String(audioRepeatCount));
+    localStorage.setItem("noor-audio-speed", String(playbackSpeed));
     localStorage.setItem("noor-read-translation", showTranslationText ? "1" : "0");
   }, [
+    prefsHydrated,
     translation,
     studyMode,
-    repeatTotal,
     tafsirPref,
     reciter,
     includeTranslation,
@@ -137,6 +207,7 @@ export default function SurahClient() {
     tafsirSource,
     repeatScope,
     audioRepeatCount,
+    playbackSpeed,
     showTranslationText,
   ]);
 
@@ -144,14 +215,58 @@ export default function SurahClient() {
     setExpanded({});
   }, [tafsirPref, surahNumber]);
 
+  // Persist last-read position (debounced) so travelers can resume.
   useEffect(() => {
+    if (!ayahs.length || viewIndex < 0 || viewIndex >= ayahs.length) return;
+    const a = ayahs[viewIndex];
+    if (!a) return;
+    window.clearTimeout(lastReadTimer.current);
+    lastReadTimer.current = window.setTimeout(() => {
+      saveLastRead({
+        surah: surahNumber,
+        ayah: a.ayah_number,
+        surahName: surahName || undefined,
+      });
+    }, 400);
+    return () => window.clearTimeout(lastReadTimer.current);
+  }, [viewIndex, ayahs, surahNumber, surahName]);
+
+  useEffect(() => {
+    const map: Record<string, boolean> = {};
+    for (const a of ayahs) {
+      if (isBookmarked(a.verse_key)) map[a.verse_key] = true;
+    }
+    setBookmarkedKeys(map);
+  }, [ayahs]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api<{ ayahs: { verse_key: string; words: AyahWord[] }[] }>(
+      `/api/quran/surahs/${surahNumber}/words`
+    )
+      .then((d) => {
+        if (cancelled) return;
+        const map: Record<string, AyahWord[]> = {};
+        for (const a of d.ayahs || []) map[a.verse_key] = a.words;
+        setWordsByVerse(map);
+      })
+      .catch(() => {
+        if (!cancelled) setWordsByVerse({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [surahNumber]);
+
+  useEffect(() => {
+    if (!prefsHydrated) return;
     const idx = Math.max(0, startAyah - 1);
     setViewIndex(idx);
-    setRepeatCurrent(1);
     setSurahLoading(true);
+    setSurahError(false);
     setAyahs([]);
     setRenderLimit(AYAH_RENDER_CHUNK);
-    apiStatic<{ surah: { name_en: string }; ayahs: Ayah[] }>(
+    api<{ surah: { name_en: string }; ayahs: Ayah[] }>(
       `/api/quran/surahs/${surahNumber}?translation=${translation}`
     )
       .then((d) => {
@@ -160,9 +275,18 @@ export default function SurahClient() {
         const nextIndex = Math.min(idx, Math.max(0, d.ayahs.length - 1));
         setViewIndex(nextIndex);
         setRenderLimit(Math.min(d.ayahs.length, Math.max(AYAH_RENDER_CHUNK, nextIndex + 6)));
+        pendingScrollRef.current = nextIndex > 0;
       })
+      .catch(() => setSurahError(true))
       .finally(() => setSurahLoading(false));
-  }, [surahNumber, translation, startAyah]);
+  }, [surahNumber, translation, startAyah, prefsHydrated, loadAttempt]);
+
+  // Deep links (?ayah=N from shares and continue-reading) scroll to the ayah once loaded.
+  useEffect(() => {
+    if (surahLoading || studyMode || !pendingScrollRef.current || !ayahs.length) return;
+    pendingScrollRef.current = false;
+    scrollToAyah(viewIndex);
+  }, [surahLoading, studyMode, ayahs.length, viewIndex, scrollToAyah]);
 
   useEffect(() => {
     if (studyMode || surahLoading || ayahs.length === 0 || renderLimit >= ayahs.length) return;
@@ -213,25 +337,60 @@ export default function SurahClient() {
     }
   }
 
+  function toggleAyahBookmark(a: Ayah) {
+    const next = toggleBookmark({
+      surah: surahNumber,
+      ayah: a.ayah_number,
+      verseKey: a.verse_key,
+      surahName: surahName || undefined,
+    });
+    setBookmarkedKeys((prev) => ({
+      ...prev,
+      [a.verse_key]: next.some((b) => b.verseKey === a.verse_key),
+    }));
+  }
+
+  async function shareAyah(a: Ayah) {
+    const tr = displayTranslation(a);
+    const url =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/quran/${surahNumber}?ayah=${a.ayah_number}`
+        : "";
+    const text = `${a.arabic}\n\n${tr}\n\n— ${a.verse_key}\n${url}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: a.verse_key, text, url });
+      } else {
+        await navigator.clipboard.writeText(text);
+        setShareStatus(t(lang, "copied"));
+        window.setTimeout(() => setShareStatus(""), 1500);
+      }
+    } catch {
+      try {
+        await navigator.clipboard.writeText(text);
+        setShareStatus(t(lang, "copied"));
+        window.setTimeout(() => setShareStatus(""), 1500);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
   function displayTranslation(a: Ayah): string {
-    if (a.translation) return cleanQuranText(a.translation);
-    if (translation === "ur") return cleanQuranText(a.translation_ur);
-    if (translation === "hi") return cleanQuranText(a.translation_hi || "");
-    return cleanQuranText(a.translation_en);
+    if (translation === "ur") {
+      return cleanQuranText(a.translation_ur || a.translation || "");
+    }
+    if (translation === "hi") {
+      return cleanQuranText(a.translation_hi || a.translation || "");
+    }
+    return cleanQuranText(a.translation_en || a.translation || "");
   }
 
   function goToAyah(index: number) {
     audio.pause();
+    followPlaybackRef.current = true;
     setViewIndex(index);
-    setRepeatCurrent(1);
-  }
-
-  function handleStudyRepeat() {
-    if (repeatCurrent < repeatTotal) {
-      setRepeatCurrent((r) => r + 1);
-      return;
-    }
-    if (viewIndex < ayahs.length - 1) goToAyah(viewIndex + 1);
+    scrollToAyah(index);
   }
 
   function playAyah(index: number) {
@@ -239,12 +398,26 @@ export default function SurahClient() {
       audio.pause();
     } else {
       audio.pause();
+      followPlaybackRef.current = true;
       setViewIndex(index);
       audio.playFromIndex(index);
     }
   }
 
-  const activeIndex = audio.playing ? audio.playIndex : viewIndex;
+  function toggleToolbarPlay() {
+    if (audio.playing) {
+      audio.pause();
+    } else {
+      followPlaybackRef.current = true;
+      audio.playFromIndex(viewIndex);
+    }
+  }
+
+  const activeIndex = audio.playing
+    ? audio.isPlayingBismillah
+      ? -1
+      : audio.playIndex
+    : viewIndex;
   const visibleAyahs = studyMode && ayahs.length ? [ayahs[viewIndex]] : ayahs.slice(0, renderLimit);
 
   useEffect(() => {
@@ -293,7 +466,7 @@ export default function SurahClient() {
             label={audio.playing ? t(lang, "pause") : t(lang, "play")}
             variant="primary"
             active={audio.playing}
-            onClick={() => audio.togglePlay(viewIndex)}
+            onClick={toggleToolbarPlay}
           />
           <IconButton
             icon={Icons.nextAyah}
@@ -320,8 +493,10 @@ export default function SurahClient() {
             <button
               key={tr}
               type="button"
-              onClick={() => setTranslation(tr)}
-              disabled={audio.playing}
+              onClick={() => {
+                if (audio.playing) audio.pause();
+                setTranslation(tr);
+              }}
               className={`shrink-0 rounded-md px-2.5 py-1 text-xs font-medium uppercase ${
                 translation === tr
                   ? "bg-noor-700 text-white dark:bg-noor-600"
@@ -334,10 +509,14 @@ export default function SurahClient() {
           <button
             type="button"
             onClick={() => setShowAudioOpts((v) => !v)}
-            className="ml-auto flex items-center gap-1 text-xs text-muted"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-noor-200 px-2 py-1 text-xs text-muted hover:bg-noor-50 dark:border-noor-600 dark:hover:bg-noor-800"
             aria-expanded={showAudioOpts}
+            aria-label={t(lang, "audioOptions")}
+            title={t(lang, "audioOptions")}
           >
-            {Icons.repeat} {showAudioOpts ? "▾" : "▸"}
+            <span className="inline-flex text-noor-700 dark:text-noor-200">{Icons.audioOpts}</span>
+            <span className="hidden sm:inline">{t(lang, "audioOptions")}</span>
+            <span aria-hidden>{showAudioOpts ? "▾" : "▸"}</span>
           </button>
         </div>
 
@@ -348,8 +527,10 @@ export default function SurahClient() {
               <select
                 className="input max-w-[200px] py-1 text-xs"
                 value={reciter}
-                onChange={(e) => setReciter(e.target.value)}
-                disabled={audio.playing}
+                onChange={(e) => {
+                  if (audio.playing) audio.pause();
+                  setReciter(e.target.value);
+                }}
               >
                 {(audio.reciters.length ? audio.reciters : [{ id: reciter, name: reciter }]).map(
                   (r) => (
@@ -396,11 +577,28 @@ export default function SurahClient() {
               </select>
             )}
             <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted">{t(lang, "playbackSpeed")}</span>
+              {[0.75, 1, 1.25, 1.5].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setPlaybackSpeed(s)}
+                  className={`rounded-md px-2 py-0.5 text-xs ${
+                    playbackSpeed === s
+                      ? "bg-noor-700 text-white dark:bg-noor-600"
+                      : "border border-noor-200 dark:border-noor-600"
+                  }`}
+                >
+                  {s}×
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 disabled={audio.playing}
                 onClick={() => setRepeatScope("ayah")}
-                className={`rounded-md px-2 py-0.5 text-xs ${
+                className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs ${
                   repeatScope === "ayah"
                     ? "bg-noor-700 text-white dark:bg-noor-600"
                     : "border border-noor-200 dark:border-noor-600"
@@ -412,7 +610,7 @@ export default function SurahClient() {
                 type="button"
                 disabled={audio.playing}
                 onClick={() => setRepeatScope("surah")}
-                className={`rounded-md px-2 py-0.5 text-xs ${
+                className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs ${
                   repeatScope === "surah"
                     ? "bg-noor-700 text-white dark:bg-noor-600"
                     : "border border-noor-200 dark:border-noor-600"
@@ -470,48 +668,14 @@ export default function SurahClient() {
             icon={Icons.book}
             label={t(lang, "allAyahs")}
             active={!studyMode}
-            onClick={() => {
-              setStudyMode(false);
-              setRepeatCurrent(1);
-            }}
+            onClick={() => setStudyMode(false)}
           />
           <IconButton
             icon={Icons.ayah}
             label={t(lang, "ayahByAyah")}
             active={studyMode}
-            onClick={() => {
-              setStudyMode(true);
-              setRepeatCurrent(1);
-            }}
+            onClick={() => setStudyMode(true)}
           />
-          {studyMode && (
-            <>
-              {Array.from({ length: MAX_REPEAT }, (_, i) => i + 1).map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => {
-                    setRepeatTotal(n);
-                    setRepeatCurrent(1);
-                  }}
-                  className={`h-7 w-7 rounded-full text-xs font-medium ${
-                    repeatTotal === n
-                      ? "bg-gold-500 text-white dark:bg-gold-400 dark:text-noor-950"
-                      : "border border-noor-200 text-muted dark:border-noor-600"
-                  }`}
-                >
-                  {n}
-                </button>
-              ))}
-              <IconButton
-                icon={Icons.repeat}
-                label={`${t(lang, "repeat")} ${repeatCurrent}/${repeatTotal}`}
-                variant="gold"
-                onClick={handleStudyRepeat}
-                disabled={viewIndex >= ayahs.length - 1 && repeatCurrent >= repeatTotal}
-              />
-            </>
-          )}
         </div>
       </div>
 
@@ -540,11 +704,40 @@ export default function SurahClient() {
         {surahLoading && (
           <p className="text-sm text-muted">{t(lang, "loading")}…</p>
         )}
+        {!surahLoading && surahError && (
+          <div className="card space-y-3 text-center">
+            <p className="text-sm text-muted">{t(lang, "surahLoadError")}</p>
+            <button
+              type="button"
+              className="rounded-md border border-noor-200 px-3 py-1.5 text-sm font-medium text-heading dark:border-noor-600"
+              onClick={() => setLoadAttempt((n) => n + 1)}
+            >
+              {t(lang, "tryAgain")}
+            </button>
+          </div>
+        )}
+        {!surahLoading && surahNumber !== 1 && surahNumber !== 9 && (!studyMode || viewIndex === 0) && (
+          <div
+            ref={bismillahRef}
+            className="scroll-mt-28 py-2 text-heading"
+            aria-label="Bismillah"
+          >
+            <AyahWordText
+              verseKey="bismillah"
+              words={BISMILLAH_WORDS}
+              activeWordIndex={audio.activeBismillahWordIndex}
+              fallbackArabic="بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"
+              isPlaying={audio.playing && audio.isPlayingBismillah}
+              align="center"
+            />
+          </div>
+        )}
         {!surahLoading &&
           visibleAyahs.filter(Boolean).map((a, localIdx) => {
           const idx = studyMode ? viewIndex : localIdx;
           const isActive = idx === activeIndex;
-          const isPlaying = audio.playing && idx === audio.playIndex;
+          const isPlaying =
+            audio.playing && !audio.isPlayingBismillah && idx === audio.playIndex;
           return (
             <article
               key={studyMode ? `${a.verse_key}-${viewIndex}` : a.verse_key}
@@ -560,6 +753,21 @@ export default function SurahClient() {
               <div className="flex items-start justify-between gap-2">
                 <p className="text-xs font-medium text-accent">{a.verse_key}</p>
                 <div className="flex shrink-0 gap-1">
+                  <IconButton
+                    icon={bookmarkedKeys[a.verse_key] ? "★" : "☆"}
+                    label={
+                      bookmarkedKeys[a.verse_key] ? t(lang, "bookmarkSaved") : t(lang, "bookmark")
+                    }
+                    active={!!bookmarkedKeys[a.verse_key]}
+                    tipSide="top"
+                    onClick={() => toggleAyahBookmark(a)}
+                  />
+                  <IconButton
+                    icon="↗"
+                    label={shareStatus || t(lang, "shareAyah")}
+                    tipSide="top"
+                    onClick={() => void shareAyah(a)}
+                  />
                   <IconButton
                     icon={isPlaying ? Icons.pause : Icons.play}
                     label={t(lang, "listenThisAyah")}
@@ -577,9 +785,17 @@ export default function SurahClient() {
                   />
                 </div>
               </div>
-              <p className="font-arabic mt-2 text-right text-xl" dir="rtl">
-                {a.arabic}
-              </p>
+              <AyahWordText
+                verseKey={a.verse_key}
+                words={wordsByVerse[a.verse_key]}
+                activeWordIndex={isPlaying ? audio.activeWordIndex : -1}
+                fallbackArabic={
+                  surahNumber !== 1 && surahNumber !== 9 && a.ayah_number === 1
+                    ? stripLeadingBismillah(a.arabic)
+                    : a.arabic
+                }
+                isPlaying={isPlaying}
+              />
               {showRoman && a.transliteration && (
                 <p className="mt-2 text-sm italic text-faint" dir="ltr">
                   {a.transliteration}

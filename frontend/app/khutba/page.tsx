@@ -197,9 +197,9 @@ export default function KhutbaPage() {
         {status && !active && (
           <NoticeCard
             tone="warning"
-            title="Live listening is not ready"
+            title={t(lang, "khutbaNotReady")}
             message={status}
-            actionLabel="Try again"
+            actionLabel={t(lang, "tryAgain")}
             onAction={() => void start()}
           />
         )}
@@ -299,8 +299,8 @@ export default function KhutbaPage() {
           {sermons.length === 0 ? (
             <NoticeCard
               tone="info"
-              title="Khutbah library is preparing"
-              message="The khutbah collection is not available right now. Please refresh shortly."
+              title={t(lang, "khutbaLibraryPreparing")}
+              message={t(lang, "khutbaLibraryEmpty")}
             />
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">

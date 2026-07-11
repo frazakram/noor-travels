@@ -1,6 +1,9 @@
 import re
 from html import unescape
+from functools import lru_cache
+from typing import Any
 
+import httpx
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 
@@ -9,6 +12,42 @@ from app.db import get_cursor
 router = APIRouter()
 
 _CACHE_1H = "public, max-age=3600, stale-while-revalidate=86400"
+_CACHE_WORDS = "public, max-age=86400, stale-while-revalidate=604800"
+
+QURAN_COM_CHAPTER_WORDS = (
+    "https://api.quran.com/api/v4/verses/by_chapter/{chapter}"
+    "?words=true&word_fields=text_uthmani,translation,transliteration"
+    "&per_page=300&page={page}"
+)
+
+# Map our reciter ids → quran.com / qurancdn recitation ids (for word timings).
+RECITER_TIMING_IDS: dict[str, int] = {
+    "ar.alafasy": 7,
+    "ar.alafasy-2": 7,
+    "ar.abdulbasitmurattal": 2,
+    "ar.abdurrahmaansudais": 3,
+    "ar.shaatree": 4,
+    "ar.husary": 6,
+    "ar.husary-2": 6,
+    "ar.husarymujawwad": 6,
+    "ar.husarymujawwad-2": 6,
+    "ar.minshawi": 5,
+    "ar.minshawi-2": 5,
+    "ar.minshawimujawwad": 5,
+    "ar.mahermuaiqly": 11,
+    "ar.mahermuaiqly-2": 11,
+    "ar.hudhaify": 9,
+    "ar.hudhaify-2": 9,
+    "ar.muhammadayyoub": 8,
+    "ar.muhammadayyoub-2": 8,
+    "ar.muhammadjibreel": 10,
+    "ar.muhammadjibreel-2": 10,
+}
+
+QURANCDN_TIMINGS = (
+    "https://api.qurancdn.com/api/qdc/audio/reciters/{recitation_id}/audio_files"
+    "?chapter={chapter}&segments=true"
+)
 
 TRANSLATION_FIELDS = {
     "en": "translation_en",
@@ -135,3 +174,147 @@ def search_quran(q: str = Query(min_length=2)):
             (pattern, pattern, pattern, pattern, pattern, pattern),
         )
         return {"results": cur.fetchall()}
+
+
+def _normalize_word(w: dict[str, Any]) -> dict[str, str] | None:
+    if w.get("char_type_name") == "end":
+        return None
+    ar = (w.get("text_uthmani") or w.get("text") or "").strip()
+    if not ar:
+        return None
+    tr = ((w.get("transliteration") or {}).get("text") or "").strip()
+    en = ((w.get("translation") or {}).get("text") or "").strip()
+    return {"ar": ar, "tr": tr, "en": en}
+
+
+@lru_cache(maxsize=128)
+def _fetch_surah_words(surah_number: int) -> tuple[tuple[str, tuple[tuple[str, str, str], ...]], ...]:
+    """Cached word glosses per ayah for a surah (immutable tuple for lru_cache)."""
+    ayahs: list[tuple[str, tuple[tuple[str, str, str], ...]]] = []
+    page = 1
+    with httpx.Client(timeout=45) as client:
+        while True:
+            url = QURAN_COM_CHAPTER_WORDS.format(chapter=surah_number, page=page)
+            r = client.get(url, headers={"User-Agent": "NoorSafar/1.0"})
+            r.raise_for_status()
+            data = r.json()
+            verses = data.get("verses") or []
+            if not verses:
+                break
+            for v in verses:
+                key = v.get("verse_key") or ""
+                words: list[tuple[str, str, str]] = []
+                for w in v.get("words") or []:
+                    nw = _normalize_word(w)
+                    if nw:
+                        words.append((nw["ar"], nw["tr"], nw["en"]))
+                ayahs.append((key, tuple(words)))
+            pag = data.get("pagination") or {}
+            if not pag.get("next_page"):
+                break
+            page = int(pag["next_page"])
+            if page > 20:
+                break
+    return tuple(ayahs)
+
+
+@router.get("/surahs/{surah_number}/words")
+def get_surah_words(surah_number: int):
+    """Word-by-word Arabic + English gloss for hover tooltips and highlighting."""
+    if not 1 <= surah_number <= 114:
+        raise HTTPException(400, "Surah number must be 1–114")
+    try:
+        raw = _fetch_surah_words(surah_number)
+    except Exception as exc:
+        raise HTTPException(502, "Could not fetch word-by-word data") from exc
+
+    ayahs = [
+        {
+            "verse_key": key,
+            "words": [{"ar": ar, "tr": tr, "en": en} for ar, tr, en in words],
+        }
+        for key, words in raw
+    ]
+    return JSONResponse(
+        {"surah_number": surah_number, "ayahs": ayahs},
+        headers={"Cache-Control": _CACHE_WORDS},
+    )
+
+
+@lru_cache(maxsize=64)
+def _fetch_word_timings(surah_number: int, recitation_id: int) -> tuple[tuple[str, int, int, tuple[tuple[int, int, int], ...]], ...]:
+    """Per-ayah word segments as (verse_key, ts_from, ts_to, segments) with segments relative to ayah start."""
+    url = QURANCDN_TIMINGS.format(recitation_id=recitation_id, chapter=surah_number)
+    with httpx.Client(timeout=45) as client:
+        r = client.get(url, headers={"User-Agent": "NoorSafar/1.0"})
+        r.raise_for_status()
+        data = r.json()
+    files = data.get("audio_files") or []
+    if not files:
+        return tuple()
+    timings = files[0].get("verse_timings") or []
+    out: list[tuple[str, int, int, tuple[tuple[int, int, int], ...]]] = []
+    for vt in timings:
+        key = vt.get("verse_key") or ""
+        base = int(vt.get("timestamp_from") or 0)
+        end = int(vt.get("timestamp_to") or base)
+        segs: list[tuple[int, int, int]] = []
+        for seg in vt.get("segments") or []:
+            if not isinstance(seg, list) or len(seg) < 3:
+                continue
+            try:
+                idx = int(seg[0])
+                start = max(0, int(seg[1]) - base)
+                end_ms = max(start, int(seg[2]) - base)
+            except (TypeError, ValueError):
+                continue
+            segs.append((idx, start, end_ms))
+        out.append((key, base, end, tuple(segs)))
+    return tuple(out)
+
+
+@router.get("/surahs/{surah_number}/word-timings")
+def get_word_timings(
+    surah_number: int,
+    reciter: str = Query("ar.alafasy", min_length=3, max_length=64),
+):
+    """Word timing segments (ms from ayah start) when available for the reciter."""
+    if not 1 <= surah_number <= 114:
+        raise HTTPException(400, "Surah number must be 1–114")
+    rid = RECITER_TIMING_IDS.get(reciter)
+    if not rid:
+        return JSONResponse(
+            {
+                "surah_number": surah_number,
+                "reciter": reciter,
+                "available": False,
+                "ayahs": [],
+            },
+            headers={"Cache-Control": _CACHE_WORDS},
+        )
+    try:
+        raw = _fetch_word_timings(surah_number, rid)
+    except Exception as exc:
+        raise HTTPException(502, "Could not fetch word timings") from exc
+
+    ayahs = [
+        {
+            "verse_key": key,
+            "timestamp_from": ts_from,
+            "timestamp_to": ts_to,
+            "segments": [
+                {"word_index": idx, "start_ms": start, "end_ms": end}
+                for idx, start, end in segs
+            ],
+        }
+        for key, ts_from, ts_to, segs in raw
+    ]
+    return JSONResponse(
+        {
+            "surah_number": surah_number,
+            "reciter": reciter,
+            "available": bool(ayahs),
+            "ayahs": ayahs,
+        },
+        headers={"Cache-Control": _CACHE_WORDS},
+    )

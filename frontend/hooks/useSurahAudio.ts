@@ -22,7 +22,9 @@ import {
   invalidatePlaybackSession,
   playAudioUrl,
   playSpokenText,
+  prefetchAudioUrl,
   primeAudioPlayback,
+  setGlobalPlaybackRate,
   stopAllPlayback,
   truncateForSpeech,
 } from "@/lib/quran-audio";
@@ -30,10 +32,28 @@ import { speechLangForSource, type TafsirSource } from "@/lib/tafsir";
 import type { TranslationLang } from "@/lib/quran-types";
 
 const MAX_REPEAT = 5;
+const BISMILLAH_WORD_COUNT = 4;
+const BISMILLAH_FALLBACK_MS = 5840;
 
 export type RepeatScope = "ayah" | "surah";
 
 type Reciter = { id: string; name: string };
+
+function dedupeReciters(list: Reciter[]): Reciter[] {
+  const seenIds = new Set<string>();
+  const seenNames = new Set<string>();
+  const out: Reciter[] = [];
+  for (const r of list) {
+    if (!r?.id || seenIds.has(r.id)) continue;
+    if (r.id.endsWith("-2")) continue;
+    const nameKey = (r.name || r.id).trim().toLowerCase();
+    if (seenNames.has(nameKey)) continue;
+    seenIds.add(r.id);
+    seenNames.add(nameKey);
+    out.push(r);
+  }
+  return out;
+}
 
 type AudioAyah = {
   ayah_number: number;
@@ -51,6 +71,13 @@ type TextAyah = {
   translation_hi?: string;
 };
 
+type WordSegment = { word_index: number; start_ms: number; end_ms: number };
+type AyahTiming = {
+  segments: WordSegment[];
+  timestampFrom: number;
+  timestampTo: number;
+};
+
 type Options = {
   surahNumber: number;
   surahName?: string;
@@ -62,8 +89,56 @@ type Options = {
   tafsirSource: TafsirSource;
   repeatScope: RepeatScope;
   repeatCount: number;
+  playbackSpeed?: number;
   onPlayIndex?: (index: number) => void;
+  onBismillahPlay?: () => void;
 };
+
+/**
+ * Map playback time → word index.
+ * Segments from the API are ms from ayah start (not scaled to file duration).
+ * Scaling against full-file duration (esp. surah-mode) pinned the highlight on word 0.
+ */
+function wordIndexFromTime(
+  currentSec: number,
+  durationSec: number,
+  wordCount: number,
+  segments?: WordSegment[] | null,
+  /** When audio is a full-surah file, subtract this ayah's start (seconds). */
+  ayahOffsetSec = 0
+): number {
+  if (wordCount <= 0) return -1;
+  const localSec = Math.max(0, currentSec - ayahOffsetSec);
+  const ms = localSec * 1000;
+
+  if (segments && segments.length) {
+    // Sparse timings (e.g. 1 segment for a 4-word ayah) pin the highlight — use proportional instead.
+    const coverageOk = wordCount <= 1 || segments.length >= Math.ceil(wordCount * 0.5);
+    if (coverageOk) {
+      for (let i = segments.length - 1; i >= 0; i--) {
+        const s = segments[i];
+        if (ms >= s.start_ms) {
+          return Math.min(wordCount - 1, Math.max(0, s.word_index - 1));
+        }
+      }
+      return 0;
+    }
+  }
+
+  // Proportional fallback when timings are missing or too sparse for this reciter.
+  const span =
+    ayahOffsetSec > 0 && Number.isFinite(durationSec) && durationSec > ayahOffsetSec
+      ? durationSec - ayahOffsetSec
+      : durationSec;
+  if (!Number.isFinite(span) || span <= 0) {
+    // Without duration, nudge forward slowly from wall-clock-unaware currentTime alone.
+    if (localSec <= 0) return 0;
+    // Assume ~0.45s/word so highlight still moves when duration is unknown.
+    return Math.min(wordCount - 1, Math.floor(localSec / 0.45));
+  }
+  const idx = Math.floor((localSec / span) * wordCount);
+  return Math.min(wordCount - 1, Math.max(0, idx));
+}
 
 export function useSurahAudio({
   surahNumber,
@@ -76,7 +151,9 @@ export function useSurahAudio({
   tafsirSource,
   repeatScope,
   repeatCount,
+  playbackSpeed = 1,
   onPlayIndex,
+  onBismillahPlay,
 }: Options) {
   const [reciters, setReciters] = useState<Reciter[]>([]);
   const [audioAyahs, setAudioAyahs] = useState<AudioAyah[]>([]);
@@ -84,10 +161,23 @@ export function useSurahAudio({
   const [audioLoading, setAudioLoading] = useState(false);
   const [playbackMode, setPlaybackMode] = useState<"ayah" | "surah">("ayah");
   const [surahAudioAvailable, setSurahAudioAvailable] = useState(true);
+  const [bismillahAudio, setBismillahAudio] = useState<string | null>(null);
+  const [needsBismillah, setNeedsBismillah] = useState(false);
+  const [embeddedBismillah, setEmbeddedBismillah] = useState(false);
+  const [embeddedBismillahDurationMs, setEmbeddedBismillahDurationMs] = useState(0);
+  const [embeddedBismillahSegments, setEmbeddedBismillahSegments] = useState<WordSegment[]>([]);
   const [playing, setPlaying] = useState(false);
   const [playIndex, setPlayIndex] = useState(0);
   const [repeatPass, setRepeatPass] = useState(1);
   const [status, setStatus] = useState("");
+  const [activeWordIndex, setActiveWordIndex] = useState(-1);
+  const [activeBismillahWordIndex, setActiveBismillahWordIndex] = useState(-1);
+  const [isPlayingBismillah, setIsPlayingBismillah] = useState(false);
+  const [wordCounts, setWordCounts] = useState<Record<string, number>>({});
+  const [wordTimings, setWordTimings] = useState<Record<string, AyahTiming>>({});
+  const [referenceTimings, setReferenceTimings] = useState<Record<string, AyahTiming>>({});
+  const [bismillahSegments, setBismillahSegments] = useState<WordSegment[]>([]);
+
   const stopRef = useRef(false);
   const sessionRef = useRef(0);
   const loadGenRef = useRef(0);
@@ -95,40 +185,156 @@ export function useSurahAudio({
   const playingRef = useRef(false);
   const playIndexRef = useRef(0);
   const surahArabicPlayedRef = useRef<string | null>(null);
+  const bismillahPlayedRef = useRef(false);
   const includeTafsirRef = useRef(includeTafsir);
   const includeTranslationRef = useRef(includeTranslation);
   const tafsirSourceRef = useRef(tafsirSource);
   const textAyahsRef = useRef(textAyahs);
   const onPlayIndexRef = useRef(onPlayIndex);
+  const onBismillahPlayRef = useRef(onBismillahPlay);
+  const wordCountsRef = useRef(wordCounts);
+  const wordTimingsRef = useRef(wordTimings);
+  const referenceTimingsRef = useRef(referenceTimings);
+  const bismillahSegmentsRef = useRef(bismillahSegments);
+  const playbackSpeedRef = useRef(playbackSpeed);
+  const audioListRef = useRef<AudioAyah[]>([]);
   includeTafsirRef.current = includeTafsir;
   includeTranslationRef.current = includeTranslation;
   tafsirSourceRef.current = tafsirSource;
   onPlayIndexRef.current = onPlayIndex;
+  onBismillahPlayRef.current = onBismillahPlay;
   textAyahsRef.current = textAyahs;
   playingRef.current = playing;
+  wordCountsRef.current = wordCounts;
+  wordTimingsRef.current = wordTimings;
+  referenceTimingsRef.current = referenceTimings;
+  bismillahSegmentsRef.current = bismillahSegments;
+  playbackSpeedRef.current = playbackSpeed;
+
+  useEffect(() => {
+    setGlobalPlaybackRate(playbackSpeed);
+  }, [playbackSpeed]);
 
   useEffect(() => {
     api<{ reciters: Reciter[] }>("/api/quran/audio/editions")
-      .then((d) => setReciters(d.reciters))
+      .then((d) => setReciters(dedupeReciters(d.reciters || [])))
       .catch(() => {});
   }, []);
 
+  // Prefetch words and timing data. Exact reciter timings drive ayah-mode.
+  // Alafasy chapter timings are retained separately as a normalized reference
+  // for full-surah files (Anas), never mistaken for exact timestamps.
+  useEffect(() => {
+    let cancelled = false;
+    type TimingPayload = {
+      available: boolean;
+      ayahs: {
+        verse_key: string;
+        timestamp_from?: number;
+        timestamp_to?: number;
+        segments: WordSegment[];
+      }[];
+    };
+    const timingUrl = (surah: number, reciterId: string) =>
+      `/api/quran/surahs/${surah}/word-timings?reciter=${encodeURIComponent(reciterId)}`;
+    const toMap = (payload: TimingPayload): Record<string, AyahTiming> => {
+      const map: Record<string, AyahTiming> = {};
+      for (const a of payload.ayahs || []) {
+        map[a.verse_key] = {
+          segments: a.segments || [],
+          timestampFrom: a.timestamp_from ?? 0,
+          timestampTo: a.timestamp_to ?? 0,
+        };
+      }
+      return map;
+    };
+
+    api<{ ayahs: { verse_key: string; words: unknown[] }[] }>(
+      `/api/quran/surahs/${surahNumber}/words`
+    )
+      .then((d) => {
+        if (cancelled) return;
+        const counts: Record<string, number> = {};
+        for (const a of d.ayahs || []) counts[a.verse_key] = a.words?.length ?? 0;
+        setWordCounts(counts);
+      })
+      .catch(() => {});
+
+    Promise.all([
+      api<TimingPayload>(timingUrl(surahNumber, reciter)),
+      api<TimingPayload>(timingUrl(1, reciter)),
+    ])
+      .then(async ([own, fatiha]) => {
+        if (cancelled) return;
+        setWordTimings(own.available ? toMap(own) : {});
+        setBismillahSegments(
+          fatiha.available ? toMap(fatiha)["1:1"]?.segments ?? [] : []
+        );
+
+        if (own.available) {
+          setReferenceTimings({});
+        } else {
+          try {
+            const reference = await api<TimingPayload>(timingUrl(surahNumber, "ar.alafasy"));
+            if (!cancelled) {
+              setReferenceTimings(reference.available ? toMap(reference) : {});
+            }
+          } catch {
+            if (!cancelled) setReferenceTimings({});
+          }
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setWordTimings({});
+          setReferenceTimings({});
+          setBismillahSegments([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [surahNumber, reciter]);
+
   const getTranslation = useCallback(
     (a: TextAyah) => {
-      if (a.translation) return a.translation;
-      if (translation === "ur") return a.translation_ur;
-      if (translation === "hi") return a.translation_hi || a.translation_en;
-      return a.translation_en;
+      if (translation === "ur") return a.translation_ur || a.translation || "";
+      if (translation === "hi") return a.translation_hi || a.translation || a.translation_en || "";
+      return a.translation_en || a.translation || "";
     },
     [translation]
   );
 
-  const ensureAudioLoaded = useCallback(async (): Promise<AudioAyah[]> => {
-    if (audioReady && audioAyahs.length) return audioAyahs;
+  const ensureAudioLoaded = useCallback(async (): Promise<{
+    ayahs: AudioAyah[];
+    bismillah: string | null;
+    needsBis: boolean;
+    embeddedBis: boolean;
+    embeddedBisDurationMs: number;
+    embeddedBisSegments: WordSegment[];
+    mode: "ayah" | "surah";
+  }> => {
+    const needsTrAudio = includeTranslation && (translation === "en" || translation === "ur");
+    const cachedHasTr =
+      audioAyahs.length > 0 && audioAyahs.some((a) => Boolean(a.translation_audio));
+    if (audioReady && audioAyahs.length && (!needsTrAudio || cachedHasTr)) {
+      return {
+        ayahs: audioAyahs,
+        bismillah: bismillahAudio,
+        needsBis: needsBismillah,
+        embeddedBis: embeddedBismillah,
+        embeddedBisDurationMs: embeddedBismillahDurationMs,
+        embeddedBisSegments: embeddedBismillahSegments,
+        mode: playbackMode,
+      };
+    }
 
     const gen = ++loadGenRef.current;
     setAudioLoading(true);
     try {
+      // Always request translation audio when the spoken-translation toggle is on,
+      // so switching reciter never drops Urdu/English verse audio.
       const trParam = includeTranslation ? `&translation_lang=${translation}` : "";
       const [editions, audio] = await Promise.all([
         api<{ reciters: Reciter[] }>("/api/quran/audio/editions"),
@@ -136,28 +342,81 @@ export function useSurahAudio({
           ayahs: AudioAyah[];
           playback_mode?: "ayah" | "surah";
           surah_audio_available?: boolean;
+          bismillah_audio?: string | null;
+          needs_bismillah?: boolean;
+          embedded_bismillah?: boolean;
+          embedded_bismillah_duration_ms?: number;
+          embedded_bismillah_segments?: WordSegment[];
         }>(
           `/api/quran/audio/surahs/${surahNumber}?reciter=${encodeURIComponent(reciter)}${trParam}`
         ),
       ]);
-      if (gen !== loadGenRef.current) return [];
-      setReciters(editions.reciters);
-      setPlaybackMode(audio.playback_mode ?? "ayah");
+      if (gen !== loadGenRef.current) {
+        return {
+          ayahs: [],
+          bismillah: null,
+          needsBis: false,
+          embeddedBis: false,
+          embeddedBisDurationMs: 0,
+          embeddedBisSegments: [],
+          mode: "ayah",
+        };
+      }
+      setReciters(dedupeReciters(editions.reciters || []));
+      const mode = audio.playback_mode ?? "ayah";
+      setPlaybackMode(mode);
       setSurahAudioAvailable(audio.surah_audio_available ?? true);
       setAudioAyahs(audio.ayahs);
+      const bis = audio.bismillah_audio ?? null;
+      const needsBis = Boolean(audio.needs_bismillah && bis);
+      const embeddedBis = Boolean(audio.embedded_bismillah);
+      const embeddedBisDurationMs = Math.max(0, audio.embedded_bismillah_duration_ms ?? 0);
+      const embeddedBisSegments = audio.embedded_bismillah_segments ?? [];
+      setBismillahAudio(bis);
+      setNeedsBismillah(needsBis);
+      setEmbeddedBismillah(embeddedBis);
+      setEmbeddedBismillahDurationMs(embeddedBisDurationMs);
+      setEmbeddedBismillahSegments(embeddedBisSegments);
       setAudioReady(true);
-      return audio.ayahs;
+      return {
+        ayahs: audio.ayahs,
+        bismillah: bis,
+        needsBis,
+        embeddedBis,
+        embeddedBisDurationMs,
+        embeddedBisSegments,
+        mode,
+      };
     } finally {
       if (gen === loadGenRef.current) setAudioLoading(false);
     }
-  }, [audioReady, audioAyahs, includeTranslation, translation, surahNumber, reciter]);
+  }, [
+    audioReady,
+    audioAyahs,
+    bismillahAudio,
+    needsBismillah,
+    embeddedBismillah,
+    embeddedBismillahDurationMs,
+    embeddedBismillahSegments,
+    playbackMode,
+    includeTranslation,
+    translation,
+    surahNumber,
+    reciter,
+  ]);
 
   useEffect(() => {
     setAudioReady(false);
     setAudioAyahs([]);
     setPlaybackMode("ayah");
     setSurahAudioAvailable(true);
+    setBismillahAudio(null);
+    setNeedsBismillah(false);
+    setEmbeddedBismillah(false);
+    setEmbeddedBismillahDurationMs(0);
+    setEmbeddedBismillahSegments([]);
     surahArabicPlayedRef.current = null;
+    bismillahPlayedRef.current = false;
   }, [surahNumber, reciter, translation, includeTranslation]);
 
   // Prefetch the audio list so the first tap on play starts immediately.
@@ -184,6 +443,9 @@ export function useSurahAudio({
     setPlaying(false);
     setRepeatPass(1);
     setStatus("");
+    setActiveWordIndex(-1);
+    setActiveBismillahWordIndex(-1);
+    setIsPlayingBismillah(false);
   }, []);
 
   const releaseNativePlayback = useCallback(() => {
@@ -254,7 +516,9 @@ export function useSurahAudio({
     start: number,
     audioList: AudioAyah[],
     surahPasses: number,
-    ayahRepeats: number
+    ayahRepeats: number,
+    bismillah: string | null,
+    needsBis: boolean
   ): Promise<NativeQueueItem[]> {
     const items: NativeQueueItem[] = [];
     let lastArabicUrl: string | null = null;
@@ -264,6 +528,17 @@ export function useSurahAudio({
         const text = textAyahs[i];
         if (!audio?.audio || !text) continue;
         for (let r = 0; r < ayahRepeats; r++) {
+          if (needsBis && bismillah && i === 0 && r === 0 && (pass === 1 || start === 0)) {
+            if (bismillah !== lastArabicUrl) {
+              items.push({
+                url: bismillah,
+                title: "Bismillah",
+                ayahIndex: 0,
+                kind: "arabic",
+              });
+              lastArabicUrl = bismillah;
+            }
+          }
           if (audio.audio !== lastArabicUrl) {
             items.push({
               url: audio.audio,
@@ -291,43 +566,247 @@ export function useSurahAudio({
     i: number,
     audioList: AudioAyah[],
     gen: number,
-    passLabel?: string
+    opts: {
+      passLabel?: string;
+      seamlessArabic?: boolean;
+      nextArabicUrl?: string | null;
+      playBismillah?: boolean;
+      bismillahUrl?: string | null;
+      mode: "ayah" | "surah";
+      embeddedBismillah?: boolean;
+      embeddedBismillahDurationMs?: number;
+      embeddedBismillahSegments?: WordSegment[];
+    }
   ) {
     const audio = audioList[i];
-    const text = textAyahs[i];
-    if (!audio?.audio || !text) return;
+    const text = textAyahsRef.current[i];
+    if (!text) return;
+    // Allow translation-only when Arabic URL is missing (e.g. surah-mode gap).
+    if (!audio?.audio && !(includeTranslationRef.current && (audio?.translation_audio || getTranslation(text)))) {
+      return;
+    }
 
     setPlayIndex(i);
     playIndexRef.current = i;
-    onPlayIndex?.(i);
+    onPlayIndexRef.current?.(i);
+    setActiveWordIndex(-1);
 
     const wantTafsir = includeTafsirRef.current;
     const tafsirPromise =
       wantTafsir && !stopRef.current ? fetchTafsirText(text.verse_key) : null;
 
-    const prefix = passLabel ? `${passLabel} · ` : "";
+    const prefix = opts.passLabel ? `${opts.passLabel} · ` : "";
     const label = `${prefix}${text.verse_key}`;
     setStatus(label);
     updateNowPlaying(text.verse_key);
 
-    stopAllPlayback();
-    const skipSurahReplay =
-      playbackMode === "surah" && audio.audio && surahArabicPlayedRef.current === audio.audio;
-    if (audio.audio && !skipSurahReplay) {
-      surahArabicPlayedRef.current = audio.audio;
+    const arabicOnly =
+      !includeTranslationRef.current && !includeTafsirRef.current && opts.mode === "ayah";
+
+    if (opts.mode === "surah" && opts.embeddedBismillah && i === 0) {
+      setStatus(`${prefix}Bismillah`);
+      setIsPlayingBismillah(true);
+      setActiveBismillahWordIndex(0);
+      setActiveWordIndex(-1);
+      onBismillahPlayRef.current?.();
+    }
+
+    if (opts.playBismillah && opts.bismillahUrl && !bismillahPlayedRef.current) {
+      bismillahPlayedRef.current = true;
+      stopAllPlayback();
+      setStatus(`${prefix}Bismillah`);
+      setIsPlayingBismillah(true);
+      setActiveWordIndex(-1);
+      setActiveBismillahWordIndex(0);
+      onBismillahPlayRef.current?.();
+      if (audio?.audio) prefetchAudioUrl(audio.audio);
       try {
-        await playAudioUrl(audio.audio, gen);
+        await playAudioUrl(opts.bismillahUrl, {
+          gen,
+          seamless: false,
+          playbackRate: playbackSpeedRef.current,
+          onTimeUpdate: (current, duration) => {
+            if (stopRef.current || sessionRef.current !== gen) return;
+            setActiveBismillahWordIndex(
+              wordIndexFromTime(
+                current,
+                duration,
+                BISMILLAH_WORD_COUNT,
+                bismillahSegmentsRef.current
+              )
+            );
+          },
+        });
       } catch {
         /* skip */
       }
+      setIsPlayingBismillah(false);
+      setActiveBismillahWordIndex(-1);
+      if (stopRef.current || sessionRef.current !== gen) return;
+      if (audio?.audio) prefetchAudioUrl(audio.audio);
+    } else if (!opts.seamlessArabic || !arabicOnly) {
+      // Hard stop when leaving Arabic-only gapless mode (translation/tafsir).
+      stopAllPlayback();
     }
+
+    const skipSurahReplay =
+      opts.mode === "surah" && audio?.audio && surahArabicPlayedRef.current === audio.audio;
+    if (audio?.audio && !skipSurahReplay) {
+      surahArabicPlayedRef.current = audio.audio;
+      if (opts.nextArabicUrl && arabicOnly) {
+        prefetchAudioUrl(opts.nextArabicUrl);
+      }
+      const verseKey = text.verse_key;
+      const isSurahFile = opts.mode === "surah";
+      const seekTimingMap = Object.keys(wordTimingsRef.current).length
+        ? wordTimingsRef.current
+        : referenceTimingsRef.current;
+      const seekTimelineEnd = Math.max(
+        0,
+        ...Object.values(seekTimingMap).map((t) => t.timestampTo)
+      );
+      const startAtFraction =
+        isSurahFile && i > 0 && seekTimelineEnd > 0
+          ? (seekTimingMap[verseKey]?.timestampFrom ?? 0) / seekTimelineEnd
+          : undefined;
+      try {
+        await playAudioUrl(audio.audio, {
+          gen,
+          seamless: Boolean(opts.seamlessArabic && arabicOnly),
+          playbackRate: playbackSpeedRef.current,
+          startAtFraction,
+          contentOffsetSec: opts.embeddedBismillah
+            ? (opts.embeddedBismillahDurationMs ?? 0) / 1000
+            : 0,
+          onTimeUpdate: (current, duration) => {
+            if (stopRef.current || sessionRef.current !== gen) return;
+
+            if (isSurahFile) {
+              const list = audioListRef.current;
+              const currentMs = current * 1000;
+              const durationMs = duration > 0 ? duration * 1000 : 0;
+              const embeddedBisMs = opts.embeddedBismillah
+                ? Math.min(
+                    opts.embeddedBismillahDurationMs || BISMILLAH_FALLBACK_MS,
+                    durationMs || opts.embeddedBismillahDurationMs || BISMILLAH_FALLBACK_MS
+                  )
+                : 0;
+
+              if (embeddedBisMs > 0 && currentMs < embeddedBisMs) {
+                setStatus(`${prefix}Bismillah`);
+                setIsPlayingBismillah(true);
+                setActiveWordIndex(-1);
+                setActiveBismillahWordIndex(
+                  wordIndexFromTime(
+                    current,
+                    embeddedBisMs / 1000,
+                    BISMILLAH_WORD_COUNT,
+                    opts.embeddedBismillahSegments?.length
+                      ? opts.embeddedBismillahSegments
+                      : bismillahSegmentsRef.current
+                  )
+                );
+                return;
+              }
+              setIsPlayingBismillah(false);
+              setActiveBismillahWordIndex(-1);
+
+              const exact = wordTimingsRef.current;
+              const reference = referenceTimingsRef.current;
+              const timingMap = Object.keys(exact).length ? exact : reference;
+              const referenceEnd = Math.max(
+                0,
+                ...Object.values(timingMap).map((t) => t.timestampTo)
+              );
+              const contentMs = Math.max(0, currentMs - embeddedBisMs);
+              const contentDurationMs = Math.max(1, durationMs - embeddedBisMs);
+              // Exact timings use the file's own clock. Reference timings are
+              // normalized across the remaining full-surah duration.
+              const timelineMs =
+                Object.keys(exact).length || referenceEnd <= 0
+                  ? contentMs
+                  : (contentMs / contentDurationMs) * referenceEnd;
+
+              let ayahIdx = 0;
+              for (let j = list.length - 1; j >= 0; j--) {
+                const key = list[j]?.verse_key;
+                if (!key) continue;
+                const from = timingMap[key]?.timestampFrom;
+                if (from != null && timelineMs >= from) {
+                  ayahIdx = j;
+                  break;
+                }
+              }
+              if (ayahIdx !== playIndexRef.current) {
+                playIndexRef.current = ayahIdx;
+                setPlayIndex(ayahIdx);
+                onPlayIndexRef.current?.(ayahIdx);
+              }
+              const activeKey = list[ayahIdx]?.verse_key;
+              if (!activeKey) return;
+              setStatus(`${prefix}${activeKey}`);
+              const timing = timingMap[activeKey];
+              const count = wordCountsRef.current[activeKey] ?? 0;
+              if (timing) {
+                const localMs = Math.max(0, timelineMs - timing.timestampFrom);
+                const ayahSpanMs = Math.max(
+                  1,
+                  timing.timestampTo - timing.timestampFrom
+                );
+                setActiveWordIndex(
+                  wordIndexFromTime(
+                    localMs / 1000,
+                    ayahSpanMs / 1000,
+                    count,
+                    timing.segments
+                  )
+                );
+              } else {
+                // Last-resort proportional position by cumulative word count.
+                const totalWords = list.reduce(
+                  (sum, row) => sum + (wordCountsRef.current[row.verse_key] ?? 0),
+                  0
+                );
+                const wordPosition = Math.floor(
+                  (contentMs / contentDurationMs) * Math.max(1, totalWords)
+                );
+                let before = 0;
+                for (let j = 0; j < list.length; j++) {
+                  const key = list[j]?.verse_key;
+                  const words = key ? wordCountsRef.current[key] ?? 0 : 0;
+                  if (wordPosition < before + words || j === list.length - 1) {
+                    if (j !== playIndexRef.current) {
+                      playIndexRef.current = j;
+                      setPlayIndex(j);
+                      onPlayIndexRef.current?.(j);
+                    }
+                    setActiveWordIndex(Math.max(0, Math.min(words - 1, wordPosition - before)));
+                    break;
+                  }
+                  before += words;
+                }
+              }
+              return;
+            }
+
+            const count = wordCountsRef.current[verseKey] ?? 0;
+            const segs = wordTimingsRef.current[verseKey]?.segments;
+            setActiveWordIndex(wordIndexFromTime(current, duration, count, segs));
+          },
+        });
+      } catch {
+        /* skip broken Arabic URL; still try translation below */
+      }
+    }
+    setActiveWordIndex(-1);
     if (stopRef.current || sessionRef.current !== gen) return;
 
     if (includeTranslationRef.current) {
       const tr = getTranslation(text);
-      if (tr) {
+      if (tr || audio?.translation_audio) {
         stopAllPlayback();
-        await playSpokenText(tr, translation, audio.translation_audio, gen);
+        setStatus(`${prefix}${text.verse_key} · ${translation}`);
+        await playSpokenText(tr || " ", translation, audio?.translation_audio, gen);
       }
     }
     if (stopRef.current || sessionRef.current !== gen) return;
@@ -347,21 +826,29 @@ export function useSurahAudio({
       // Runs synchronously within the click gesture, before the awaits below
       // consume it — otherwise mobile autoplay policy blocks the first play.
       primeAudioPlayback();
-      const audioList = await ensureAudioLoaded();
+      setGlobalPlaybackRate(playbackSpeedRef.current);
+      const loaded = await ensureAudioLoaded();
+      const audioList = loaded.ayahs;
       if (!audioList.length) return;
+      audioListRef.current = audioList;
 
       stopRef.current = false;
       nativeModeRef.current = false;
       surahArabicPlayedRef.current = null;
+      bismillahPlayedRef.current = false;
       const gen = beginPlaybackSession();
       sessionRef.current = gen;
       setPlaying(true);
       playingRef.current = true;
+      setActiveWordIndex(-1);
+      setActiveBismillahWordIndex(-1);
+      setIsPlayingBismillah(false);
       await acquireWakeLock();
       nativeSetQuranPlaying(true);
 
       const surahPasses = repeatScope === "surah" ? Math.min(repeatCount, MAX_REPEAT) : 1;
       const ayahRepeats = repeatScope === "ayah" ? Math.min(repeatCount, MAX_REPEAT) : 1;
+      const arabicOnly = !includeTranslationRef.current && !includeTafsirRef.current;
 
       // Native ExoPlayer queue: HTTP streams + lock-screen notification (Android APK)
       const canNative =
@@ -370,7 +857,14 @@ export function useSurahAudio({
         (!includeTranslationRef.current || audioList.some((a) => a.translation_audio));
 
       if (canNative) {
-        const queue = await buildNativeQueue(start, audioList, surahPasses, ayahRepeats);
+        const queue = await buildNativeQueue(
+          start,
+          audioList,
+          surahPasses,
+          ayahRepeats,
+          loaded.bismillah,
+          loaded.needsBis
+        );
         if (queue.length && nativePlayQuranQueue(surahName ?? `Surah ${surahNumber}`, queue)) {
           nativeModeRef.current = true;
           setPlayIndex(start);
@@ -381,11 +875,26 @@ export function useSurahAudio({
         }
       }
 
+      // Prefetch first track for snappier start
+      const firstUrl = audioList[start]?.audio;
+      if (loaded.needsBis && loaded.bismillah && start === 0) {
+        prefetchAudioUrl(loaded.bismillah);
+      } else if (firstUrl) {
+        prefetchAudioUrl(firstUrl);
+      }
+
       let idx = start;
       for (let pass = 1; pass <= surahPasses; pass++) {
         if (stopRef.current || sessionRef.current !== gen) break;
         if (repeatScope === "surah" && surahPasses > 1) setRepeatPass(pass);
+        if (pass > 1) {
+          // A new surah pass must replay both embedded/separate Bismillah and
+          // the full-surah Arabic file instead of treating them as duplicates.
+          surahArabicPlayedRef.current = null;
+          bismillahPlayedRef.current = false;
+        }
 
+        let surahFileDone = false;
         for (let i = idx; i < audioList.length; i++) {
           if (stopRef.current || sessionRef.current !== gen) break;
           for (let r = 1; r <= ayahRepeats; r++) {
@@ -396,8 +905,37 @@ export function useSurahAudio({
                 : repeatScope === "surah" && surahPasses > 1
                   ? `${pass}/${surahPasses}`
                   : undefined;
-            await playSingleAyah(i, audioList, gen, label);
+
+            const nextIdx = r < ayahRepeats ? i : i + 1;
+            const nextArabicUrl =
+              nextIdx < audioList.length ? audioList[nextIdx]?.audio : null;
+
+            const playBis =
+              loaded.needsBis &&
+              Boolean(loaded.bismillah) &&
+              i === 0 &&
+              r === 1 &&
+              !bismillahPlayedRef.current;
+
+            await playSingleAyah(i, audioList, gen, {
+              passLabel: label,
+              // Keep Arabic-only ayah mode gapless (including after Bismillah).
+              seamlessArabic: arabicOnly && loaded.mode === "ayah",
+              nextArabicUrl: arabicOnly ? nextArabicUrl : null,
+              playBismillah: playBis,
+              bismillahUrl: loaded.bismillah,
+              mode: loaded.mode,
+              embeddedBismillah: loaded.embeddedBis,
+              embeddedBismillahDurationMs: loaded.embeddedBisDurationMs,
+              embeddedBismillahSegments: loaded.embeddedBisSegments,
+            });
+            // Surah-mode Arabic-only: one file covers every ayah (tracked in onTimeUpdate).
+            if (loaded.mode === "surah" && arabicOnly) {
+              surahFileDone = true;
+              break;
+            }
           }
+          if (surahFileDone) break;
         }
         idx = 0;
       }
@@ -410,6 +948,9 @@ export function useSurahAudio({
         setPlaying(false);
         setRepeatPass(1);
         setStatus("");
+        setActiveWordIndex(-1);
+        setActiveBismillahWordIndex(-1);
+        setIsPlayingBismillah(false);
       }
     },
     [
@@ -418,7 +959,6 @@ export function useSurahAudio({
       repeatCount,
       includeTafsir,
       includeTranslation,
-      playbackMode,
       getTranslation,
       tafsirSource,
       textAyahs,
@@ -466,6 +1006,9 @@ export function useSurahAudio({
     audioReady,
     playbackMode,
     surahAudioAvailable,
+    activeWordIndex,
+    activeBismillahWordIndex,
+    isPlayingBismillah,
     pause,
     playFromIndex,
     togglePlay,

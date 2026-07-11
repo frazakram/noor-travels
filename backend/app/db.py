@@ -27,10 +27,16 @@ def _postgres_available() -> bool:
 def use_sqlite() -> bool:
     global _use_sqlite
     if _use_sqlite is None:
-        if os.getenv("FORCE_SQLITE", "").lower() in ("1", "true", "yes"):
+        flag = os.getenv("FORCE_SQLITE", "") or get_settings().force_sqlite
+        if flag.lower() in ("1", "true", "yes"):
             _use_sqlite = True
         else:
             _use_sqlite = not _postgres_available()
+            if _use_sqlite and get_settings().postgres_url:
+                print(
+                    "WARNING: POSTGRES_URL is set but Postgres is unreachable — "
+                    "falling back to SQLite for the lifetime of this process."
+                )
     return _use_sqlite
 
 

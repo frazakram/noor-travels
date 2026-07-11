@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { AppShellDetect } from "@/components/AppShellDetect";
+import { AppTabBar } from "@/components/AppTabBar";
 import { ChatProvider } from "@/components/ChatProvider";
 import { InstallAppBanner } from "@/components/InstallAppBanner";
 import { ChatWidget } from "@/components/ChatWidget";
@@ -36,7 +37,7 @@ export const viewport: Viewport = {
   ],
 };
 
-const themeScript = `(function(){try{var t=localStorage.getItem("noor-theme");if(t==="dark")document.documentElement.classList.add("dark");var ua=navigator.userAgent||"";if(/NoorSafarAndroid/i.test(ua)||/; wv\\)/i.test(ua)||window.matchMedia("(display-mode: standalone)").matches)document.documentElement.classList.add("app-shell")}catch(e){}})();`;
+const themeScript = `(function(){try{var t=localStorage.getItem("noor-theme");if(t==="dark")document.documentElement.classList.add("dark");var a=localStorage.getItem("noor-a11y");if(a){var p=JSON.parse(a);var scales={sm:"0.92",md:"1",lg:"1.12",xl:"1.25"};if(p.fontScale&&scales[p.fontScale])document.documentElement.style.setProperty("--text-scale",scales[p.fontScale]);if(p.highContrast)document.documentElement.classList.add("high-contrast")}var ua=navigator.userAgent||"";if(/NoorSafarAndroid/i.test(ua)||/; wv\\)/i.test(ua)||window.matchMedia("(display-mode: standalone)").matches)document.documentElement.classList.add("app-shell")}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -57,10 +58,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <NavigationProgress />
               <AppShellDetect />
               <Nav />
-              <main className="mx-auto max-w-5xl px-4 py-4 pb-safe sm:py-6">
+              <main className="mx-auto max-w-5xl px-4 py-4 pb-28 sm:py-6 md:pb-safe">
                 <PageWrapper>{children}</PageWrapper>
               </main>
-              <Footer />
+              <div className="pb-24 md:pb-0">
+                <Footer />
+              </div>
+              <AppTabBar />
               <RegisterServiceWorker />
               <ChatWidget />
               <InstallAppBanner />

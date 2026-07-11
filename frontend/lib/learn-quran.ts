@@ -139,6 +139,10 @@ export type LearnProgress = {
   lastStudyDate?: string;
   points: number;
   placement?: PlacementResult;
+  /** badgeId → ISO date earned */
+  badges?: Record<string, string>;
+  /** moduleId → best module-quiz score % */
+  moduleQuizzes?: Record<string, number>;
 };
 
 export function loadProgress(): LearnProgress {
@@ -192,9 +196,56 @@ export function markLessonComplete(lessonId: string, score?: number): LearnProgr
   };
   progress.streak = streak;
   progress.lastStudyDate = today;
+  // Lightweight badges
+  const badges = { ...(progress.badges ?? {}) };
+  if (!badges.first_lesson) badges.first_lesson = today;
+  if ((score ?? 0) >= 100 && !badges.perfect_quiz) badges.perfect_quiz = today;
+  if (streak >= 7 && !badges.streak_7) badges.streak_7 = today;
+  progress.badges = badges;
   saveProgress(progress);
   void import("@/lib/auth").then((m) => m.scheduleProgressPush(progress)).catch(() => undefined);
   return progress;
+}
+
+export function awardModuleBadge(moduleId: string, score: number): LearnProgress {
+  const progress = loadProgress();
+  const today = new Date().toISOString().slice(0, 10);
+  const quizzes = { ...(progress.moduleQuizzes ?? {}) };
+  quizzes[moduleId] = Math.max(quizzes[moduleId] ?? 0, score);
+  progress.moduleQuizzes = quizzes;
+  const badges = { ...(progress.badges ?? {}) };
+  if (score >= 70) {
+    badges[`module:${moduleId}`] = badges[`module:${moduleId}`] ?? today;
+    progress.points += score >= 90 ? 25 : 15;
+  }
+  progress.badges = badges;
+  saveProgress(progress);
+  void import("@/lib/auth").then((m) => m.scheduleProgressPush(progress)).catch(() => undefined);
+  return progress;
+}
+
+export function isModuleComplete(progress: LearnProgress, module: LearnModule): boolean {
+  return module.lesson_ids.every((id) => progress.lessons[id]?.completed);
+}
+
+export type BadgeDef = {
+  id: string;
+  icon: string;
+  title_en: string;
+  title_ur: string;
+  title_hi: string;
+};
+
+export const BADGE_DEFS: BadgeDef[] = [
+  { id: "first_lesson", icon: "🌟", title_en: "First lesson", title_ur: "پہلا سبق", title_hi: "पहला पाठ" },
+  { id: "perfect_quiz", icon: "💯", title_en: "Perfect quiz", title_ur: "کامل کوئز", title_hi: "पूर्ण क्विज़" },
+  { id: "streak_7", icon: "🔥", title_en: "7-day streak", title_ur: "۷ دن کا سلسلہ", title_hi: "७-दिन की लकीर" },
+];
+
+export function badgeTitle(b: BadgeDef, lang: string): string {
+  if (lang === "ur") return b.title_ur;
+  if (lang === "hi") return b.title_hi;
+  return b.title_en;
 }
 
 // ── Levels ──────────────────────────────────────────────────────────────

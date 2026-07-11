@@ -85,7 +85,7 @@ export const HADITH_TOPICS: HadithTopic[] = [
   {
     id: "daily",
     icon: "🍽️",
-    chapters: ["Food, Meals", "Dress", "Drinks", "Medicine"],
+    chapters: ["Food, Meals", "Dress", "Drinks", "Medicine", "Hunting, Slaughtering"],
   },
   {
     id: "faith",

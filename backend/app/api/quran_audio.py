@@ -50,14 +50,76 @@ CUSTOM_AUDIO_RECITERS: dict[str, dict[str, Any]] = {
         "playback_mode": "surah",
         "way2quran_slug": "anas-bin-saleh-al-malik",
         "way2quran_riwaya": "hafs-an-asim",
+        # Calibrated from the source audio: Bismillah ends at 2.96s,
+        # then a pause; the first ayah begins at 4.66s.
+        "embedded_bismillah_duration_ms": 4660,
+        "embedded_bismillah_segments": [
+            {"word_index": 1, "start_ms": 60, "end_ms": 520},
+            {"word_index": 2, "start_ms": 520, "end_ms": 1020},
+            {"word_index": 3, "start_ms": 1420, "end_ms": 1920},
+            {"word_index": 4, "start_ms": 2460, "end_ms": 2960},
+        ],
     },
 }
 
 EVERYAYAH_ARABIC = "https://everyayah.com/data/{path}/{file}.mp3"
+EVERYAYAH_BISMILLAH = "https://everyayah.com/data/{path}/bismillah.mp3"
 WAY2QURAN_SURAH = "https://media.way2quran.com/{slug}/{riwaya}/{surah}.mp3"
 WAY2QURAN_RECITER_PAGE = "https://way2quran.com/reciters/{slug}"
+CDN_AYAH = "https://cdn.islamic.network/quran/audio/128/{reciter}/{ayah}.mp3"
+
+# Surahs that should not prepend Bismillah audio (1 already is Bismillah; 9 has none).
+NO_BISMILLAH_SURAHS = frozenset({1, 9})
+
+# EveryAyah folder that hosts a dedicated bismillah.mp3 for custom reciters.
+EVERYAYAH_BISMILLAH_PATHS: dict[str, str] = {
+    "ar.yasseraldossary": "Yasser_Ad-Dussary_128kbps",
+    "ar.alafasy": "Alafasy_128kbps",
+    "ar.shaatree": "Abu_Bakr_Ash-Shaatree_128kbps",
+    "ar.husary": "Husary_128kbps",
+}
+EVERYAYAH_BISMILLAH_FALLBACK = "Alafasy_128kbps"
 
 router = APIRouter()
+
+
+def _bismillah_audio_url(
+    reciter_id: str,
+    source: str = "cdn",
+    resolved_url: str | None = None,
+) -> str | None:
+    """Audio for Bismillah recited before ayah 1 (surahs other than 1 and 9)."""
+    if resolved_url:
+        return resolved_url
+    if source == "everyayah":
+        # Several EveryAyah folders do not contain bismillah.mp3. Al-Fatiha 1:1
+        # is Bismillah itself and is consistently present as 001001.mp3.
+        meta = CUSTOM_AUDIO_RECITERS.get(reciter_id, {})
+        path = meta.get("everyayah_path") or EVERYAYAH_BISMILLAH_PATHS.get(
+            reciter_id, EVERYAYAH_BISMILLAH_FALLBACK
+        )
+        return _everyayah_arabic_url(path, 1, 1)
+    if source == "way2quran":
+        # Full-surah files usually already include Bismillah; no separate clip.
+        return None
+    # Al Quran Cloud / islamic.network: ayah 1 of Al-Fatiha is Bismillah.
+    return CDN_AYAH.format(reciter=reciter_id, ayah=1)
+
+
+def _with_bismillah(
+    payload: dict,
+    reciter_id: str,
+    source: str = "cdn",
+    resolved_url: str | None = None,
+) -> dict:
+    surah_number = int(payload.get("surah_number") or 0)
+    if surah_number in NO_BISMILLAH_SURAHS:
+        payload["bismillah_audio"] = None
+        payload["needs_bismillah"] = False
+        return payload
+    payload["bismillah_audio"] = _bismillah_audio_url(reciter_id, source, resolved_url)
+    payload["needs_bismillah"] = payload["bismillah_audio"] is not None
+    return payload
 
 
 @lru_cache(maxsize=1)
@@ -77,6 +139,18 @@ def _fetch_audio_editions() -> list[dict]:
             ]
     except Exception:
         editions = list(DEFAULT_RECITERS)
+
+    # Drop bitrate clones (ar.alafasy-2, …) and duplicate display names.
+    editions = [e for e in editions if not str(e.get("id", "")).endswith("-2")]
+    seen_names: set[str] = set()
+    unique: list[dict] = []
+    for e in editions:
+        key = (e.get("name") or e["id"]).strip().casefold()
+        if key in seen_names:
+            continue
+        seen_names.add(key)
+        unique.append(e)
+    editions = unique
 
     known = {e["id"] for e in editions}
     insert_at = 1
@@ -203,18 +277,35 @@ def _fetch_surah_way2quran(
             }
         )
 
-    return {
-        "surah_number": surah_number,
-        "reciter": reciter_id,
-        "reciter_name": meta["name"],
-        "playback_mode": meta.get("playback_mode", "surah"),
-        "surah_audio_available": surah_audio is not None,
-        "available_surah_count": len(available),
-        "translation_lang": translation_lang,
-        "translation_edition": tr_edition,
-        "translation_audio_info": tr_info,
-        "ayahs": ayahs,
-    }
+    return _with_bismillah(
+        {
+            "surah_number": surah_number,
+            "reciter": reciter_id,
+            "reciter_name": meta["name"],
+            "playback_mode": meta.get("playback_mode", "surah"),
+            "surah_audio_available": surah_audio is not None,
+            "available_surah_count": len(available),
+            # Full-surah MP3 already contains Bismillah (except 1 & 9) — no separate clip,
+            # and another reciter's word timings must not be used for sync.
+            "embedded_bismillah": surah_number not in NO_BISMILLAH_SURAHS,
+            "embedded_bismillah_duration_ms": (
+                meta.get("embedded_bismillah_duration_ms", 0)
+                if surah_number not in NO_BISMILLAH_SURAHS
+                else 0
+            ),
+            "embedded_bismillah_segments": (
+                meta.get("embedded_bismillah_segments", [])
+                if surah_number not in NO_BISMILLAH_SURAHS
+                else []
+            ),
+            "translation_lang": translation_lang,
+            "translation_edition": tr_edition,
+            "translation_audio_info": tr_info,
+            "ayahs": ayahs,
+        },
+        reciter_id,
+        "way2quran",
+    )
 
 
 def _fetch_surah_everyayah(
@@ -252,17 +343,21 @@ def _fetch_surah_everyayah(
             }
         )
 
-    return {
-        "surah_number": surah_number,
-        "reciter": reciter_id,
-        "reciter_name": meta["name"],
-        "playback_mode": meta.get("playback_mode", "ayah"),
-        "surah_audio_available": True,
-        "translation_lang": translation_lang,
-        "translation_edition": tr_edition,
-        "translation_audio_info": tr_info,
-        "ayahs": ayahs,
-    }
+    return _with_bismillah(
+        {
+            "surah_number": surah_number,
+            "reciter": reciter_id,
+            "reciter_name": meta["name"],
+            "playback_mode": meta.get("playback_mode", "ayah"),
+            "surah_audio_available": True,
+            "translation_lang": translation_lang,
+            "translation_edition": tr_edition,
+            "translation_audio_info": tr_info,
+            "ayahs": ayahs,
+        },
+        reciter_id,
+        "everyayah",
+    )
 
 
 def _fetch_surah_edition(client: httpx.Client, surah_number: int, edition: str) -> dict:
@@ -322,6 +417,15 @@ def get_surah_audio(
     try:
         with httpx.Client(timeout=45) as client:
             arabic_payload = _fetch_surah_edition(client, surah_number, reciter)
+            bismillah_url = None
+            if surah_number not in NO_BISMILLAH_SURAHS:
+                # Resolve the edition's real Al-Fatiha 1:1 URL. Constructing a
+                # fixed /128/{reciter}/1.mp3 URL fails for editions using other
+                # bitrates, which silently skipped Bismillah.
+                fatiha_payload = _fetch_surah_edition(client, 1, reciter)
+                fatiha_ayahs = fatiha_payload.get("ayahs") or []
+                if fatiha_ayahs:
+                    bismillah_url = fatiha_ayahs[0].get("audio")
             tr_payload = None
             tr_edition = None
             if translation_lang and translation_lang in TRANSLATION_AUDIO_EDITIONS:
@@ -375,12 +479,19 @@ def get_surah_audio(
         else:
             tr_info = {"lang": "hi", "fallback": "tts", "name": "AI voice (Hindi)"}
 
-    return {
-        "surah_number": surah_number,
-        "reciter": reciter,
-        "reciter_name": edition.get("englishName") or edition.get("name", reciter),
-        "translation_lang": translation_lang,
-        "translation_edition": tr_edition,
-        "translation_audio_info": tr_info,
-        "ayahs": ayahs,
-    }
+    return _with_bismillah(
+        {
+            "surah_number": surah_number,
+            "reciter": reciter,
+            "reciter_name": edition.get("englishName") or edition.get("name", reciter),
+            "playback_mode": "ayah",
+            "surah_audio_available": True,
+            "translation_lang": translation_lang,
+            "translation_edition": tr_edition,
+            "translation_audio_info": tr_info,
+            "ayahs": ayahs,
+        },
+        reciter,
+        "cdn",
+        bismillah_url,
+    )

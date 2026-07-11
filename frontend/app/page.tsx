@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ContinueReadingCard } from "@/components/home/ContinueReadingCard";
 import { DailyReflection } from "@/components/home/DailyReflection";
+import { GratitudeJournal } from "@/components/home/GratitudeJournal";
 import { HadithOfTheDay } from "@/components/home/HadithOfTheDay";
 import { FeaturedKhutba } from "@/components/home/FeaturedKhutba";
 import { QiblaHijriWidget } from "@/components/home/QiblaHijriWidget";
@@ -10,12 +12,14 @@ import { NotificationSettings } from "@/components/home/NotificationSettings";
 import { SalahSettingsPanel } from "@/components/home/SalahSettingsPanel";
 import { TasbeehWidget } from "@/components/home/TasbeehWidget";
 import { TimeOfDayHero } from "@/components/home/TimeOfDayHero";
+import { TravelModeWidget } from "@/components/home/TravelModeWidget";
 import { useChat } from "@/components/ChatProvider";
 import { useLang } from "@/components/LangProvider";
 import { useTheme } from "@/components/ThemeProvider";
 import { useSalah } from "@/hooks/useSalah";
 import { getTimePhase, minutesInTz, parseMinutes, qiblaBearing } from "@/lib/salah";
 import { t } from "@/lib/i18n";
+import Link from "next/link";
 
 export default function HomePage() {
   const { lang } = useLang();
@@ -99,7 +103,13 @@ export default function HomePage() {
       </TimeOfDayHero>
 
       <div className="space-y-4">
+        <ContinueReadingCard />
+
+        <TravelModeWidget coords={salah.coords} />
+
         <DailyReflection lang={lang} />
+
+        <GratitudeJournal times={salah.times} />
 
         <HadithOfTheDay lang={lang} />
 
@@ -117,6 +127,12 @@ export default function HomePage() {
 
           <NotificationSettings times={salah.times} />
         </div>
+
+        <p className="text-center text-sm text-muted">
+          <Link href="/settings" className="font-medium text-accent hover:underline">
+            {t(lang, "settings")} →
+          </Link>
+        </p>
 
         <FeaturedKhutba />
       </div>

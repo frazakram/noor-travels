@@ -50,15 +50,23 @@ async def prayer_times(
     asr_adj: int = Query(default=0, ge=-60, le=60),
     maghrib_adj: int = Query(default=0, ge=-60, le=60),
     isha_adj: int = Query(default=0, ge=-60, le=60),
+    latitude_adjustment: int = Query(
+        default=0,
+        ge=0,
+        le=3,
+        description="Aladhan latitudeAdjustmentMethod: 0 none, 1 middle of night, 2 1/7th, 3 angle-based",
+    ),
 ):
     day = date or _today_aladhan_date(timezone)
     url = f"https://api.aladhan.com/v1/timings/{day}"
-    params = {
+    params: dict = {
         "latitude": lat,
         "longitude": lng,
         "method": method,
         "school": school,
     }
+    if latitude_adjustment > 0:
+        params["latitudeAdjustmentMethod"] = latitude_adjustment
 
     async with httpx.AsyncClient(timeout=20.0) as client:
         resp = await client.get(url, params=params)
@@ -109,6 +117,7 @@ async def prayer_times(
         "longitude": lng,
         "method": method,
         "school": school,
+        "latitude_adjustment": latitude_adjustment,
         "timings": {
             "fajr": fajr,
             "sunrise": sunrise,

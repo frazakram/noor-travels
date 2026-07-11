@@ -9,6 +9,14 @@ export type NotificationPrefs = {
   hadithMinute: number;
   /** Schedule adhan in the prayer city's timezone instead of the device's. */
   useCityTimezone: boolean;
+  /** Daily Learn Quran study reminder */
+  learnQuranDaily: boolean;
+  learnHour: number;
+  learnMinute: number;
+  /** Gratitude journal reminder (evening by default) */
+  gratitudeDaily: boolean;
+  gratitudeHour: number;
+  gratitudeMinute: number;
 };
 
 const KEY = "noor-notification-prefs";
@@ -19,6 +27,12 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   hadithHour: 8,
   hadithMinute: 0,
   useCityTimezone: true,
+  learnQuranDaily: false,
+  learnHour: 9,
+  learnMinute: 0,
+  gratitudeDaily: false,
+  gratitudeHour: 20,
+  gratitudeMinute: 0,
 };
 
 const DEFAULT = DEFAULT_NOTIFICATION_PREFS;
@@ -34,7 +48,16 @@ export function loadNotificationPrefs(): NotificationPrefs {
       hadithDaily: Boolean(v.hadithDaily),
       hadithHour: Number.isInteger(v.hadithHour) ? v.hadithHour : DEFAULT.hadithHour,
       hadithMinute: Number.isInteger(v.hadithMinute) ? v.hadithMinute : DEFAULT.hadithMinute,
-      useCityTimezone: typeof v.useCityTimezone === "boolean" ? v.useCityTimezone : DEFAULT.useCityTimezone,
+      useCityTimezone:
+        typeof v.useCityTimezone === "boolean" ? v.useCityTimezone : DEFAULT.useCityTimezone,
+      learnQuranDaily: Boolean(v.learnQuranDaily),
+      learnHour: Number.isInteger(v.learnHour) ? v.learnHour : DEFAULT.learnHour,
+      learnMinute: Number.isInteger(v.learnMinute) ? v.learnMinute : DEFAULT.learnMinute,
+      gratitudeDaily: Boolean(v.gratitudeDaily),
+      gratitudeHour: Number.isInteger(v.gratitudeHour) ? v.gratitudeHour : DEFAULT.gratitudeHour,
+      gratitudeMinute: Number.isInteger(v.gratitudeMinute)
+        ? v.gratitudeMinute
+        : DEFAULT.gratitudeMinute,
     };
   } catch {
     return DEFAULT;

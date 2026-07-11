@@ -48,6 +48,12 @@ export type SalahSettings = {
   school: 0 | 1;
   /** Per-prayer minute adjustments to match the local masjid timetable. */
   offsets: PrayerOffsets;
+  /**
+   * Aladhan latitudeAdjustmentMethod for high latitudes:
+   * 1 Middle of Night, 2 One Seventh, 3 Angle Based (default for polar).
+   * 0 / undefined = none (standard).
+   */
+  latitudeAdjustment?: 0 | 1 | 2 | 3;
 };
 
 export const DEFAULT_PRAYER_OFFSETS: PrayerOffsets = {
@@ -62,7 +68,15 @@ export const DEFAULT_SALAH_SETTINGS: SalahSettings = {
   method: 1,
   school: 1,
   offsets: DEFAULT_PRAYER_OFFSETS,
+  latitudeAdjustment: 0,
 };
+
+export const HIGH_LATITUDE_METHODS = [
+  { id: 0 as const, labelKey: "highLatNone" as const },
+  { id: 1 as const, labelKey: "highLatMiddleNight" as const },
+  { id: 2 as const, labelKey: "highLatOneSeventh" as const },
+  { id: 3 as const, labelKey: "highLatAngleBased" as const },
+];
 
 export const PRAYER_METHODS = [
   { id: 1, label: "Karachi" },

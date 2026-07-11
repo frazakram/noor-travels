@@ -148,10 +148,13 @@ def chat(
                 model=get_settings().groq_chat_model,
                 mode="groq",
             )
-            return _apply_validation(question, result)
-        except APIError as exc:
-            if not _is_quota_or_auth_error(exc):
-                raise
+            result = _apply_validation(question, result)
+            set_cached(cache_key, result)
+            return result
+        except APIError:
+            # Any Groq failure (quota, auth, 5xx, network) degrades to the
+            # grounded local answer instead of surfacing a 500 to the client.
+            pass
         return _chat_local(
             question,
             out_lang,
@@ -183,7 +186,9 @@ def chat(
             analysis=None,
             cache_key=cache_key,
         )
-        return _apply_validation(question, result)
+        result = _apply_validation(question, result)
+        set_cached(cache_key, result)
+        return result
     except APIError as exc:
         if not _is_quota_or_auth_error(exc):
             raise
@@ -529,7 +534,12 @@ def _chat_with_openai(
         max_tokens=450,
     )
 
-    parsed = json.loads(response.choices[0].message.content or "{}")
+    try:
+        parsed = json.loads(response.choices[0].message.content or "{}")
+    except ValueError:
+        parsed = {}
+    if not isinstance(parsed, dict):
+        parsed = {}
     answer = (parsed.get("answer") or "").strip()
     if not answer or len(answer) < 12:
         fallback = format_short_answer(standalone or question, chunks, merged_analysis, out_lang)
@@ -575,9 +585,14 @@ def _validate_citations(citations: list, chunks: list[dict]) -> list[str]:
     chunk_text = " ".join(c["source_ref"] + " " + c["content"] for c in chunks).lower()
     valid = []
     for cite in citations:
-        cite_l = cite.lower()
+        cite_l = str(cite).lower()
+        # Whole-number matches only: a hallucinated "Bukhari 43" must not pass
+        # because "431" appears somewhere in the retrieved text.
         nums = re.findall(r"\d+:\d+|\d+", cite_l)
-        if any(n in chunk_text for n in nums) or cite_l in chunk_text:
+        matched = any(
+            re.search(rf"(?<![\d:]){re.escape(n)}(?![\d:])", chunk_text) for n in nums
+        )
+        if matched or (not nums and cite_l in chunk_text):
             valid.append(cite)
     return valid or [_ref_from_chunk(c) for c in chunks[:2]]
 

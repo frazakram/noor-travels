@@ -40,7 +40,7 @@ export function InstallAppBanner() {
   }
 
   return (
-    <div className="fixed inset-x-3 bottom-3 z-40 animate-fade-in-up">
+    <div className="fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom,0px))] z-40 animate-fade-in-up md:bottom-3">
       <div className="mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-teal-200/60 bg-white/95 p-3 shadow-xl shadow-noor-950/20 backdrop-blur dark:border-teal-700/60 dark:bg-noor-900/95">
         <Image src="/logo-sm.png" alt="" width={40} height={40} className="h-10 w-10 shrink-0 rounded-xl" />
         <div className="min-w-0 flex-1">

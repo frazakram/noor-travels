@@ -88,7 +88,12 @@ export function scheduleHadithDaily(enabled: boolean, hour: number, minute: numb
   (window as unknown as Record<string, number>)[key] = window.setTimeout(async () => {
     if (Notification.permission === "granted") {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/hadith/daily`);
+        const topic =
+          typeof localStorage !== "undefined"
+            ? localStorage.getItem("noor-hotd-topic") || "all"
+            : "all";
+        const q = topic && topic !== "all" ? `?topic=${encodeURIComponent(topic)}` : "";
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/hadith/daily${q}`);
         const row = await res.json();
         const snippet = String(row.english || "").slice(0, 180);
         new Notification("Hadith of the day — Noor Safar", {
@@ -108,6 +113,67 @@ export function scheduleHadithDaily(enabled: boolean, hour: number, minute: numb
   }, ms);
 }
 
+function scheduleNamedDaily(
+  timerKey: string,
+  enabled: boolean,
+  hour: number,
+  minute: number,
+  title: string,
+  body: string,
+  tag: string,
+  reschedule: () => void
+): void {
+  if (typeof window === "undefined") return;
+  const existing = (window as unknown as Record<string, number>)[timerKey];
+  if (existing) window.clearTimeout(existing);
+  if (!enabled) return;
+
+  const target = new Date();
+  target.setHours(hour, minute, 0, 0);
+  if (target <= new Date()) target.setDate(target.getDate() + 1);
+  const ms = target.getTime() - Date.now();
+  if (ms > 2_147_000_000) return;
+
+  (window as unknown as Record<string, number>)[timerKey] = window.setTimeout(() => {
+    if (Notification.permission === "granted") {
+      new Notification(title, { body, icon: "/logo-sm.png", tag });
+    }
+    reschedule();
+  }, ms);
+}
+
+export function scheduleLearnReminder(enabled: boolean, hour: number, minute: number): void {
+  scheduleNamedDaily(
+    "noor-learn-timer",
+    enabled,
+    hour,
+    minute,
+    "Learn Quran — Noor Safar",
+    "A short lesson keeps your streak alive.",
+    "learn-quran-daily",
+    () => {
+      const p = loadNotificationPrefs();
+      scheduleLearnReminder(p.learnQuranDaily, p.learnHour, p.learnMinute);
+    }
+  );
+}
+
+export function scheduleGratitudeReminder(enabled: boolean, hour: number, minute: number): void {
+  scheduleNamedDaily(
+    "noor-gratitude-timer",
+    enabled,
+    hour,
+    minute,
+    "Gratitude journal — Noor Safar",
+    "Write one blessing from today.",
+    "gratitude-daily",
+    () => {
+      const p = loadNotificationPrefs();
+      scheduleGratitudeReminder(p.gratitudeDaily, p.gratitudeHour, p.gratitudeMinute);
+    }
+  );
+}
+
 export function applyAllNotificationSchedules(
   prefs: NotificationPrefs,
   prayerStarts: Partial<Record<PrayerId, string>>,
@@ -118,6 +184,8 @@ export function applyAllNotificationSchedules(
     if (start) scheduleAdhan(id, start, prefs.adhan[id], timezone);
   });
   scheduleHadithDaily(prefs.hadithDaily, prefs.hadithHour, prefs.hadithMinute);
+  scheduleLearnReminder(prefs.learnQuranDaily, prefs.learnHour, prefs.learnMinute);
+  scheduleGratitudeReminder(prefs.gratitudeDaily, prefs.gratitudeHour, prefs.gratitudeMinute);
 }
 
 export function updateNotificationPrefs(

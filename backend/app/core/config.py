@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     deepgram_api_key: str = ""
     postgres_url: str = ""
     supabase_url: str = ""
+    # Read from env OR backend/.env (os.getenv alone misses .env values,
+    # since pydantic-settings does not export them to the process env).
+    force_sqlite: str = ""
     cors_origins: str = "http://localhost:3000"
     # Signs auth tokens. Set AUTH_SECRET in prod; the fallback derives a
     # stable secret from the DB URL so tokens survive cold starts either way.

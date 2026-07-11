@@ -6,6 +6,14 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
+_provider = settings.chat_provider.lower()
+if _provider not in ("local", "groq", "openai"):
+    print(f"WARNING: unknown CHAT_PROVIDER '{settings.chat_provider}' — chat falls back to local templates.")
+elif _provider == "groq" and not settings.groq_api_key.strip():
+    print("WARNING: CHAT_PROVIDER=groq but GROQ_API_KEY is empty — chat falls back to local templates.")
+elif _provider == "openai" and not settings.openai_api_key.strip():
+    print("WARNING: CHAT_PROVIDER=openai but OPENAI_API_KEY is empty — chat falls back to local templates.")
+
 app = FastAPI(title="Noor Safar API", version="1.0.0")
 
 app.add_middleware(

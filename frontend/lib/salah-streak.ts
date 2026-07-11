@@ -112,3 +112,63 @@ export function getWeekLogs(
 export function getMissedToday(tz: string): number {
   return Math.max(0, 5 - countToday(getTodayLog(tz)));
 }
+
+export type PeriodStats = {
+  daysTracked: number;
+  daysComplete: number;
+  prayersPrayed: number;
+  prayersPossible: number;
+  completionPct: number;
+  qadaRemaining: number;
+};
+
+function dateKeysInRange(tz: string, daysBack: number): string[] {
+  const keys: string[] = [];
+  const d = new Date();
+  for (let i = 0; i < daysBack; i++) {
+    const key = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
+    keys.push(key);
+    d.setDate(d.getDate() - 1);
+  }
+  return keys;
+}
+
+export function getPeriodStats(tz: string, daysBack: number): PeriodStats {
+  const store = loadStreak();
+  const keys = dateKeysInRange(tz, daysBack);
+  let daysTracked = 0;
+  let daysComplete = 0;
+  let prayersPrayed = 0;
+
+  for (const key of keys) {
+    const log = store.logs[key];
+    if (!log) continue;
+    const prayed = countToday(log);
+    if (prayed === 0) continue;
+    daysTracked += 1;
+    prayersPrayed += prayed;
+    if (isDayComplete(log)) daysComplete += 1;
+  }
+
+  const prayersPossible = daysTracked * 5;
+  const qadaRemaining = Math.max(0, prayersPossible - prayersPrayed);
+  const completionPct =
+    prayersPossible > 0 ? Math.round((prayersPrayed / prayersPossible) * 100) : 0;
+
+  return {
+    daysTracked,
+    daysComplete,
+    prayersPrayed,
+    prayersPossible,
+    completionPct,
+    qadaRemaining,
+  };
+}
+
+export function getMonthStats(tz: string): PeriodStats {
+  return getPeriodStats(tz, 30);
+}
+
+export function getYearStats(tz: string): PeriodStats {
+  return getPeriodStats(tz, 365);
+}

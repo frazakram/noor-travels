@@ -118,7 +118,22 @@ export const Icons = {
   back: svgIcon(
     <path d="M13.8 5.3a1.2 1.2 0 0 1 0 1.7L9.9 11H19a1.2 1.2 0 0 1 0 2.4H9.9l3.9 4a1.2 1.2 0 1 1-1.7 1.6l-6-6a1.2 1.2 0 0 1 0-1.7l6-6a1.2 1.2 0 0 1 1.7 0Z" />,
   ),
-  repeat: "🔁",
+  repeat: svgIcon(
+    <>
+      <path d="M7.5 7.2h9.2a3.3 3.3 0 0 1 3.3 3.3v1.2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M16.5 4.8 19.8 7.4 16.5 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M16.5 16.8H7.3a3.3 3.3 0 0 1-3.3-3.3v-1.2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M7.5 19.2 4.2 16.6 7.5 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </>,
+  ),
+  audioOpts: svgIcon(
+    <>
+      <path d="M4 7.5h9.5M17.5 7.5H20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="15.2" cy="7.5" r="2.2" fill="none" stroke="currentColor" strokeWidth="2" />
+      <path d="M4 16.5h3.5M11 16.5H20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="8.8" cy="16.5" r="2.2" fill="none" stroke="currentColor" strokeWidth="2" />
+    </>,
+  ),
   tafsir: "📜",
   book: "📖",
   ayah: "①",

@@ -8,6 +8,7 @@ import { DEFAULT_SALAH_SETTINGS, type LocationResponse, type PrayerId, type Sala
 
 export type SalahState = {
   loading: boolean;
+  /** i18n key ("salahErrorLoad" | "salahErrorUnsupported" | "salahErrorPermission") or "" — translate with t() at display time. */
   error: string;
   locationLabel: string;
   coords: { lat: number; lng: number } | null;
@@ -70,6 +71,9 @@ function loadSettings(): SalahSettings {
       method: Number(value.method) || DEFAULT_SALAH_SETTINGS.method,
       school: value.school === 0 ? 0 : 1,
       offsets,
+      latitudeAdjustment: ([0, 1, 2, 3] as const).includes(value.latitudeAdjustment)
+        ? value.latitudeAdjustment
+        : 0,
     };
   } catch {
     return DEFAULT_SALAH_SETTINGS;
@@ -112,10 +116,12 @@ export function useSalah(): SalahState {
       const tzParam = tzHint ? `&timezone=${encodeURIComponent(tzHint)}` : "";
       const o = opts.offsets ?? DEFAULT_SALAH_SETTINGS.offsets;
       const adjParam = `&fajr_adj=${o.fajr}&dhuhr_adj=${o.dhuhr}&asr_adj=${o.asr}&maghrib_adj=${o.maghrib}&isha_adj=${o.isha}`;
+      const latAdj = opts.latitudeAdjustment ?? 0;
+      const latAdjParam = latAdj > 0 ? `&latitude_adjustment=${latAdj}` : "";
       const [loc, prayerTimes] = await Promise.all([
         api<LocationResponse>(`/api/salah/location?lat=${lat}&lng=${lng}`),
         api<SalahTimesResponse>(
-          `/api/salah/times?lat=${lat}&lng=${lng}&method=${opts.method}&school=${opts.school}&date=${day}${tzParam}${adjParam}`,
+          `/api/salah/times?lat=${lat}&lng=${lng}&method=${opts.method}&school=${opts.school}&date=${day}${tzParam}${adjParam}${latAdjParam}`,
         ),
       ]);
       setLocationLabel(loc.label);
@@ -127,8 +133,8 @@ export function useSalah(): SalahState {
       applyAllNotificationSchedules(loadNotificationPrefs(), starts, prayerTimes.timezone);
       localStorage.setItem(COORDS_KEY, JSON.stringify({ lat, lng }));
       localStorage.setItem(LABEL_KEY, loc.label);
-    } catch (e) {
-      setError("Prayer times could not be loaded right now. Please check your connection or choose a city manually.");
+    } catch {
+      setError("salahErrorLoad");
     } finally {
       setLoading(false);
     }
@@ -176,7 +182,7 @@ export function useSalah(): SalahState {
         void fetchForCoords(cached.lat, cached.lng);
       } else {
         setLoading(false);
-        setError("Precise location is not available on this device. You can choose your city manually.");
+        setError("salahErrorUnsupported");
       }
       return;
     }
@@ -201,7 +207,7 @@ export function useSalah(): SalahState {
           void fetchForCoords(cached.lat, cached.lng);
         } else {
           setLoading(false);
-          setError("Allow location access for precise prayer times, or choose your city manually.");
+          setError("salahErrorPermission");
         }
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 60_000 },

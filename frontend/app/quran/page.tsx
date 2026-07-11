@@ -8,6 +8,7 @@ import { emitPageLoading } from "@/components/NavigationProgress";
 import { api, apiStatic } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import { cleanQuranText, displaySurahName } from "@/lib/quran-display";
+import { loadBookmarks, loadLastRead, type QuranBookmark, type QuranLastRead } from "@/lib/quran-bookmarks";
 
 type Surah = {
   number: number;
@@ -38,8 +39,12 @@ export default function QuranPage() {
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
   const [activeSurah, setActiveSurah] = useState<number | null>(null);
+  const [lastRead, setLastRead] = useState<QuranLastRead | null>(null);
+  const [bookmarks, setBookmarks] = useState<QuranBookmark[]>([]);
 
   useEffect(() => {
+    setLastRead(loadLastRead());
+    setBookmarks(loadBookmarks());
     apiStatic<{ surahs: Surah[] }>("/api/quran/surahs")
       .then((d) => {
         setSurahs(d.surahs);
@@ -92,12 +97,54 @@ export default function QuranPage() {
             .includes(normalizedQuery),
         );
 
+  const bookmarkedSurahs = new Set(bookmarks.map((b) => b.surah));
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-heading">{t(lang, "quran")}</h1>
         <p className="mt-1 text-sm text-muted">{t(lang, "audiobookDesc")}</p>
       </div>
+
+      {lastRead && (
+        <Link
+          href={`/quran/${lastRead.surah}?ayah=${lastRead.ayah}`}
+          className="card flex items-center justify-between gap-3 border-noor-300 bg-noor-50/80 hover:border-noor-400 dark:border-noor-600 dark:bg-noor-900/40"
+        >
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+              {t(lang, "continueReading")}
+            </p>
+            <p className="mt-1 font-medium text-heading">
+              {lastRead.surahName
+                ? `${lastRead.surah}. ${lastRead.surahName}`
+                : `${t(lang, "quran")} ${lastRead.surah}`}
+              <span className="text-muted">
+                {" "}
+                · {t(lang, "ayah")} {lastRead.ayah}
+              </span>
+            </p>
+          </div>
+          <span className="text-sm font-medium text-accent">{t(lang, "resume")} →</span>
+        </Link>
+      )}
+
+      {bookmarks.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-heading">{t(lang, "bookmarks")}</p>
+          <div className="flex flex-wrap gap-2">
+            {bookmarks.slice(0, 12).map((b) => (
+              <Link
+                key={b.verseKey}
+                href={`/quran/${b.surah}?ayah=${b.ayah}`}
+                className="rounded-full border border-gold-300 bg-gold-50 px-3 py-1 text-xs font-medium text-noor-900 dark:border-gold-600 dark:bg-noor-900 dark:text-gold-300"
+              >
+                ★ {b.verseKey}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row">
         <input
@@ -110,15 +157,17 @@ export default function QuranPage() {
             setResults([]);
           }}
         />
-        <button type="submit" className="btn-primary min-h-11 shrink-0 sm:min-h-0">{t(lang, "search")}</button>
+        <button type="submit" className="btn-primary min-h-11 shrink-0 sm:min-h-0">
+          {t(lang, "search")}
+        </button>
       </form>
 
       {loadError && (
         <NoticeCard
           tone="warning"
-          title="Quran could not load"
+          title={t(lang, "quranLoadErrorTitle")}
           message={loadError}
-          actionLabel="Try again"
+          actionLabel={t(lang, "tryAgain")}
           onAction={() => {
             setLoading(true);
             setLoadError("");
@@ -135,11 +184,23 @@ export default function QuranPage() {
       {results.length > 0 && (
         <div className="space-y-3">
           {results.map((r) => (
-            <Link key={r.verse_key} href={`/quran/${r.surah_number}?ayah=${r.ayah_number}`} className="card block hover:border-noor-300 dark:hover:border-noor-500">
+            <Link
+              key={r.verse_key}
+              href={`/quran/${r.surah_number}?ayah=${r.ayah_number}`}
+              className="card block hover:border-noor-300 dark:hover:border-noor-500"
+            >
               <p className="text-xs text-accent">{r.verse_key}</p>
-              <p className="font-arabic mt-1 text-right" dir="rtl">{r.arabic}</p>
+              <p className="font-arabic mt-1 text-right" dir="rtl">
+                {r.arabic}
+              </p>
               <p className="mt-2 text-sm text-body">
-                {cleanQuranText(lang === "ur" ? r.translation_ur : lang === "hi" ? r.translation_hi || r.translation_en : r.translation_en)}
+                {cleanQuranText(
+                  lang === "ur"
+                    ? r.translation_ur
+                    : lang === "hi"
+                      ? r.translation_hi || r.translation_en
+                      : r.translation_en
+                )}
               </p>
             </Link>
           ))}
@@ -157,18 +218,28 @@ export default function QuranPage() {
             href={`/quran/${s.number}`}
             onClick={() => setActiveSurah(s.number)}
             className={`card flex items-center justify-between transition hover:border-noor-300 dark:hover:border-noor-500 ${
-              activeSurah === s.number ? "border-noor-400 bg-noor-50 dark:border-noor-500 dark:bg-noor-800/60" : ""
+              activeSurah === s.number
+                ? "border-noor-400 bg-noor-50 dark:border-noor-500 dark:bg-noor-800/60"
+                : ""
             }`}
           >
             <div className="min-w-0">
-              <p className="font-medium text-heading">{s.number}. {displaySurahName(s.number, s.name_en)}</p>
-              <p className="text-xs text-faint">{s.name_en_translation} · {s.ayah_count} {t(lang, "ayahs")}</p>
+              <p className="font-medium text-heading">
+                {s.number}. {displaySurahName(s.number, s.name_en)}
+                {bookmarkedSurahs.has(s.number) ? " ★" : ""}
+                {lastRead?.surah === s.number ? " · ▶" : ""}
+              </p>
+              <p className="text-xs text-faint">
+                {s.name_en_translation} · {s.ayah_count} {t(lang, "ayahs")}
+              </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {activeSurah === s.number ? (
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-noor-200 border-t-noor-600 dark:border-noor-700 dark:border-t-noor-300" />
               ) : (
-                <p className="font-arabic text-body" dir="rtl">{s.name_ar}</p>
+                <p className="font-arabic text-body" dir="rtl">
+                  {s.name_ar}
+                </p>
               )}
             </div>
           </Link>

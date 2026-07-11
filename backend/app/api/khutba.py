@@ -37,7 +37,7 @@ def list_sermons(q: str = Query(default="", min_length=0)):
                 """
                 SELECT id, slug, title, source_url
                 FROM preloaded_khutbahs
-                WHERE title LIKE %s OR english_text LIKE %s
+                WHERE title ILIKE %s OR english_text ILIKE %s
                 ORDER BY title
                 LIMIT 50
                 """,
@@ -142,8 +142,13 @@ async def khutba_live_chunk(body: LiveChunkRequest):
         )
     except Exception as exc:
         raise HTTPException(502, f"Translation failed ({type(exc).__name__})") from exc
-    result = json.loads(translation.choices[0].message.content or "{}")
-    english = result.get("english", "").strip()
+    try:
+        result = json.loads(translation.choices[0].message.content or "{}")
+    except ValueError:
+        result = {}
+    if not isinstance(result, dict):
+        result = {}
+    english = str(result.get("english", "") or "").strip()
     accumulated_english = f"{body.accumulated} {english}".strip()[-4000:]
     accumulated_arabic = f"{body.accumulated_ar} {transcript.strip()}".strip()[-4000:]
 
