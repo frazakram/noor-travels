@@ -82,6 +82,7 @@ export default function SettingsPage() {
 
       <SalahSettingsPanel
         settings={salah.settings}
+        times={salah.times}
         onSettings={salah.setSettings}
         onManualLocation={salah.setManualLocation}
         onUseGps={salah.useGpsLocation}

@@ -113,6 +113,21 @@ export function parseMinutes(time: string): number {
   return h * 60 + m;
 }
 
+/** Shift HH:mm by ±minutes, wrapping over midnight. */
+export function shiftTime(time: string, minutes: number): string {
+  if (!time || !Number.isFinite(minutes) || minutes === 0) return time;
+  const total = ((parseMinutes(time) + minutes) % (24 * 60) + 24 * 60) % (24 * 60);
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+/** Format HH:mm for display (keeps 24h; UI can wrap with locale later). */
+export function formatPrayerClock(time: string): string {
+  if (!time || !time.includes(":")) return time;
+  return time.slice(0, 5);
+}
+
 /** Ms until target HH:mm today or tomorrow in timezone. */
 export function msUntilTime(time: string, tz: string, now = new Date()): number {
   const nowMin = minutesInTz(now, tz);

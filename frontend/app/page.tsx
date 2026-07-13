@@ -120,6 +120,7 @@ export default function HomePage() {
         <div className="grid items-start gap-4 sm:grid-cols-2">
           <SalahSettingsPanel
             settings={salah.settings}
+            times={salah.times}
             onSettings={salah.setSettings}
             onManualLocation={salah.setManualLocation}
             onUseGps={salah.useGpsLocation}
