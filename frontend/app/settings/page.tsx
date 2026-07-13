@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { NotificationSettings } from "@/components/home/NotificationSettings";
 import { SalahSettingsPanel } from "@/components/home/SalahSettingsPanel";
+import { SavedToast } from "@/components/SavedToast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useTheme } from "@/components/ThemeProvider";
 import { useSalah } from "@/hooks/useSalah";
@@ -16,6 +18,29 @@ export default function SettingsPage() {
   const { lang, setLang } = useLang();
   const { fontScale, setFontScale, highContrast, setHighContrast } = useTheme();
   const salah = useSalah();
+
+  const [draftLang, setDraftLang] = useState<Lang>(lang);
+  const [draftFont, setDraftFont] = useState<FontScale>(fontScale);
+  const [draftContrast, setDraftContrast] = useState(highContrast);
+  const [showSaved, setShowSaved] = useState(false);
+
+  useEffect(() => setDraftLang(lang), [lang]);
+  useEffect(() => setDraftFont(fontScale), [fontScale]);
+  useEffect(() => setDraftContrast(highContrast), [highContrast]);
+
+  const langDirty = draftLang !== lang;
+  const appearanceDirty = draftFont !== fontScale || draftContrast !== highContrast;
+
+  function saveLanguage() {
+    setLang(draftLang);
+    setShowSaved(true);
+  }
+
+  function saveAppearance() {
+    setFontScale(draftFont);
+    setHighContrast(draftContrast);
+    setShowSaved(true);
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 pb-10">
@@ -31,9 +56,9 @@ export default function SettingsPage() {
             <button
               key={l}
               type="button"
-              onClick={() => setLang(l)}
+              onClick={() => setDraftLang(l)}
               className={`rounded-full px-3 py-1.5 text-sm font-medium uppercase ${
-                lang === l
+                draftLang === l
                   ? "bg-teal-700 text-white dark:bg-teal-600"
                   : "border border-subtle text-muted"
               }`}
@@ -41,6 +66,19 @@ export default function SettingsPage() {
               {l}
             </button>
           ))}
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <p className={`text-xs ${langDirty ? "font-medium text-gold-700 dark:text-gold-300" : "text-faint"}`}>
+            {langDirty ? t(lang, "unsavedPrayerChanges") : t(lang, "prayerSettingsUpToDate")}
+          </p>
+          <button
+            type="button"
+            onClick={saveLanguage}
+            disabled={!langDirty}
+            className="btn-primary min-h-10 px-4 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {t(lang, "savePrayerSettings")}
+          </button>
         </div>
       </section>
 
@@ -57,9 +95,9 @@ export default function SettingsPage() {
               <button
                 key={s}
                 type="button"
-                onClick={() => setFontScale(s)}
+                onClick={() => setDraftFont(s)}
                 className={`rounded-full px-3 py-1.5 text-xs font-medium uppercase ${
-                  fontScale === s
+                  draftFont === s
                     ? "bg-noor-700 text-white dark:bg-noor-600"
                     : "border border-subtle text-muted"
                 }`}
@@ -73,11 +111,24 @@ export default function SettingsPage() {
           <span className="text-heading">{t(lang, "highContrast")}</span>
           <input
             type="checkbox"
-            checked={highContrast}
-            onChange={(e) => setHighContrast(e.target.checked)}
+            checked={draftContrast}
+            onChange={(e) => setDraftContrast(e.target.checked)}
             className="h-4 w-4"
           />
         </label>
+        <div className="flex items-center justify-between gap-2">
+          <p className={`text-xs ${appearanceDirty ? "font-medium text-gold-700 dark:text-gold-300" : "text-faint"}`}>
+            {appearanceDirty ? t(lang, "unsavedPrayerChanges") : t(lang, "prayerSettingsUpToDate")}
+          </p>
+          <button
+            type="button"
+            onClick={saveAppearance}
+            disabled={!appearanceDirty}
+            className="btn-primary min-h-10 px-4 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {t(lang, "savePrayerSettings")}
+          </button>
+        </div>
       </section>
 
       <SalahSettingsPanel
@@ -105,6 +156,12 @@ export default function SettingsPage() {
           {t(lang, "account")}
         </Link>
       </section>
+
+      <SavedToast
+        open={showSaved}
+        label={t(lang, "prayerSettingsSaved")}
+        onDone={() => setShowSaved(false)}
+      />
     </div>
   );
 }

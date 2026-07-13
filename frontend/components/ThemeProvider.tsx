@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import {
   applyA11yPrefs,
   DEFAULT_A11Y,
@@ -9,6 +9,7 @@ import {
   type A11yPrefs,
   type FontScale,
 } from "@/lib/a11y";
+import { schedulePrefsPush, wirePrefsSyncOnAuth } from "@/lib/user-prefs";
 
 export type Theme = "light" | "dark";
 
@@ -36,14 +37,21 @@ function applyTheme(theme: Theme) {
   document.documentElement.classList.toggle("dark", theme === "dark");
 }
 
+function readStoredTheme(): Theme {
+  try {
+    return localStorage.getItem("noor-theme") === "dark" ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("light");
   const [a11y, setA11y] = useState<A11yPrefs>(DEFAULT_A11Y);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("noor-theme") as Theme | null;
-    const initial: Theme = saved === "dark" ? "dark" : "light";
+    const initial = readStoredTheme();
     setThemeState(initial);
     applyTheme(initial);
     const prefs = loadA11yPrefs();
@@ -52,38 +60,71 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setReady(true);
   }, []);
 
-  function setTheme(next: Theme) {
+  useEffect(() => wirePrefsSyncOnAuth(), []);
+
+  useEffect(() => {
+    const onPrefs = () => {
+      const next = readStoredTheme();
+      setThemeState(next);
+      applyTheme(next);
+      const prefs = loadA11yPrefs();
+      setA11y(prefs);
+      applyA11yPrefs(prefs);
+    };
+    window.addEventListener("noor:prefs-changed", onPrefs);
+    return () => window.removeEventListener("noor:prefs-changed", onPrefs);
+  }, []);
+
+  const setTheme = useCallback((next: Theme) => {
     setThemeState(next);
-    localStorage.setItem("noor-theme", next);
+    try {
+      localStorage.setItem("noor-theme", next);
+    } catch {
+      /* private mode */
+    }
     applyTheme(next);
-  }
+    schedulePrefsPush({ theme: next });
+  }, []);
 
-  function toggleTheme() {
-    setTheme(theme === "dark" ? "light" : "dark");
-  }
+  const toggleTheme = useCallback(() => {
+    setThemeState((prev) => {
+      const next: Theme = prev === "dark" ? "light" : "dark";
+      try {
+        localStorage.setItem("noor-theme", next);
+      } catch {
+        /* private mode */
+      }
+      applyTheme(next);
+      schedulePrefsPush({ theme: next });
+      return next;
+    });
+  }, []);
 
-  function setFontScale(fontScale: FontScale) {
-    const next = { ...a11y, fontScale };
-    setA11y(next);
-    saveA11yPrefs(next);
-    applyA11yPrefs(next);
-  }
+  const setFontScale = useCallback((fontScale: FontScale) => {
+    setA11y((prev) => {
+      const next = { ...prev, fontScale };
+      saveA11yPrefs(next);
+      applyA11yPrefs(next);
+      schedulePrefsPush({ a11y: next });
+      return next;
+    });
+  }, []);
 
-  function setHighContrast(highContrast: boolean) {
-    const next = { ...a11y, highContrast };
-    setA11y(next);
-    saveA11yPrefs(next);
-    applyA11yPrefs(next);
-  }
+  const setHighContrast = useCallback((highContrast: boolean) => {
+    setA11y((prev) => {
+      const next = { ...prev, highContrast };
+      saveA11yPrefs(next);
+      applyA11yPrefs(next);
+      schedulePrefsPush({ a11y: next });
+      return next;
+    });
+  }, []);
 
-  if (!ready) {
-    return <>{children}</>;
-  }
-
+  // Always provide context so toggles work during hydration (theme still applied via script + effect).
   return (
     <ThemeContext.Provider
       value={{
-        theme,
+        theme: ready ? theme : readStoredThemeSafe(),
         setTheme,
         toggleTheme,
         fontScale: a11y.fontScale,
@@ -95,6 +136,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       {children}
     </ThemeContext.Provider>
   );
+}
+
+function readStoredThemeSafe(): Theme {
+  if (typeof window === "undefined") return "light";
+  return readStoredTheme();
 }
 
 export function useTheme() {

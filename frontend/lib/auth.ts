@@ -68,6 +68,7 @@ export async function signup(email: string, password: string, name: string, lang
     body: JSON.stringify({ email, password, name, lang }),
   });
   saveAuth(data.token, data.user);
+  void import("@/lib/user-prefs").then(({ schedulePrefsPush }) => schedulePrefsPush({ lang: lang as "en" | "ur" | "hi" }));
   return data.user;
 }
 
@@ -78,6 +79,7 @@ export async function login(email: string, password: string): Promise<AuthUser> 
     body: JSON.stringify({ email, password }),
   });
   saveAuth(data.token, data.user);
+  void import("@/lib/user-prefs").then(({ syncPrefsFromCloud }) => syncPrefsFromCloud());
   return data.user;
 }
 

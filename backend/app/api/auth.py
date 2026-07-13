@@ -20,7 +20,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
-from app.db import get_cursor
+from app.db import get_cursor, use_sqlite
 
 router = APIRouter()
 
@@ -130,6 +130,34 @@ class ProgressRequest(BaseModel):
     progress: dict
 
 
+class PreferencesRequest(BaseModel):
+    prefs: dict
+
+
+def _ensure_preferences_table(cur) -> None:
+    """Lazy-create so Vercel cold starts work before migrate.py is re-run."""
+    if use_sqlite():
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_preferences (
+                user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                prefs TEXT NOT NULL DEFAULT '{}',
+                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+            """
+        )
+    else:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_preferences (
+                user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                prefs TEXT NOT NULL DEFAULT '{}',
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            )
+            """
+        )
+
+
 @router.post("/signup")
 def signup(body: SignupRequest):
     email = body.email.strip().lower()
@@ -212,6 +240,47 @@ def put_progress(body: ProgressRequest, authorization: str | None = Header(defau
         else:
             cur.execute(
                 "INSERT INTO user_learn_progress (user_id, progress) VALUES (%s, %s)",
+                (user_id, raw),
+            )
+    return {"ok": True}
+
+
+@router.get("/preferences")
+def get_preferences(authorization: str | None = Header(default=None)):
+    user_id = current_user_id(authorization)
+    with get_cursor() as cur:
+        _ensure_preferences_table(cur)
+        cur.execute(
+            "SELECT prefs, updated_at FROM user_preferences WHERE user_id = %s",
+            (user_id,),
+        )
+        row = cur.fetchone()
+    if not row:
+        return {"prefs": None, "updated_at": None}
+    try:
+        prefs = json.loads(row["prefs"])
+    except (TypeError, ValueError):
+        prefs = None
+    return {"prefs": prefs, "updated_at": str(row["updated_at"])}
+
+
+@router.put("/preferences")
+def put_preferences(body: PreferencesRequest, authorization: str | None = Header(default=None)):
+    user_id = current_user_id(authorization)
+    raw = json.dumps(body.prefs, ensure_ascii=False)
+    if len(raw) > 100_000:
+        raise HTTPException(413, "Preferences payload too large")
+    with get_cursor() as cur:
+        _ensure_preferences_table(cur)
+        cur.execute("SELECT user_id FROM user_preferences WHERE user_id = %s", (user_id,))
+        if cur.fetchone():
+            cur.execute(
+                "UPDATE user_preferences SET prefs = %s, updated_at = %s WHERE user_id = %s",
+                (raw, _now(), user_id),
+            )
+        else:
+            cur.execute(
+                "INSERT INTO user_preferences (user_id, prefs) VALUES (%s, %s)",
                 (user_id, raw),
             )
     return {"ok": True}

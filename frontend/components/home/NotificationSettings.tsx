@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
+import { SavedToast } from "@/components/SavedToast";
 import { isNativeApp } from "@/lib/native-bridge";
 import { t } from "@/lib/i18n";
 import {
@@ -60,12 +61,16 @@ export function NotificationSettings({ times }: Props) {
   const { lang } = useLang();
   const [open, setOpen] = useState(false);
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_NOTIFICATION_PREFS);
+  const [draft, setDraft] = useState<NotificationPrefs>(DEFAULT_NOTIFICATION_PREFS);
   const [hydrated, setHydrated] = useState(false);
   const [perm, setPerm] = useState<NotificationPermission | "unsupported">("default");
+  const [showSaved, setShowSaved] = useState(false);
   const native = isNativeApp();
 
   useEffect(() => {
-    setPrefs(loadNotificationPrefs());
+    const loaded = loadNotificationPrefs();
+    setPrefs(loaded);
+    setDraft(loaded);
     setHydrated(true);
     if (typeof window !== "undefined" && "Notification" in window) {
       setPerm(Notification.permission);
@@ -96,69 +101,61 @@ export function NotificationSettings({ times }: Props) {
     setPerm(ok ? "granted" : Notification.permission);
   }
 
-  function setAdhan(prayer: PrayerId, enabled: boolean) {
+  const dirty = hydrated && JSON.stringify(draft) !== JSON.stringify(prefs);
+
+  function saveNotifications() {
     void (async () => {
-      if (!native && enabled) await requestPermission();
-      const next = updateNotificationPrefs({ adhan: { ...prefs.adhan, [prayer]: enabled } }, prayerStarts, cityTz);
+      const needsPerm =
+        !native &&
+        (Object.values(draft.adhan).some(Boolean) ||
+          draft.hadithDaily ||
+          draft.learnQuranDaily ||
+          draft.gratitudeDaily);
+      if (needsPerm) await requestPermission();
+      const next = updateNotificationPrefs(draft, prayerStarts, cityTz);
       setPrefs(next);
+      setDraft(next);
+      setShowSaved(true);
     })();
+  }
+
+  function setAdhan(prayer: PrayerId, enabled: boolean) {
+    setDraft((prev) => ({ ...prev, adhan: { ...prev.adhan, [prayer]: enabled } }));
   }
 
   function setHadithDaily(enabled: boolean) {
-    void (async () => {
-      if (!native && enabled) await requestPermission();
-      const next = updateNotificationPrefs({ hadithDaily: enabled }, prayerStarts, cityTz);
-      setPrefs(next);
-    })();
+    setDraft((prev) => ({ ...prev, hadithDaily: enabled }));
   }
 
   function setHadithTime(hour: number, minute: number) {
-    const next = updateNotificationPrefs({ hadithHour: hour, hadithMinute: minute }, prayerStarts, cityTz);
-    setPrefs(next);
+    setDraft((prev) => ({ ...prev, hadithHour: hour, hadithMinute: minute }));
   }
 
   function setLearnDaily(enabled: boolean) {
-    void (async () => {
-      if (!native && enabled) await requestPermission();
-      const next = updateNotificationPrefs({ learnQuranDaily: enabled }, prayerStarts, cityTz);
-      setPrefs(next);
-    })();
+    setDraft((prev) => ({ ...prev, learnQuranDaily: enabled }));
   }
 
   function setLearnTime(hour: number, minute: number) {
-    const next = updateNotificationPrefs({ learnHour: hour, learnMinute: minute }, prayerStarts, cityTz);
-    setPrefs(next);
+    setDraft((prev) => ({ ...prev, learnHour: hour, learnMinute: minute }));
   }
 
   function setGratitudeDaily(enabled: boolean) {
-    void (async () => {
-      if (!native && enabled) await requestPermission();
-      const next = updateNotificationPrefs({ gratitudeDaily: enabled }, prayerStarts, cityTz);
-      setPrefs(next);
-    })();
+    setDraft((prev) => ({ ...prev, gratitudeDaily: enabled }));
   }
 
   function setGratitudeTime(hour: number, minute: number) {
-    const next = updateNotificationPrefs(
-      { gratitudeHour: hour, gratitudeMinute: minute },
-      prayerStarts,
-      cityTz
-    );
-    setPrefs(next);
+    setDraft((prev) => ({ ...prev, gratitudeHour: hour, gratitudeMinute: minute }));
   }
 
   function setUseCityTimezone(enabled: boolean) {
-    const next = updateNotificationPrefs({ useCityTimezone: enabled }, prayerStarts, cityTz);
-    setPrefs(next);
+    setDraft((prev) => ({ ...prev, useCityTimezone: enabled }));
   }
 
   function enableAllAdhan() {
-    void (async () => {
-      if (!native) await requestPermission();
-      const all = { fajr: true, dhuhr: true, asr: true, maghrib: true, isha: true };
-      const next = updateNotificationPrefs({ adhan: all }, prayerStarts, cityTz);
-      setPrefs(next);
-    })();
+    setDraft((prev) => ({
+      ...prev,
+      adhan: { fajr: true, dhuhr: true, asr: true, maghrib: true, isha: true },
+    }));
   }
 
   const anyOn =
@@ -228,7 +225,7 @@ export function NotificationSettings({ times }: Props) {
                     </p>
                   </div>
                   <Toggle
-                    on={prefs.adhan[id]}
+                    on={draft.adhan[id]}
                     onChange={(v) => setAdhan(id, v)}
                     label={t(lang, PRAYER_LABEL_KEYS[id])}
                   />
@@ -244,7 +241,7 @@ export function NotificationSettings({ times }: Props) {
                   </p>
                 </div>
                 <Toggle
-                  on={prefs.useCityTimezone}
+                  on={draft.useCityTimezone}
                   onChange={setUseCityTimezone}
                   label={t(lang, "adhanTimezone")}
                 />
@@ -259,22 +256,22 @@ export function NotificationSettings({ times }: Props) {
                 <p className="mt-0.5 text-xs text-muted">{t(lang, "hadithNotificationHint")}</p>
               </div>
               <Toggle
-                on={prefs.hadithDaily}
+                on={draft.hadithDaily}
                 onChange={setHadithDaily}
                 label={t(lang, "hadithNotification")}
               />
             </div>
-            {prefs.hadithDaily && (
+            {draft.hadithDaily && (
               <div className="mt-3 flex flex-wrap items-center gap-2 animate-fade-in">
                 <label className="text-xs font-medium text-muted">{t(lang, "hadithNotifyTime")}</label>
                 <select
                   className="input w-auto py-1.5 text-sm"
-                  value={prefs.hadithHour}
-                  onChange={(e) => setHadithTime(Number(e.target.value), prefs.hadithMinute)}
+                  value={draft.hadithHour}
+                  onChange={(e) => setHadithTime(Number(e.target.value), draft.hadithMinute)}
                 >
                   {HOURS.map((h) => (
                     <option key={h} value={h}>
-                      {String(h).padStart(2, "0")}:{String(prefs.hadithMinute).padStart(2, "0")}
+                      {String(h).padStart(2, "0")}:{String(draft.hadithMinute).padStart(2, "0")}
                     </option>
                   ))}
                 </select>
@@ -288,18 +285,18 @@ export function NotificationSettings({ times }: Props) {
                 <h3 className="text-sm font-semibold text-heading">{t(lang, "learnNotify")}</h3>
                 <p className="mt-0.5 text-xs text-muted">{t(lang, "learnNotifyHint")}</p>
               </div>
-              <Toggle on={prefs.learnQuranDaily} onChange={setLearnDaily} label={t(lang, "learnNotify")} />
+              <Toggle on={draft.learnQuranDaily} onChange={setLearnDaily} label={t(lang, "learnNotify")} />
             </div>
-            {prefs.learnQuranDaily && (
+            {draft.learnQuranDaily && (
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <select
                   className="input w-auto py-1.5 text-sm"
-                  value={prefs.learnHour}
-                  onChange={(e) => setLearnTime(Number(e.target.value), prefs.learnMinute)}
+                  value={draft.learnHour}
+                  onChange={(e) => setLearnTime(Number(e.target.value), draft.learnMinute)}
                 >
                   {HOURS.map((h) => (
                     <option key={h} value={h}>
-                      {String(h).padStart(2, "0")}:{String(prefs.learnMinute).padStart(2, "0")}
+                      {String(h).padStart(2, "0")}:{String(draft.learnMinute).padStart(2, "0")}
                     </option>
                   ))}
                 </select>
@@ -314,29 +311,60 @@ export function NotificationSettings({ times }: Props) {
                 <p className="mt-0.5 text-xs text-muted">{t(lang, "gratitudeNotifyHint")}</p>
               </div>
               <Toggle
-                on={prefs.gratitudeDaily}
+                on={draft.gratitudeDaily}
                 onChange={setGratitudeDaily}
                 label={t(lang, "gratitudeNotify")}
               />
             </div>
-            {prefs.gratitudeDaily && (
+            {draft.gratitudeDaily && (
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <select
                   className="input w-auto py-1.5 text-sm"
-                  value={prefs.gratitudeHour}
-                  onChange={(e) => setGratitudeTime(Number(e.target.value), prefs.gratitudeMinute)}
+                  value={draft.gratitudeHour}
+                  onChange={(e) => setGratitudeTime(Number(e.target.value), draft.gratitudeMinute)}
                 >
                   {HOURS.map((h) => (
                     <option key={h} value={h}>
-                      {String(h).padStart(2, "0")}:{String(prefs.gratitudeMinute).padStart(2, "0")}
+                      {String(h).padStart(2, "0")}:{String(draft.gratitudeMinute).padStart(2, "0")}
                     </option>
                   ))}
                 </select>
               </div>
             )}
           </div>
+
+          <div className="flex items-center justify-between gap-2 border-t border-subtle pt-3">
+            <p className={`text-xs ${dirty ? "font-medium text-gold-700 dark:text-gold-300" : "text-faint"}`}>
+              {dirty ? t(lang, "unsavedPrayerChanges") : t(lang, "prayerSettingsUpToDate")}
+            </p>
+            <div className="flex gap-2">
+              {dirty && (
+                <button
+                  type="button"
+                  onClick={() => setDraft(prefs)}
+                  className="rounded-xl border border-subtle px-4 py-2.5 text-sm font-medium text-body"
+                >
+                  {t(lang, "discardChanges")}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={saveNotifications}
+                disabled={!dirty}
+                className="btn-primary min-h-11 px-5 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {t(lang, "savePrayerSettings")}
+              </button>
+            </div>
+          </div>
         </div>
       )}
+
+      <SavedToast
+        open={showSaved}
+        label={t(lang, "prayerSettingsSaved")}
+        onDone={() => setShowSaved(false)}
+      />
     </section>
   );
 }

@@ -108,6 +108,15 @@ export function useSalah(): SalahState {
     setSettingsState(loadSettings());
   }, []);
 
+  useEffect(() => {
+    const onPrefs = () => {
+      setSettingsState(loadSettings());
+      setTick((t) => t + 1);
+    };
+    window.addEventListener("noor:prefs-changed", onPrefs);
+    return () => window.removeEventListener("noor:prefs-changed", onPrefs);
+  }, []);
+
   const fetchForCoords = useCallback(async (lat: number, lng: number, opts = settings, tzHint?: string) => {
     setLoading(true);
     setError("");
@@ -148,6 +157,9 @@ export function useSalah(): SalahState {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
     setSettingsState(next);
     setTick((t) => t + 1);
+    void import("@/lib/user-prefs").then(({ schedulePrefsPush }) => {
+      schedulePrefsPush({ salah: next });
+    });
   }, []);
 
   const setManualLocation = useCallback((lat: number, lng: number, label: string) => {

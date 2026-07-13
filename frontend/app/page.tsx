@@ -15,16 +15,14 @@ import { TimeOfDayHero } from "@/components/home/TimeOfDayHero";
 import { TravelModeWidget } from "@/components/home/TravelModeWidget";
 import { useChat } from "@/components/ChatProvider";
 import { useLang } from "@/components/LangProvider";
-import { useTheme } from "@/components/ThemeProvider";
 import { useSalah } from "@/hooks/useSalah";
-import { getTimePhase, minutesInTz, parseMinutes, qiblaBearing } from "@/lib/salah";
+import { getTimePhase, qiblaBearing } from "@/lib/salah";
 import { t } from "@/lib/i18n";
 import Link from "next/link";
 
 export default function HomePage() {
   const { lang } = useLang();
   const { openChat } = useChat();
-  const { setTheme } = useTheme();
   const salah = useSalah();
   const [now, setNow] = useState<Date | null>(null);
 
@@ -50,15 +48,6 @@ export default function HomePage() {
   const hijriDate = salah.times?.hijri
     ? `${salah.times.hijri.day} ${salah.times.hijri.month?.en} ${salah.times.hijri.year} AH`
     : "";
-
-  useEffect(() => {
-    if (!now || !salah.times) return;
-    const current = minutesInTz(now, tz);
-    const maghrib = parseMinutes(salah.times.timings.maghrib);
-    const fajr = parseMinutes(salah.times.timings.fajr);
-    const isNight = current >= maghrib || current < fajr;
-    setTheme(isNight ? "dark" : "light");
-  }, [now, salah.times, tz]);
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 pb-4">

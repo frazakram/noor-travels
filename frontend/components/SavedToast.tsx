@@ -7,13 +7,12 @@ type Props = {
   open: boolean;
   label: string;
   onDone?: () => void;
-  /** How long the toast stays visible */
   durationMs?: number;
 };
 
 /**
- * Compact Apple-style confirmation HUD, themed for Noor (teal/gold).
- * Centered, auto-dismisses; no interaction required.
+ * Apple-style confirmation HUD — always a solid dark frosted card with white
+ * label so it stays readable in both light and dark app themes.
  */
 export function SavedToast({ open, label, onDone, durationMs = 1400 }: Props) {
   const [mounted, setMounted] = useState(false);
@@ -46,16 +45,16 @@ export function SavedToast({ open, label, onDone, durationMs = 1400 }: Props) {
       role="status"
     >
       <div
-        className={`flex min-w-[7.5rem] flex-col items-center gap-2 rounded-[1.35rem] border border-white/20 bg-noor-900/92 px-7 py-5 text-white shadow-2xl shadow-noor-950/40 backdrop-blur-xl transition-all duration-200 dark:border-white/10 dark:bg-black/80 ${
+        className={`flex min-w-[8rem] flex-col items-center gap-2.5 rounded-[1.35rem] border border-white/25 bg-[#0d221f] px-8 py-5 text-white shadow-[0_20px_50px_rgba(13,34,31,0.45)] backdrop-blur-xl transition-all duration-200 ${
           visible ? "scale-100 opacity-100" : "scale-95 opacity-0"
         }`}
       >
-        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-noor-600 shadow-inner shadow-white/10">
-          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-teal-400 to-teal-700 text-white shadow-inner">
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M5 13l4 4L19 7" />
           </svg>
         </span>
-        <span className="text-sm font-semibold tracking-wide text-white/95">{label}</span>
+        <span className="text-[15px] font-bold tracking-wide text-white">{label}</span>
       </div>
     </div>,
     document.body,

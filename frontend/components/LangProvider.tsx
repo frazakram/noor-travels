@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, startTransition } from "react";
 import type { Lang } from "@/lib/i18n";
+import { schedulePrefsPush } from "@/lib/user-prefs";
 
 type LangContextType = { lang: Lang; setLang: (l: Lang) => void };
 
@@ -18,6 +19,15 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const onPrefs = () => {
+      const saved = localStorage.getItem("noor-lang") as Lang | null;
+      if (saved && ["en", "ur", "hi"].includes(saved)) setLangState(saved);
+    };
+    window.addEventListener("noor:prefs-changed", onPrefs);
+    return () => window.removeEventListener("noor:prefs-changed", onPrefs);
+  }, []);
+
+  useEffect(() => {
     if (!hydrated) return;
     localStorage.setItem("noor-lang", lang);
     document.documentElement.lang = lang === "ur" ? "ur" : lang === "hi" ? "hi" : "en";
@@ -28,6 +38,7 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
 
   const setLang = useCallback((next: Lang) => {
     startTransition(() => setLangState(next));
+    schedulePrefsPush({ lang: next });
   }, []);
 
   const value = useMemo(() => ({ lang, setLang }), [lang, setLang]);

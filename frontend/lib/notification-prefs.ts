@@ -66,4 +66,7 @@ export function loadNotificationPrefs(): NotificationPrefs {
 
 export function saveNotificationPrefs(prefs: NotificationPrefs): void {
   localStorage.setItem(KEY, JSON.stringify(prefs));
+  void import("@/lib/user-prefs").then(({ schedulePrefsPush }) => {
+    schedulePrefsPush({ notifications: prefs });
+  });
 }
