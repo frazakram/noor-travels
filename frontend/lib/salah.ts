@@ -194,7 +194,7 @@ export function getNextPrayer(prayers: PrayerSlot[], tz: string, now = new Date(
   const currentSlot = current ? slots.find((s) => s.id === current)! : null;
   let progress = 0;
   if (currentSlot) {
-    let windowStart = currentSlot.startMin;
+    const windowStart = currentSlot.startMin;
     let windowEnd = currentSlot.endMin;
     let n = nowMin;
     if (windowEnd <= windowStart) {

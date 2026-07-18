@@ -47,7 +47,6 @@ export default function PlacementTestPage() {
       .catch(() => setLoadError(true));
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(load, []);
 
   function buildTest(i: LearnQuranIndex, l: Record<string, LearnLesson>): TestItem[] {

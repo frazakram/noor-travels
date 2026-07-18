@@ -152,7 +152,7 @@ export function ChatWidget() {
           responseLang: answerLang,
         },
       ]);
-    } catch (err) {
+    } catch {
       setError(t(lang, "chatError"));
       setMessages(messages);
     } finally {

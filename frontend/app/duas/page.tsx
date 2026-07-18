@@ -33,7 +33,6 @@ export default function DuasPage() {
       .catch(() => setStatus("error"));
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(load, []);
 
   function title(d: Dua) {

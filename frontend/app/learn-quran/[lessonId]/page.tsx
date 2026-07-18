@@ -52,12 +52,11 @@ export default function LearnLessonPage() {
       .catch(() => setLoadError(true));
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(load, []);
 
   const lesson = lessons?.[lessonId];
-  const module = index?.modules.find((m) => m.lesson_ids.includes(lessonId));
-  const lessonIds = module?.lesson_ids ?? [];
+  const lessonModule = index?.modules.find((m) => m.lesson_ids.includes(lessonId));
+  const lessonIds = lessonModule?.lesson_ids ?? [];
   const posInModule = lessonIds.indexOf(lessonId);
   const prevId = posInModule > 0 ? lessonIds[posInModule - 1] : null;
   const nextId = posInModule >= 0 && posInModule < lessonIds.length - 1 ? lessonIds[posInModule + 1] : null;
@@ -134,7 +133,7 @@ export default function LearnLessonPage() {
         <Link href="/learn-quran" className="text-accent hover:underline">
           ← {t(lang, "learnQuran")}
         </Link>
-        {module && <span className="text-faint">/ {module.title_en}</span>}
+        {lessonModule && <span className="text-faint">/ {lessonModule.title_en}</span>}
       </div>
 
       {index && <LearnTrail index={index} progress={progress} lang={lang} currentLessonId={lessonId} />}

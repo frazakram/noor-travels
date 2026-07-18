@@ -230,7 +230,6 @@ export default function RecitePage() {
       discardRef.current = true;
       cleanupRecorder();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectedAyahs = ayahs.filter(

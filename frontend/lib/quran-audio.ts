@@ -402,7 +402,7 @@ async function playPrefetched(
   await seekForContentFraction(slot.el, startAtFraction, contentOffsetSec);
   try {
     await slot.el.play();
-  } catch (err) {
+  } catch {
     // Fallback: load on primary normally
     return playOnPrimary(
       url,

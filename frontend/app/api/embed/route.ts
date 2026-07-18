@@ -4,7 +4,12 @@ import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-let _pipe: any = null;
+type EmbedPipeline = (
+  text: string,
+  opts: { pooling: "mean"; normalize: boolean }
+) => Promise<{ data: Float32Array }>;
+
+let _pipe: EmbedPipeline | null = null;
 
 async function getPipeline() {
   if (_pipe) return _pipe;
@@ -13,7 +18,9 @@ async function getPipeline() {
   const { pipeline, env } = await import("@huggingface/transformers");
   env.cacheDir = "/tmp/hf-cache";
   env.allowLocalModels = false;
-  _pipe = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", { dtype: "q8" });
+  _pipe = (await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", {
+    dtype: "q8",
+  })) as unknown as EmbedPipeline;
   return _pipe;
 }
 
