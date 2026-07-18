@@ -34,8 +34,13 @@ import type { TranslationLang } from "@/lib/quran-types";
 const MAX_REPEAT = 5;
 const BISMILLAH_WORD_COUNT = 4;
 const BISMILLAH_FALLBACK_MS = 5840;
+/** Native queue is precomputed, so an endless range loop is capped there. */
+const NATIVE_INFINITE_PASSES = 20;
 
-export type RepeatScope = "ayah" | "surah";
+/** repeatCount value meaning "loop until paused" (range scope only). */
+export const LOOP_FOREVER = 0;
+
+export type RepeatScope = "ayah" | "surah" | "range";
 
 type Reciter = { id: string; name: string };
 
@@ -89,6 +94,9 @@ type Options = {
   tafsirSource: TafsirSource;
   repeatScope: RepeatScope;
   repeatCount: number;
+  /** 0-based inclusive ayah indexes; used only when repeatScope is "range". */
+  rangeStart?: number;
+  rangeEnd?: number;
   playbackSpeed?: number;
   onPlayIndex?: (index: number) => void;
   onBismillahPlay?: () => void;
@@ -110,14 +118,29 @@ function wordIndexFromTime(
   if (wordCount <= 0) return -1;
   const localSec = Math.max(0, currentSec - ayahOffsetSec);
   const ms = localSec * 1000;
+  const span =
+    ayahOffsetSec > 0 && Number.isFinite(durationSec) && durationSec > ayahOffsetSec
+      ? durationSec - ayahOffsetSec
+      : durationSec;
 
   if (segments && segments.length) {
     // Sparse timings (e.g. 1 segment for a 4-word ayah) pin the highlight — use proportional instead.
     const coverageOk = wordCount <= 1 || segments.length >= Math.ceil(wordCount * 0.5);
     if (coverageOk) {
+      // Segment clocks come from quran.com's recording of the reciter, which can
+      // be a different take than the playback file — the highlight then runs
+      // early/late at a constant rate. When the spans clearly disagree, map the
+      // playback position onto the segment clock instead of using it raw.
+      let effMs = ms;
+      let segEndMs = 0;
+      for (const s of segments) segEndMs = Math.max(segEndMs, s.end_ms);
+      if (segEndMs > 0 && Number.isFinite(span) && span > 0) {
+        const ratio = segEndMs / (span * 1000);
+        if (ratio > 0 && Math.abs(1 - ratio) > 0.08) effMs = ms * ratio;
+      }
       for (let i = segments.length - 1; i >= 0; i--) {
         const s = segments[i];
-        if (ms >= s.start_ms) {
+        if (effMs >= s.start_ms) {
           return Math.min(wordCount - 1, Math.max(0, s.word_index - 1));
         }
       }
@@ -126,10 +149,6 @@ function wordIndexFromTime(
   }
 
   // Proportional fallback when timings are missing or too sparse for this reciter.
-  const span =
-    ayahOffsetSec > 0 && Number.isFinite(durationSec) && durationSec > ayahOffsetSec
-      ? durationSec - ayahOffsetSec
-      : durationSec;
   if (!Number.isFinite(span) || span <= 0) {
     // Without duration, nudge forward slowly from wall-clock-unaware currentTime alone.
     if (localSec <= 0) return 0;
@@ -151,6 +170,8 @@ export function useSurahAudio({
   tafsirSource,
   repeatScope,
   repeatCount,
+  rangeStart,
+  rangeEnd,
   playbackSpeed = 1,
   onPlayIndex,
   onBismillahPlay,
@@ -241,7 +262,10 @@ export function useSurahAudio({
       const map: Record<string, AyahTiming> = {};
       for (const a of payload.ayahs || []) {
         map[a.verse_key] = {
-          segments: a.segments || [],
+          // Time-ordered, not word-ordered: a qari repeating a few words emits
+          // segments whose word_index steps backward — keep that order so the
+          // highlight follows the repetition.
+          segments: (a.segments || []).slice().sort((x, y) => x.start_ms - y.start_ms),
           timestampFrom: a.timestamp_from ?? 0,
           timestampTo: a.timestamp_to ?? 0,
         };
@@ -512,23 +536,31 @@ export function useSurahAudio({
     }
   }
 
-  async function buildNativeQueue(
-    start: number,
-    audioList: AudioAyah[],
-    surahPasses: number,
-    ayahRepeats: number,
-    bismillah: string | null,
-    needsBis: boolean
-  ): Promise<NativeQueueItem[]> {
+  async function buildNativeQueue(opts: {
+    start: number;
+    audioList: AudioAyah[];
+    passes: number;
+    ayahRepeats: number;
+    bismillah: string | null;
+    needsBis: boolean;
+    rangeLo?: number;
+    rangeHi?: number;
+    isRange?: boolean;
+  }): Promise<NativeQueueItem[]> {
+    const { start, audioList, passes, ayahRepeats, bismillah, needsBis, isRange } = opts;
+    const rangeLo = opts.rangeLo ?? 0;
+    const rangeHi = opts.rangeHi ?? audioList.length - 1;
     const items: NativeQueueItem[] = [];
     let lastArabicUrl: string | null = null;
-    for (let pass = 1; pass <= surahPasses; pass++) {
-      for (let i = start; i < audioList.length; i++) {
+    for (let pass = 1; pass <= passes; pass++) {
+      const from = pass === 1 ? start : rangeLo;
+      for (let i = from; i <= rangeHi; i++) {
         const audio = audioList[i];
         const text = textAyahs[i];
         if (!audio?.audio || !text) continue;
         for (let r = 0; r < ayahRepeats; r++) {
-          if (needsBis && bismillah && i === 0 && r === 0 && (pass === 1 || start === 0)) {
+          // Range loops play Bismillah once up front; surah passes replay it.
+          if (needsBis && bismillah && i === 0 && r === 0 && (pass === 1 || !isRange)) {
             if (bismillah !== lastArabicUrl) {
               items.push({
                 url: bismillah,
@@ -539,7 +571,9 @@ export function useSurahAudio({
               lastArabicUrl = bismillah;
             }
           }
-          if (audio.audio !== lastArabicUrl) {
+          // Dedupe collapses full-surah-file URLs; a range loop must replay the
+          // same ayah URL back-to-back, so it skips the check.
+          if (isRange || audio.audio !== lastArabicUrl) {
             items.push({
               url: audio.audio,
               title: text.verse_key,
@@ -576,6 +610,8 @@ export function useSurahAudio({
       embeddedBismillah?: boolean;
       embeddedBismillahDurationMs?: number;
       embeddedBismillahSegments?: WordSegment[];
+      /** Range loop: stop a full-surah file after this ayah index. */
+      rangeEndIndex?: number;
     }
   ) {
     const audio = audioList[i];
@@ -669,12 +705,24 @@ export function useSurahAudio({
         isSurahFile && i > 0 && seekTimelineEnd > 0
           ? (seekTimingMap[verseKey]?.timestampFrom ?? 0) / seekTimelineEnd
           : undefined;
+      let endAtFraction: number | undefined;
+      if (
+        isSurahFile &&
+        opts.rangeEndIndex != null &&
+        opts.rangeEndIndex < audioList.length - 1 &&
+        seekTimelineEnd > 0
+      ) {
+        const endKey = textAyahsRef.current[opts.rangeEndIndex]?.verse_key;
+        const endMs = endKey ? seekTimingMap[endKey]?.timestampTo ?? 0 : 0;
+        if (endMs > 0) endAtFraction = Math.min(1, endMs / seekTimelineEnd);
+      }
       try {
         await playAudioUrl(audio.audio, {
           gen,
           seamless: Boolean(opts.seamlessArabic && arabicOnly),
           playbackRate: playbackSpeedRef.current,
           startAtFraction,
+          endAtFraction,
           contentOffsetSec: opts.embeddedBismillah
             ? (opts.embeddedBismillahDurationMs ?? 0) / 1000
             : 0,
@@ -790,7 +838,13 @@ export function useSurahAudio({
             }
 
             const count = wordCountsRef.current[verseKey] ?? 0;
-            const segs = wordTimingsRef.current[verseKey]?.segments;
+            // No exact timings for this reciter → borrow Alafasy's segments as a
+            // pacing reference; wordIndexFromTime rescales them onto this file's
+            // duration, which tracks recitation far better than a linear sweep.
+            const segs =
+              wordTimingsRef.current[verseKey]?.segments?.length
+                ? wordTimingsRef.current[verseKey].segments
+                : referenceTimingsRef.current[verseKey]?.segments;
             setActiveWordIndex(wordIndexFromTime(current, duration, count, segs));
           },
         });
@@ -846,69 +900,111 @@ export function useSurahAudio({
       await acquireWakeLock();
       nativeSetQuranPlaying(true);
 
-      const surahPasses = repeatScope === "surah" ? Math.min(repeatCount, MAX_REPEAT) : 1;
-      const ayahRepeats = repeatScope === "ayah" ? Math.min(repeatCount, MAX_REPEAT) : 1;
+      const lastIdx = audioList.length - 1;
+      const isRange = repeatScope === "range";
+      const rangeLo = isRange
+        ? Math.min(Math.max(0, rangeStart ?? 0), lastIdx)
+        : 0;
+      const rangeHi = isRange
+        ? Math.min(Math.max(rangeLo, rangeEnd ?? lastIdx), lastIdx)
+        : lastIdx;
+      const infiniteLoop = isRange && repeatCount <= LOOP_FOREVER;
+      const surahPasses =
+        repeatScope === "surah" || isRange
+          ? infiniteLoop
+            ? Number.MAX_SAFE_INTEGER
+            : Math.min(Math.max(1, repeatCount), MAX_REPEAT)
+          : 1;
+      const ayahRepeats =
+        repeatScope === "ayah" ? Math.min(Math.max(1, repeatCount), MAX_REPEAT) : 1;
       const arabicOnly = !includeTranslationRef.current && !includeTafsirRef.current;
 
-      // Native ExoPlayer queue: HTTP streams + lock-screen notification (Android APK)
+      // Tapping inside the loop starts there (first pass runs to the end of the
+      // range); tapping outside snaps to the loop start.
+      let idx = isRange ? (start >= rangeLo && start <= rangeHi ? start : rangeLo) : start;
+
+      // Native ExoPlayer queue: HTTP streams + lock-screen notification (Android APK).
+      // Range loops over a single full-surah file need in-file seeking, which the
+      // queue cannot express — those fall through to web playback.
       const canNative =
         isNativeApp() &&
         !includeTafsirRef.current &&
-        (!includeTranslationRef.current || audioList.some((a) => a.translation_audio));
+        (!includeTranslationRef.current || audioList.some((a) => a.translation_audio)) &&
+        !(isRange && loaded.mode === "surah");
 
       if (canNative) {
-        const queue = await buildNativeQueue(
-          start,
+        const queue = await buildNativeQueue({
+          start: idx,
           audioList,
-          surahPasses,
+          passes: infiniteLoop ? NATIVE_INFINITE_PASSES : surahPasses,
           ayahRepeats,
-          loaded.bismillah,
-          loaded.needsBis
-        );
+          bismillah: loaded.bismillah,
+          needsBis: loaded.needsBis,
+          rangeLo,
+          rangeHi,
+          isRange,
+        });
         if (queue.length && nativePlayQuranQueue(surahName ?? `Surah ${surahNumber}`, queue)) {
           nativeModeRef.current = true;
-          setPlayIndex(start);
-          onPlayIndex?.(start);
-          setStatus(audioList[start] ? textAyahs[start]?.verse_key ?? "" : "");
-          updateNowPlaying(textAyahs[start]?.verse_key ?? `Ayah ${start + 1}`);
+          setPlayIndex(idx);
+          onPlayIndex?.(idx);
+          setStatus(audioList[idx] ? textAyahs[idx]?.verse_key ?? "" : "");
+          updateNowPlaying(textAyahs[idx]?.verse_key ?? `Ayah ${idx + 1}`);
           return;
         }
       }
 
       // Prefetch first track for snappier start
-      const firstUrl = audioList[start]?.audio;
-      if (loaded.needsBis && loaded.bismillah && start === 0) {
+      const firstUrl = audioList[idx]?.audio;
+      if (loaded.needsBis && loaded.bismillah && idx === 0) {
         prefetchAudioUrl(loaded.bismillah);
       } else if (firstUrl) {
         prefetchAudioUrl(firstUrl);
       }
 
-      let idx = start;
       for (let pass = 1; pass <= surahPasses; pass++) {
         if (stopRef.current || sessionRef.current !== gen) break;
-        if (repeatScope === "surah" && surahPasses > 1) setRepeatPass(pass);
+        const passStartedAt = Date.now();
+        if ((repeatScope === "surah" || isRange) && (surahPasses > 1 || infiniteLoop)) {
+          setRepeatPass(pass);
+        }
         if (pass > 1) {
           // A new surah pass must replay both embedded/separate Bismillah and
           // the full-surah Arabic file instead of treating them as duplicates.
+          // Range passes replay the surah file but keep Bismillah played once.
           surahArabicPlayedRef.current = null;
-          bismillahPlayedRef.current = false;
+          if (!isRange) bismillahPlayedRef.current = false;
         }
 
         let surahFileDone = false;
-        for (let i = idx; i < audioList.length; i++) {
+        for (let i = idx; i <= rangeHi; i++) {
           if (stopRef.current || sessionRef.current !== gen) break;
           for (let r = 1; r <= ayahRepeats; r++) {
             if (stopRef.current || sessionRef.current !== gen) break;
-            const label =
-              repeatScope === "ayah" && ayahRepeats > 1
+            const label = isRange
+              ? infiniteLoop
+                ? pass > 1
+                  ? `${pass}×`
+                  : undefined
+                : surahPasses > 1
+                  ? `${pass}/${surahPasses}`
+                  : undefined
+              : repeatScope === "ayah" && ayahRepeats > 1
                 ? `${r}/${ayahRepeats}`
                 : repeatScope === "surah" && surahPasses > 1
                   ? `${pass}/${surahPasses}`
                   : undefined;
 
             const nextIdx = r < ayahRepeats ? i : i + 1;
-            const nextArabicUrl =
-              nextIdx < audioList.length ? audioList[nextIdx]?.audio : null;
+            let nextArabicUrl = nextIdx <= rangeHi ? audioList[nextIdx]?.audio : null;
+            if (
+              isRange &&
+              nextIdx > rangeHi &&
+              (infiniteLoop || pass < surahPasses)
+            ) {
+              // Warm the loop-around so the range restarts near-gaplessly.
+              nextArabicUrl = audioList[rangeLo]?.audio ?? null;
+            }
 
             const playBis =
               loaded.needsBis &&
@@ -928,6 +1024,7 @@ export function useSurahAudio({
               embeddedBismillah: loaded.embeddedBis,
               embeddedBismillahDurationMs: loaded.embeddedBisDurationMs,
               embeddedBismillahSegments: loaded.embeddedBisSegments,
+              rangeEndIndex: isRange ? rangeHi : undefined,
             });
             // Surah-mode Arabic-only: one file covers every ayah (tracked in onTimeUpdate).
             if (loaded.mode === "surah" && arabicOnly) {
@@ -937,7 +1034,9 @@ export function useSurahAudio({
           }
           if (surahFileDone) break;
         }
-        idx = 0;
+        idx = isRange ? rangeLo : 0;
+        // Every URL failing instantly must not spin an endless loop forever.
+        if (infiniteLoop && Date.now() - passStartedAt < 400) break;
       }
 
       if (sessionRef.current === gen) {
@@ -957,6 +1056,8 @@ export function useSurahAudio({
       ensureAudioLoaded,
       repeatScope,
       repeatCount,
+      rangeStart,
+      rangeEnd,
       includeTafsir,
       includeTranslation,
       getTranslation,

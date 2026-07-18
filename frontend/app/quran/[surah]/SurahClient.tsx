@@ -18,6 +18,8 @@ import { sourcesForPref, type TafsirPref, type TafsirSource } from "@/lib/tafsir
 const MAX_REPEAT = 5;
 const MAX_SURAH = 114;
 const AYAH_RENDER_CHUNK = 18;
+/** After the user scrolls during playback, resume auto-follow once idle this long. */
+const FOLLOW_RESUME_MS = 5000;
 const BISMILLAH_WORDS: AyahWord[] = [
   { ar: "بِسْمِ", tr: "Bismi", en: "In the name" },
   { ar: "ٱللَّهِ", tr: "Allāhi", en: "of Allah" },
@@ -51,6 +53,9 @@ export default function SurahClient() {
   const [tafsirSource, setTafsirSource] = useState<TafsirSource>("ibn_kathir_en");
   const [repeatScope, setRepeatScope] = useState<RepeatScope>("ayah");
   const [audioRepeatCount, setAudioRepeatCount] = useState(1);
+  // 1-based ayah numbers for the memorisation loop ("range" scope).
+  const [rangeStart, setRangeStart] = useState(1);
+  const [rangeEnd, setRangeEnd] = useState(3);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [showAudioOpts, setShowAudioOpts] = useState(false);
   const [shareStatus, setShareStatus] = useState("");
@@ -65,16 +70,21 @@ export default function SurahClient() {
   const ayahRefs = useRef<Record<string, HTMLElement | null>>({});
   const bismillahRef = useRef<HTMLDivElement | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
-  const followPlaybackRef = useRef(true);
+  const lastUserScrollAt = useRef(0);
   const programmaticScrollRef = useRef(false);
   const lastReadTimer = useRef<number | undefined>(undefined);
   const pendingScrollRef = useRef(false);
   const [prefsHydrated, setPrefsHydrated] = useState(false);
 
+  const isFollowingPlayback = useCallback(
+    () => Date.now() - lastUserScrollAt.current > FOLLOW_RESUME_MS,
+    []
+  );
+
   const scrollToAyah = useCallback(
     (index: number) => {
       if (studyMode || index < 0 || index >= ayahs.length) return;
-      if (!followPlaybackRef.current) return;
+      if (!isFollowingPlayback()) return;
       const key = ayahs[index]?.verse_key;
       if (!key) return;
       // Progressive render: ensure the target ayah is mounted before scrolling.
@@ -92,7 +102,7 @@ export default function SurahClient() {
         }, 700);
       });
     },
-    [studyMode, ayahs, renderLimit]
+    [studyMode, ayahs, renderLimit, isFollowingPlayback]
   );
 
   const audio = useSurahAudio({
@@ -106,13 +116,15 @@ export default function SurahClient() {
     tafsirSource,
     repeatScope,
     repeatCount: audioRepeatCount,
+    rangeStart: rangeStart - 1,
+    rangeEnd: rangeEnd - 1,
     playbackSpeed,
     onPlayIndex: (i) => {
       setViewIndex(i);
-      if (followPlaybackRef.current) scrollToAyah(i);
+      if (isFollowingPlayback()) scrollToAyah(i);
     },
     onBismillahPlay: () => {
-      if (!followPlaybackRef.current) return;
+      if (!isFollowingPlayback()) return;
       programmaticScrollRef.current = true;
       requestAnimationFrame(() => {
         bismillahRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -123,16 +135,18 @@ export default function SurahClient() {
     },
   });
 
-  // Follow playback until the user intentionally scrolls; ignore our own scrollIntoView.
+  // Follow playback; a user scroll pauses following, which resumes after a few
+  // idle seconds (so trackpad-momentum or a stray touch never kills it for good).
+  // Our own scrollIntoView is ignored via programmaticScrollRef.
   useEffect(() => {
     if (!audio.playing) {
-      followPlaybackRef.current = true;
+      lastUserScrollAt.current = 0;
       return;
     }
 
     const markUserScroll = () => {
       if (programmaticScrollRef.current) return;
-      followPlaybackRef.current = false;
+      lastUserScrollAt.current = Date.now();
     };
 
     window.addEventListener("wheel", markUserScroll, { passive: true });
@@ -148,9 +162,9 @@ export default function SurahClient() {
   useEffect(() => {
     const grew = renderLimit > prevRenderLimitRef.current;
     prevRenderLimitRef.current = renderLimit;
-    if (!grew || !audio.playing || !followPlaybackRef.current) return;
+    if (!grew || !audio.playing || !isFollowingPlayback()) return;
     if (audio.playIndex < renderLimit) scrollToAyah(audio.playIndex);
-  }, [renderLimit, audio.playIndex, audio.playing, scrollToAyah]);
+  }, [renderLimit, audio.playIndex, audio.playing, scrollToAyah, isFollowingPlayback]);
 
   useEffect(() => {
     const saved = localStorage.getItem("noor-quran-translation") as TranslationLang | null;
@@ -172,10 +186,16 @@ export default function SurahClient() {
       setTafsirSource(savedTafsirSource);
     }
     const savedScope = localStorage.getItem("noor-audio-repeat-scope");
-    if (savedScope === "ayah" || savedScope === "surah") setRepeatScope(savedScope);
-    const savedAudioRepeat = Number(localStorage.getItem("noor-audio-repeat-count"));
+    if (savedScope === "ayah" || savedScope === "surah" || savedScope === "range") {
+      setRepeatScope(savedScope);
+    }
+    const savedRepeatRaw = localStorage.getItem("noor-audio-repeat-count");
+    const savedAudioRepeat = savedRepeatRaw === null ? NaN : Number(savedRepeatRaw);
     if (savedAudioRepeat >= 1 && savedAudioRepeat <= MAX_REPEAT) {
       setAudioRepeatCount(savedAudioRepeat);
+    } else if (savedAudioRepeat === 0 && savedScope === "range") {
+      // 0 = loop forever, only meaningful for the range scope.
+      setAudioRepeatCount(0);
     }
     const savedSpeed = Number(localStorage.getItem("noor-audio-speed"));
     if ([0.75, 1, 1.25, 1.5].includes(savedSpeed)) setPlaybackSpeed(savedSpeed);
@@ -214,6 +234,18 @@ export default function SurahClient() {
   useEffect(() => {
     setExpanded({});
   }, [tafsirPref, surahNumber]);
+
+  // Loop range is per-surah: reset on navigation, clamp once ayahs load.
+  useEffect(() => {
+    setRangeStart(1);
+    setRangeEnd(3);
+  }, [surahNumber]);
+
+  useEffect(() => {
+    if (!ayahs.length) return;
+    setRangeStart((s) => Math.min(Math.max(1, s), ayahs.length));
+    setRangeEnd((e) => Math.min(Math.max(1, e), ayahs.length));
+  }, [ayahs.length]);
 
   // Persist last-read position (debounced) so travelers can resume.
   useEffect(() => {
@@ -388,7 +420,7 @@ export default function SurahClient() {
 
   function goToAyah(index: number) {
     audio.pause();
-    followPlaybackRef.current = true;
+    lastUserScrollAt.current = 0;
     setViewIndex(index);
     scrollToAyah(index);
   }
@@ -398,7 +430,7 @@ export default function SurahClient() {
       audio.pause();
     } else {
       audio.pause();
-      followPlaybackRef.current = true;
+      lastUserScrollAt.current = 0;
       setViewIndex(index);
       audio.playFromIndex(index);
     }
@@ -408,7 +440,7 @@ export default function SurahClient() {
     if (audio.playing) {
       audio.pause();
     } else {
-      followPlaybackRef.current = true;
+      lastUserScrollAt.current = 0;
       audio.playFromIndex(viewIndex);
     }
   }
@@ -597,7 +629,10 @@ export default function SurahClient() {
               <button
                 type="button"
                 disabled={audio.playing}
-                onClick={() => setRepeatScope("ayah")}
+                onClick={() => {
+                  setRepeatScope("ayah");
+                  if (audioRepeatCount === 0) setAudioRepeatCount(1);
+                }}
                 className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs ${
                   repeatScope === "ayah"
                     ? "bg-noor-700 text-white dark:bg-noor-600"
@@ -609,7 +644,10 @@ export default function SurahClient() {
               <button
                 type="button"
                 disabled={audio.playing}
-                onClick={() => setRepeatScope("surah")}
+                onClick={() => {
+                  setRepeatScope("surah");
+                  if (audioRepeatCount === 0) setAudioRepeatCount(1);
+                }}
                 className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs ${
                   repeatScope === "surah"
                     ? "bg-noor-700 text-white dark:bg-noor-600"
@@ -617,6 +655,26 @@ export default function SurahClient() {
                 }`}
               >
                 {Icons.repeat} {t(lang, "repeatSurah")}
+              </button>
+              <button
+                type="button"
+                disabled={audio.playing}
+                onClick={() => {
+                  if (repeatScope !== "range") {
+                    const len = ayahs.length || 1;
+                    const from = Math.min(viewIndex + 1, len);
+                    setRangeStart(from);
+                    setRangeEnd(Math.min(from + 2, len));
+                  }
+                  setRepeatScope("range");
+                }}
+                className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs ${
+                  repeatScope === "range"
+                    ? "bg-noor-700 text-white dark:bg-noor-600"
+                    : "border border-noor-200 dark:border-noor-600"
+                }`}
+              >
+                {Icons.repeat} {t(lang, "loopRange")}
               </button>
               {Array.from({ length: MAX_REPEAT }, (_, i) => i + 1).map((n) => (
                 <button
@@ -633,7 +691,64 @@ export default function SurahClient() {
                   {n}
                 </button>
               ))}
+              {repeatScope === "range" && (
+                <button
+                  type="button"
+                  disabled={audio.playing}
+                  onClick={() => setAudioRepeatCount(0)}
+                  aria-label={t(lang, "loopForever")}
+                  title={t(lang, "loopForever")}
+                  className={`h-7 w-7 rounded-full text-sm leading-none ${
+                    audioRepeatCount === 0
+                      ? "bg-gold-500 text-white dark:bg-gold-400 dark:text-noor-950"
+                      : "border border-noor-200 dark:border-noor-600"
+                  }`}
+                >
+                  ∞
+                </button>
+              )}
             </div>
+            {repeatScope === "range" && (
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="text-xs text-muted">{t(lang, "loopFrom")}</label>
+                  <select
+                    className="input w-auto py-1 text-xs"
+                    value={rangeStart}
+                    disabled={audio.playing}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      setRangeStart(v);
+                      setRangeEnd((end) => Math.max(end, v));
+                    }}
+                  >
+                    {ayahs.map((a) => (
+                      <option key={a.verse_key} value={a.ayah_number}>
+                        {a.ayah_number}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="text-xs text-muted">{t(lang, "loopTo")}</label>
+                  <select
+                    className="input w-auto py-1 text-xs"
+                    value={rangeEnd}
+                    disabled={audio.playing}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      setRangeEnd(v);
+                      setRangeStart((s) => Math.min(s, v));
+                    }}
+                  >
+                    {ayahs.map((a) => (
+                      <option key={a.verse_key} value={a.ayah_number}>
+                        {a.ayah_number}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className="text-[11px] text-muted">{t(lang, "loopRangeHint")}</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -751,7 +866,19 @@ export default function SurahClient() {
               } ${studyMode ? "animate-fade-in-up" : ""}`}
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="text-xs font-medium text-accent">{a.verse_key}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs font-medium text-accent">{a.verse_key}</p>
+                  {repeatScope === "range" &&
+                    a.ayah_number >= rangeStart &&
+                    a.ayah_number <= rangeEnd && (
+                      <span
+                        className="inline-flex items-center rounded-full border border-gold-300 bg-gold-50 px-1.5 py-0.5 text-[10px] font-medium text-noor-800 dark:border-gold-600 dark:bg-noor-800 dark:text-gold-400"
+                        title={t(lang, "loopRange")}
+                      >
+                        {Icons.repeat}
+                      </span>
+                    )}
+                </div>
                 <div className="flex shrink-0 gap-1">
                   <IconButton
                     icon={bookmarkedKeys[a.verse_key] ? "★" : "☆"}

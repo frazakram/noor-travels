@@ -107,10 +107,13 @@ function clearSlotHandlers(slot: AudioSlot) {
   slot.onPlay = undefined;
 }
 
+type StopAt = { endAtFraction: number; contentOffsetSec: number };
+
 function wirePlayback(
   slot: AudioSlot,
   gen: number | undefined,
-  onTimeUpdate?: (current: number, duration: number) => void
+  onTimeUpdate?: (current: number, duration: number) => void,
+  stopAt?: StopAt
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     if (gen !== undefined && isStale(gen)) {
@@ -143,10 +146,26 @@ function wirePlayback(
 
     const emitTime = () => {
       if (gen !== undefined && isStale(gen)) return;
-      if (!slot.onTime) return;
       const dur = el.duration;
+      const knownDur = Number.isFinite(dur) && dur > 0 ? dur : 0;
+      // Range loop inside a full-surah file: finish early at the end boundary.
+      if (stopAt && knownDur > 0) {
+        const offset = Math.min(Math.max(0, stopAt.contentOffsetSec), knownDur);
+        const target =
+          offset + Math.min(1, Math.max(0, stopAt.endAtFraction)) * (knownDur - offset);
+        if (el.currentTime >= target - 0.08) {
+          try {
+            el.pause();
+          } catch {
+            /* ignore */
+          }
+          finish();
+          return;
+        }
+      }
+      if (!slot.onTime) return;
       // Emit even when duration is unknown — segment timings only need currentTime.
-      slot.onTime(el.currentTime, Number.isFinite(dur) && dur > 0 ? dur : 0);
+      slot.onTime(el.currentTime, knownDur);
     };
 
     el.ontimeupdate = emitTime;
@@ -243,6 +262,8 @@ export type PlayAudioOptions = {
   /** Seek within a full-surah file: offset + fraction of remaining content. */
   startAtFraction?: number;
   contentOffsetSec?: number;
+  /** Stop early within a full-surah file (same content-fraction scale as startAtFraction). */
+  endAtFraction?: number;
 };
 
 let currentPlaybackRate = 1;
@@ -285,12 +306,18 @@ export function playAudioUrl(url: string, genOrOpts?: number | PlayAudioOptions)
     playbackRate,
     startAtFraction,
     contentOffsetSec,
+    endAtFraction,
   } = opts;
   if (playbackRate != null) setGlobalPlaybackRate(playbackRate);
 
   if (gen !== undefined && isStale(gen)) {
     return Promise.resolve();
   }
+
+  const stopAt: StopAt | undefined =
+    endAtFraction != null && endAtFraction > 0 && endAtFraction < 1
+      ? { endAtFraction, contentOffsetSec: contentOffsetSec ?? 0 }
+      : undefined;
 
   // Gapless path: standby already holds this URL — swap roles and play immediately.
   if (
@@ -305,11 +332,12 @@ export function playAudioUrl(url: string, genOrOpts?: number | PlayAudioOptions)
       gen,
       onTimeUpdate,
       startAtFraction,
-      contentOffsetSec
+      contentOffsetSec,
+      stopAt
     );
   }
 
-  return playOnPrimary(url, gen, onTimeUpdate, startAtFraction, contentOffsetSec);
+  return playOnPrimary(url, gen, onTimeUpdate, startAtFraction, contentOffsetSec, stopAt);
 }
 
 async function seekForContentFraction(
@@ -342,7 +370,8 @@ async function playPrefetched(
   gen: number | undefined,
   onTimeUpdate?: (current: number, duration: number) => void,
   startAtFraction?: number,
-  contentOffsetSec?: number
+  contentOffsetSec?: number,
+  stopAt?: StopAt
 ): Promise<void> {
   const next = getStandby();
   const prev = getPrimary();
@@ -367,7 +396,7 @@ async function playPrefetched(
   }
 
   const slot = getPrimary();
-  const done = wirePlayback(slot, gen, onTimeUpdate);
+  const done = wirePlayback(slot, gen, onTimeUpdate, stopAt);
   slot.el.muted = false;
   applyRate(slot.el);
   await seekForContentFraction(slot.el, startAtFraction, contentOffsetSec);
@@ -380,7 +409,8 @@ async function playPrefetched(
       gen,
       onTimeUpdate,
       startAtFraction,
-      contentOffsetSec
+      contentOffsetSec,
+      stopAt
     );
   }
   return done;
@@ -391,7 +421,8 @@ async function playOnPrimary(
   gen: number | undefined,
   onTimeUpdate?: (current: number, duration: number) => void,
   startAtFraction?: number,
-  contentOffsetSec?: number
+  contentOffsetSec?: number,
+  stopAt?: StopAt
 ): Promise<void> {
   const slot = getPrimary();
 
@@ -402,7 +433,7 @@ async function playOnPrimary(
     r();
   }
 
-  const done = wirePlayback(slot, gen, onTimeUpdate);
+  const done = wirePlayback(slot, gen, onTimeUpdate, stopAt);
   const { el } = slot;
   el.muted = false;
   applyRate(el);

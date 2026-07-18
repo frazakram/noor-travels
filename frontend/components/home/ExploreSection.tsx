@@ -53,6 +53,14 @@ const items = [
     icon: "🕌",
     accent: "border-l-violet-500 bg-violet-50/60 dark:bg-violet-950/20",
   },
+  {
+    href: "/recite",
+    key: "reciteTitle" as const,
+    desc: "Recite from memory and get a score with mistakes",
+    stat: "Score out of 10",
+    icon: "🎙️",
+    accent: "border-l-rose-500 bg-rose-50/60 dark:bg-rose-950/20",
+  },
 ];
 
 export function ExploreSection() {

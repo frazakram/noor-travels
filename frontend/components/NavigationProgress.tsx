@@ -41,9 +41,12 @@ export function NavigationProgress() {
     setPhase(next);
   }
 
-  function start() {
+  function start(markNav = true) {
     kill();
-    pendingNav.current = true;
+    // Same-page data loads must not set pendingNav: it gates maybeFinish(), and
+    // a fetch that starts the bar from idle would otherwise strand it at 78%
+    // until the watchdog snaps it away.
+    if (markNav) pendingNav.current = true;
     setPhaseSafe("loading");
     setPct(0);
     timers.current.push(setTimeout(() => setPct(22), 0));
@@ -134,7 +137,7 @@ export function NavigationProgress() {
       const active = Boolean((e as CustomEvent<{ active?: boolean }>).detail?.active);
       if (active) {
         pageLoadingCount.current += 1;
-        if (phaseRef.current === "idle") start();
+        if (phaseRef.current === "idle") start(false);
         return;
       }
       pageLoadingCount.current = Math.max(0, pageLoadingCount.current - 1);

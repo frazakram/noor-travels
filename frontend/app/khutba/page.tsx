@@ -104,6 +104,8 @@ export default function KhutbaPage() {
       suggestion?: { slug: string; title: string } | null;
     }>("/api/khutba/live-chunk", {
       method: "POST",
+      // Fires every ~10s during live listening — keep the top bar quiet.
+      silent: true,
       body: JSON.stringify({
         audio_b64: audioB64,
         content_type: blob.type || "audio/webm",

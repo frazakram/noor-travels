@@ -1,35 +1,66 @@
 const API = process.env.NEXT_PUBLIC_API_URL || "";
 
-async function _fetch<T>(path: string, init?: RequestInit): Promise<T> {
-  let res: Response;
+// Mirrors NavigationProgress's event (not imported: that module is a client
+// component and this helper must stay import-safe everywhere).
+const PAGE_LOADING_EVENT = "noor:page-loading";
+/** Requests faster than this never show the bar — no flicker on cached data. */
+const PROGRESS_GRACE_MS = 200;
+
+export type ApiInit = RequestInit & {
+  /** Background polling (e.g. khutba live chunks) — never show the loading bar. */
+  silent?: boolean;
+};
+
+function emitLoading(active: boolean) {
+  window.dispatchEvent(new CustomEvent(PAGE_LOADING_EVENT, { detail: { active } }));
+}
+
+async function _fetch<T>(path: string, init?: ApiInit): Promise<T> {
+  const { silent, ...rest } = init ?? {};
+  // Every fetch drives the top progress bar so users always see that the app
+  // is working, on whichever page the data is loading.
+  let shown = false;
+  const grace =
+    !silent && typeof window !== "undefined"
+      ? window.setTimeout(() => {
+          shown = true;
+          emitLoading(true);
+        }, PROGRESS_GRACE_MS)
+      : null;
   try {
-    res = await fetch(`${API}${path}`, {
-      headers: { "Content-Type": "application/json" },
-      ...init,
-    });
-  } catch {
-    throw new Error("We could not connect right now. Please check your internet and try again.");
-  }
-  if (!res.ok) {
-    let detail = "Something went wrong while loading this content. Please try again.";
+    let res: Response;
     try {
-      const body = await res.json();
-      if (typeof body.detail === "string" && !looksTechnical(body.detail)) detail = body.detail;
+      res = await fetch(`${API}${path}`, {
+        headers: { "Content-Type": "application/json" },
+        ...rest,
+      });
     } catch {
-      /* ignore */
+      throw new Error("We could not connect right now. Please check your internet and try again.");
     }
-    throw new Error(detail);
+    if (!res.ok) {
+      let detail = "Something went wrong while loading this content. Please try again.";
+      try {
+        const body = await res.json();
+        if (typeof body.detail === "string" && !looksTechnical(body.detail)) detail = body.detail;
+      } catch {
+        /* ignore */
+      }
+      throw new Error(detail);
+    }
+    return await res.json();
+  } finally {
+    if (grace != null) window.clearTimeout(grace);
+    if (shown) emitLoading(false);
   }
-  return res.json();
 }
 
 /** Dynamic data: always fetch fresh (chat, search results, salah times). */
-export function api<T>(path: string, init?: RequestInit): Promise<T> {
+export function api<T>(path: string, init?: ApiInit): Promise<T> {
   return _fetch<T>(path, { cache: "no-store", ...init });
 }
 
 /** Static data: respect server Cache-Control headers (surahs list, duas, hadith chapters). */
-export function apiStatic<T>(path: string, init?: RequestInit): Promise<T> {
+export function apiStatic<T>(path: string, init?: ApiInit): Promise<T> {
   return _fetch<T>(path, init);
 }
 
