@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { AutoplayToggle } from "@/components/AutoplayToggle";
 import { AyahWordText, type AyahWord } from "@/components/AyahWordText";
 import { useLang } from "@/components/LangProvider";
 import { IconButton, Icons } from "@/components/IconButton";
@@ -542,6 +543,11 @@ export default function SurahClient() {
               href={`/quran/${surahNumber + 1}`}
             />
           )}
+          <AutoplayToggle
+            on={autoPlayNext}
+            onChange={setAutoPlayNext}
+            label={t(lang, "autoPlayNext")}
+          />
           {audio.audioLoading && (
             <span className="text-xs text-faint">{t(lang, "loading")}…</span>
           )}
@@ -637,14 +643,6 @@ export default function SurahClient() {
                 <option value="maududi_ur">{t(lang, "tafsirUrduOption")}</option>
               </select>
             )}
-            <label className="flex items-center gap-2 text-xs">
-              <input
-                type="checkbox"
-                checked={autoPlayNext}
-                onChange={(e) => setAutoPlayNext(e.target.checked)}
-              />
-              {t(lang, "autoPlayNext")}
-            </label>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-muted">{t(lang, "playbackSpeed")}</span>
               {[0.75, 1, 1.25, 1.5].map((s) => (
