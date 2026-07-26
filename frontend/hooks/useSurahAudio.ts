@@ -100,6 +100,9 @@ type Options = {
   playbackSpeed?: number;
   onPlayIndex?: (index: number) => void;
   onBismillahPlay?: () => void;
+  /** Fired when playback reaches the natural end (not user pause) — used for
+   *  auto-playing the next surah. */
+  onPlaybackFinished?: () => void;
 };
 
 /**
@@ -175,6 +178,7 @@ export function useSurahAudio({
   playbackSpeed = 1,
   onPlayIndex,
   onBismillahPlay,
+  onPlaybackFinished,
 }: Options) {
   const [reciters, setReciters] = useState<Reciter[]>([]);
   const [audioAyahs, setAudioAyahs] = useState<AudioAyah[]>([]);
@@ -213,17 +217,23 @@ export function useSurahAudio({
   const textAyahsRef = useRef(textAyahs);
   const onPlayIndexRef = useRef(onPlayIndex);
   const onBismillahPlayRef = useRef(onBismillahPlay);
+  const onPlaybackFinishedRef = useRef(onPlaybackFinished);
   const wordCountsRef = useRef(wordCounts);
   const wordTimingsRef = useRef(wordTimings);
   const referenceTimingsRef = useRef(referenceTimings);
   const bismillahSegmentsRef = useRef(bismillahSegments);
   const playbackSpeedRef = useRef(playbackSpeed);
   const audioListRef = useRef<AudioAyah[]>([]);
+  /** Resolves once word timings for the current surah+reciter have loaded.
+   *  Full-surah files need them to seek to a tapped mid-surah ayah — playing
+   *  before they arrive would start from the beginning of the file. */
+  const timingsReadyRef = useRef<Promise<void>>(Promise.resolve());
   includeTafsirRef.current = includeTafsir;
   includeTranslationRef.current = includeTranslation;
   tafsirSourceRef.current = tafsirSource;
   onPlayIndexRef.current = onPlayIndex;
   onBismillahPlayRef.current = onBismillahPlay;
+  onPlaybackFinishedRef.current = onPlaybackFinished;
   textAyahsRef.current = textAyahs;
   playingRef.current = playing;
   wordCountsRef.current = wordCounts;
@@ -284,27 +294,37 @@ export function useSurahAudio({
       })
       .catch(() => {});
 
-    Promise.all([
+    // Refs are written directly (not only via render sync) so a play started
+    // right after the fetch resolves sees the timings without waiting a frame.
+    timingsReadyRef.current = Promise.all([
       api<TimingPayload>(timingUrl(surahNumber, reciter)),
       api<TimingPayload>(timingUrl(1, reciter)),
     ])
       .then(async ([own, fatiha]) => {
         if (cancelled) return;
-        setWordTimings(own.available ? toMap(own) : {});
-        setBismillahSegments(
-          fatiha.available ? toMap(fatiha)["1:1"]?.segments ?? [] : []
-        );
+        const ownMap = own.available ? toMap(own) : {};
+        setWordTimings(ownMap);
+        wordTimingsRef.current = ownMap;
+        const bisSegs = fatiha.available ? toMap(fatiha)["1:1"]?.segments ?? [] : [];
+        setBismillahSegments(bisSegs);
+        bismillahSegmentsRef.current = bisSegs;
 
         if (own.available) {
           setReferenceTimings({});
+          referenceTimingsRef.current = {};
         } else {
           try {
             const reference = await api<TimingPayload>(timingUrl(surahNumber, "ar.alafasy"));
             if (!cancelled) {
-              setReferenceTimings(reference.available ? toMap(reference) : {});
+              const refMap = reference.available ? toMap(reference) : {};
+              setReferenceTimings(refMap);
+              referenceTimingsRef.current = refMap;
             }
           } catch {
-            if (!cancelled) setReferenceTimings({});
+            if (!cancelled) {
+              setReferenceTimings({});
+              referenceTimingsRef.current = {};
+            }
           }
         }
       })
@@ -313,6 +333,9 @@ export function useSurahAudio({
           setWordTimings({});
           setReferenceTimings({});
           setBismillahSegments([]);
+          wordTimingsRef.current = {};
+          referenceTimingsRef.current = {};
+          bismillahSegmentsRef.current = [];
         }
       });
 
@@ -502,6 +525,9 @@ export function useSurahAudio({
       (window as unknown as { noorOnPlaybackEnded?: () => void }).noorOnPlaybackEnded = () => {
         if (!nativeModeRef.current) return;
         pause();
+        // Native queue drained on its own (user pauses clear nativeModeRef
+        // before this fires) — treat it as a natural finish.
+        onPlaybackFinishedRef.current?.();
       };
     }
 
@@ -886,12 +912,22 @@ export function useSurahAudio({
       if (!audioList.length) return;
       audioListRef.current = audioList;
 
+      // Full-surah files locate ayahs by word timings; wait for them (bounded)
+      // so tapping a mid-surah ayah seeks there instead of starting at ayah 1.
+      if (loaded.mode === "surah") {
+        await Promise.race([
+          timingsReadyRef.current,
+          new Promise<void>((r) => window.setTimeout(r, 4000)),
+        ]);
+      }
+
       stopRef.current = false;
       nativeModeRef.current = false;
       surahArabicPlayedRef.current = null;
       bismillahPlayedRef.current = false;
       const gen = beginPlaybackSession();
       sessionRef.current = gen;
+      const playStartedAt = Date.now();
       setPlaying(true);
       playingRef.current = true;
       setActiveWordIndex(-1);
@@ -1040,6 +1076,7 @@ export function useSurahAudio({
       }
 
       if (sessionRef.current === gen) {
+        const finishedNaturally = !stopRef.current;
         playingRef.current = false;
         nativeSetQuranPlaying(false);
         void releaseWakeLock();
@@ -1050,6 +1087,11 @@ export function useSurahAudio({
         setActiveWordIndex(-1);
         setActiveBismillahWordIndex(-1);
         setIsPlayingBismillah(false);
+        // Guard against instant-failure loops (every URL erroring) so a broken
+        // network can't chain-navigate through the whole mushaf.
+        if (finishedNaturally && Date.now() - playStartedAt > 3000) {
+          onPlaybackFinishedRef.current?.();
+        }
       }
     },
     [

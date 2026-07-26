@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useLang } from "@/components/LangProvider";
+import { startRouteProgress } from "@/components/NavigationProgress";
 import {
   awardModuleBadge,
   fetchLearnIndex,
@@ -118,7 +119,14 @@ export default function ModuleQuizPage() {
         <p className="text-sm text-body">
           {passed ? t(lang, "moduleQuizPassed") : t(lang, "moduleQuizRetry")}
         </p>
-        <button type="button" className="btn-primary" onClick={() => router.push("/learn-quran")}>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => {
+            startRouteProgress();
+            router.push("/learn-quran");
+          }}
+        >
           {t(lang, "learnQuranBackCourse")}
         </button>
       </div>

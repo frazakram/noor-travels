@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { AyahWordText, type AyahWord } from "@/components/AyahWordText";
 import { useLang } from "@/components/LangProvider";
 import { IconButton, Icons } from "@/components/IconButton";
-import { emitPageLoading } from "@/components/NavigationProgress";
+import { emitPageLoading, startRouteProgress } from "@/components/NavigationProgress";
 import { useSurahAudio, type RepeatScope } from "@/hooks/useSurahAudio";
 import { api } from "@/lib/api";
 import { t } from "@/lib/i18n";
@@ -31,6 +31,7 @@ type TafsirRow = { verse_key: string; source: string; text: string };
 
 export default function SurahClient() {
   const params = useParams();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const surahNumber = Number(params.surah);
   const startAyah = Math.max(1, Number(searchParams.get("ayah")) || 1);
@@ -57,6 +58,7 @@ export default function SurahClient() {
   const [rangeStart, setRangeStart] = useState(1);
   const [rangeEnd, setRangeEnd] = useState(3);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [autoPlayNext, setAutoPlayNext] = useState(false);
   const [showAudioOpts, setShowAudioOpts] = useState(false);
   const [shareStatus, setShareStatus] = useState("");
   const [showTranslationText, setShowTranslationText] = useState(true);
@@ -133,7 +135,31 @@ export default function SurahClient() {
         }, 700);
       });
     },
+    onPlaybackFinished: () => {
+      // Memorisation loops end deliberately — never yank the user to a new surah.
+      if (!autoPlayNext || repeatScope === "range") return;
+      if (surahNumber >= MAX_SURAH) return;
+      startRouteProgress();
+      router.push(`/quran/${surahNumber + 1}?autoplay=1`);
+    },
   });
+
+  // ?autoplay=1 (set when auto-advancing surahs) starts playback once loaded.
+  const autoPlayedRef = useRef(false);
+  useEffect(() => {
+    autoPlayedRef.current = false;
+  }, [surahNumber]);
+  useEffect(() => {
+    if (autoPlayedRef.current || surahLoading || !ayahs.length) return;
+    // Only honored when the user's own toggle is on — a shared ?autoplay=1
+    // link must not chain-play (autoplay policy would silently skip every
+    // ayah and cascade-navigate through the mushaf).
+    if (!autoPlayNext || searchParams.get("autoplay") !== "1") return;
+    autoPlayedRef.current = true;
+    lastUserScrollAt.current = 0;
+    void audio.playFromIndex(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- audio changes every render; the ref guards re-entry
+  }, [surahLoading, ayahs.length, autoPlayNext, searchParams]);
 
   // Follow playback; a user scroll pauses following, which resumes after a few
   // idle seconds (so trackpad-momentum or a stray touch never kills it for good).
@@ -199,6 +225,7 @@ export default function SurahClient() {
     }
     const savedSpeed = Number(localStorage.getItem("noor-audio-speed"));
     if ([0.75, 1, 1.25, 1.5].includes(savedSpeed)) setPlaybackSpeed(savedSpeed);
+    if (localStorage.getItem("noor-audio-autoplay-next") === "1") setAutoPlayNext(true);
     if (localStorage.getItem("noor-read-translation") === "0") setShowTranslationText(false);
     setPrefsHydrated(true);
   }, []);
@@ -215,6 +242,7 @@ export default function SurahClient() {
     localStorage.setItem("noor-audio-repeat-scope", repeatScope);
     localStorage.setItem("noor-audio-repeat-count", String(audioRepeatCount));
     localStorage.setItem("noor-audio-speed", String(playbackSpeed));
+    localStorage.setItem("noor-audio-autoplay-next", autoPlayNext ? "1" : "0");
     localStorage.setItem("noor-read-translation", showTranslationText ? "1" : "0");
   }, [
     prefsHydrated,
@@ -228,6 +256,7 @@ export default function SurahClient() {
     repeatScope,
     audioRepeatCount,
     playbackSpeed,
+    autoPlayNext,
     showTranslationText,
   ]);
 
@@ -608,6 +637,14 @@ export default function SurahClient() {
                 <option value="maududi_ur">{t(lang, "tafsirUrduOption")}</option>
               </select>
             )}
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={autoPlayNext}
+                onChange={(e) => setAutoPlayNext(e.target.checked)}
+              />
+              {t(lang, "autoPlayNext")}
+            </label>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-muted">{t(lang, "playbackSpeed")}</span>
               {[0.75, 1, 1.25, 1.5].map((s) => (

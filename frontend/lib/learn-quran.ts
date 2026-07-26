@@ -485,14 +485,30 @@ export function completedCount(progress: LearnProgress, lessonIds: string[]): nu
   return lessonIds.filter((id) => progress.lessons[id]?.completed).length;
 }
 
+// Static JSON is served from the frontend origin, so these bypass lib/api —
+// drive the top progress bar with the same event it uses.
+async function fetchStaticJson<T>(url: string, notFound: string): Promise<T> {
+  let shown = false;
+  const grace = window.setTimeout(() => {
+    shown = true;
+    window.dispatchEvent(new CustomEvent("noor:page-loading", { detail: { active: true } }));
+  }, 200);
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(notFound);
+    return await r.json();
+  } finally {
+    window.clearTimeout(grace);
+    if (shown) {
+      window.dispatchEvent(new CustomEvent("noor:page-loading", { detail: { active: false } }));
+    }
+  }
+}
+
 export async function fetchLearnIndex(): Promise<LearnQuranIndex> {
-  const r = await fetch("/data/learn-quran/index.json");
-  if (!r.ok) throw new Error("Course not found");
-  return r.json();
+  return fetchStaticJson("/data/learn-quran/index.json", "Course not found");
 }
 
 export async function fetchLessons(): Promise<Record<string, LearnLesson>> {
-  const r = await fetch("/data/learn-quran/lessons.json");
-  if (!r.ok) throw new Error("Lessons not found");
-  return r.json();
+  return fetchStaticJson("/data/learn-quran/lessons.json", "Lessons not found");
 }

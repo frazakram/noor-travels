@@ -336,19 +336,21 @@ export function qiblaBearing(lat: number, lng: number): number {
   return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 }
 
+export const HIJRI_EVENTS = [
+  { month: 1, day: 10, name: "Ashura" },
+  { month: 8, day: 15, name: "15th Sha'ban" },
+  { month: 9, day: 1, name: "Ramadan begins" },
+  { month: 9, day: 27, name: "Laylatul Qadr (commonly observed)" },
+  { month: 10, day: 1, name: "Eid al-Fitr" },
+  { month: 12, day: 9, name: "Day of Arafah" },
+  { month: 12, day: 10, name: "Eid al-Adha" },
+] as const;
+
 export function upcomingHijriEvent(hijri?: SalahTimesResponse["hijri"]): string {
   const month = hijri?.month?.number;
   const day = Number(hijri?.day);
   if (!month || !day) return "Islamic date loaded";
-  const events = [
-    { month: 1, day: 10, name: "Ashura" },
-    { month: 8, day: 15, name: "15th Sha'ban" },
-    { month: 9, day: 1, name: "Ramadan begins" },
-    { month: 9, day: 27, name: "Laylatul Qadr (commonly observed)" },
-    { month: 10, day: 1, name: "Eid al-Fitr" },
-    { month: 12, day: 9, name: "Day of Arafah" },
-    { month: 12, day: 10, name: "Eid al-Adha" },
-  ];
+  const events = HIJRI_EVENTS;
   const current = month * 40 + day;
   const next = events.find((e) => e.month * 40 + e.day >= current) ?? events[0];
   const days = next.month >= month ? (next.month - month) * 30 + (next.day - day) : (12 - month + next.month) * 30 + (next.day - day);

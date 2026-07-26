@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLang } from "@/components/LangProvider";
+import { startRouteProgress } from "@/components/NavigationProgress";
 import { api } from "@/lib/api";
 import {
   beginPlaybackSession,
@@ -343,6 +344,7 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
 
   function goToSurah(next: number) {
     handlePause();
+    startRouteProgress();
     router.push(`/quran/listen/${next}`);
   }
 

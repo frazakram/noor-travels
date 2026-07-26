@@ -5,7 +5,7 @@ import { ContinueReadingCard } from "@/components/home/ContinueReadingCard";
 import { DailyReflection } from "@/components/home/DailyReflection";
 import { GratitudeJournal } from "@/components/home/GratitudeJournal";
 import { HadithOfTheDay } from "@/components/home/HadithOfTheDay";
-import { FeaturedKhutba } from "@/components/home/FeaturedKhutba";
+import { LastSavedKhutba } from "@/components/home/LastSavedKhutba";
 import { QiblaHijriWidget } from "@/components/home/QiblaHijriWidget";
 import { SalahDashboard } from "@/components/home/SalahDashboard";
 import { NotificationSettings } from "@/components/home/NotificationSettings";
@@ -124,7 +124,7 @@ export default function HomePage() {
           </Link>
         </p>
 
-        <FeaturedKhutba />
+        <LastSavedKhutba />
       </div>
     </div>
   );

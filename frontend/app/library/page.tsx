@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLang } from "@/components/LangProvider";
+import { emitPageLoading } from "@/components/NavigationProgress";
 import { t, type Lang } from "@/lib/i18n";
 
 type LibraryIndex = {
@@ -196,6 +197,7 @@ export default function QuestionLibraryPage() {
   const [page, setPage] = useState(0);
 
   useEffect(() => {
+    emitPageLoading(true);
     fetch("/data/question-library-index.json")
       .then((r) => {
         if (!r.ok) throw new Error("Library not found");
@@ -203,12 +205,16 @@ export default function QuestionLibraryPage() {
       })
       .then((data: LibraryIndex) => setIndex(data))
       .catch(() => setError("libraryLoadError"))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        emitPageLoading(false);
+      });
   }, []);
 
   const loadAnswers = useCallback(async () => {
     if (answers) return answers;
     setAnswersLoading(true);
+    emitPageLoading(true);
     try {
       const r = await fetch("/data/question-library-answers.json");
       if (!r.ok) throw new Error("Answers not found");
@@ -220,6 +226,7 @@ export default function QuestionLibraryPage() {
       return null;
     } finally {
       setAnswersLoading(false);
+      emitPageLoading(false);
     }
   }, [answers]);
 

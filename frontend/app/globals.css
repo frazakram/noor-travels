@@ -138,8 +138,10 @@
     border-radius: 0 3px 3px 0;
   }
 
+  /* APK WebView reports env() as 0 while content draws behind the status bar
+     (same reason pt-safe uses max(env, 2rem)) — top: 0 would hide the bar. */
   html.app-shell .nav-progress-bar {
-    top: env(safe-area-inset-top, 0px);
+    top: max(env(safe-area-inset-top, 0px), 2rem);
   }
 
   .ayah-card {

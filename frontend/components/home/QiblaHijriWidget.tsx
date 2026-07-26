@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
+import { HijriCalendarModal } from "@/components/home/HijriCalendarModal";
 import { qiblaBearing, upcomingHijriEvent, type SalahTimesResponse } from "@/lib/salah";
 import { t } from "@/lib/i18n";
 
@@ -28,6 +29,7 @@ export function QiblaHijriWidget({ coords, times }: Props) {
   const { lang } = useLang();
   const [heading, setHeading] = useState<number | null>(null);
   const [compassLive, setCompassLive] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const bearing = coords ? qiblaBearing(coords.lat, coords.lng) : 0;
   const needleRotation = heading !== null ? bearing - heading : bearing;
   const hijri = times?.hijri;
@@ -146,7 +148,19 @@ export function QiblaHijriWidget({ coords, times }: Props) {
         ) : (
           <p className="mt-2 text-sm text-muted">{t(lang, "loadingHijri")}</p>
         )}
+        <button
+          type="button"
+          onClick={() => setCalendarOpen(true)}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-noor-200 px-3 py-1.5 text-xs font-medium text-accent hover:bg-noor-50 dark:border-noor-600 dark:hover:bg-noor-800"
+        >
+          📅 {t(lang, "openHijriCalendar")}
+        </button>
       </article>
+      <HijriCalendarModal
+        open={calendarOpen}
+        onClose={() => setCalendarOpen(false)}
+        hijri={hijri}
+      />
     </section>
   );
 }
