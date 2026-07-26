@@ -138,6 +138,13 @@ export function HijriCalendarModal({ open, onClose, hijri }: Props) {
     return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(2023, 0, 1 + i)));
   }, [locale]);
 
+  // "15 Jul" under each hijri day — the grid spans two gregorian months, so a
+  // bare day number is ambiguous.
+  const gregDayFmt = useMemo(
+    () => new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }),
+    [locale],
+  );
+
   if (!mounted || !open) return null;
 
   const today = new Date();
@@ -210,8 +217,10 @@ export function HijriCalendarModal({ open, onClose, hijri }: Props) {
                 <span className={`text-sm font-semibold ${isToday ? "text-white" : "text-heading"}`}>
                   {hijriDay}
                 </span>
-                <span className={`text-[10px] ${isToday ? "text-white/80" : "text-faint"}`}>
-                  {greg.getDate()}
+                <span
+                  className={`whitespace-nowrap text-[9px] leading-tight ${isToday ? "text-white/80" : "text-faint"}`}
+                >
+                  {gregDayFmt.format(greg)}
                 </span>
                 <span
                   className={`h-1 w-1 rounded-full ${event ? "bg-gold-500 dark:bg-gold-400" : "bg-transparent"}`}
