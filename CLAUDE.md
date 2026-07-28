@@ -34,18 +34,18 @@ Monorepo deployed as **two Vercel Services** (defined in root `vercel.json`): `f
 
 ### Backend (`backend/`)
 
-- `app/api/` — routers, one per feature: `quran`, `quran_audio`, `hadith`, `hadith_topics`, `duas`, `rag` (chat), `tts`, `khutba` (live transcription), `salah` (prayer times), `auth`. All mounted under `/api/<name>` in `app/main.py`.
+- `app/api/` — routers, one per feature: `quran`, `quran_audio`, `hadith`, `hadith_topics`, `duas`, `rag` (chat), `tts`, `khutba` (live transcription + `khutbah_match` 3-tier transcript matching), `recite` (recitation scoring — deterministic word alignment, no LLM), `salah` (prayer times), `auth`. All mounted under `/api/<name>` in `app/main.py`.
 - `app/core/config.py` — pydantic-settings `Settings`, reads `backend/.env`. Provider switches live here:
   - `CHAT_PROVIDER`: `local` (template answers) / `groq` (active in prod, llama-3.3-70b) / `openai`
   - `EMBEDDING_PROVIDER`: `local` (bge-m3 via sentence-transformers, ingestion only — needs `requirements-dev.txt`) / `openai` / `xenova` (prod: backend calls the Next.js `/api/embed` route)
 - `app/db.py` — **dual-mode DB**: Supabase Postgres (`POSTGRES_URL`) with automatic fallback to SQLite at `backend/data/noor_safar.db`; `FORCE_SQLITE=1` pins SQLite for local dev. Placeholder style differs (`%s` vs `?`) — `get_cursor()` handles it; keep queries compatible with both.
 - `app/services/` — RAG pipeline: `query_analyzer`/`query_expansion` (intent, TAFSIR_HINT, thematic clusters) → `retrieval.py` (routes verse/surah lookups to `keyword_search.py`, themes to `hybrid_retriever` keyword+pgvector semantic) → `rag_service.py` (LLM call with last-6-turn session memory, `_validate_citations` filters hallucinated refs) → `answer_validator`. Answers must always cite sources (Surah:Ayah, collection+number) — retrieval-grounded only, no free-form religious answers.
-- `ingestion/` — one-off scripts run locally against prod Postgres or local SQLite: `migrate.py` (tables), `fetch_quran/hadith/khutbahs.py`, `seed_duas.py`, `embed_index.py`, `ingest_tafsir.py` (Ibn Kathir, `--resume`). Run with `EMBEDDING_PROVIDER=local`.
+- `ingestion/` — one-off scripts run locally against prod Postgres or local SQLite: `migrate.py` (tables), `fetch_quran/hadith/khutbahs.py`, `seed_duas.py`, `embed_index.py`, `ingest_tafsir.py` (Ibn Kathir, `--resume`). Run with `EMBEDDING_PROVIDER=local`. Schema lives in `migrations/` as numbered SQL files, each with a `_sqlite` twin — new migrations need both variants.
 - Data lives in `document_chunks` (pgvector) with `source_type` ∈ quran/hadith/dua/tafsir.
 
 ### Frontend (`frontend/`)
 
-- Next.js 16 App Router, React 19, Tailwind. Pages: `/` (home dashboard widgets in `components/home/`), `/quran/[surah]` (reader — `SurahClient.tsx`, progressive rendering 18 ayahs at a time), `/quran/listen` (audiobook), `/ask`, `/duas`, `/hadith`, `/khutba`, `/learn-quran` (course + quizzes), `/library`, `/settings`, `/account`.
+- Next.js 16 App Router, React 19, Tailwind. Pages: `/` (home dashboard widgets in `components/home/`), `/quran/[surah]` (reader — `SurahClient.tsx`, progressive rendering 18 ayahs at a time), `/quran/listen` (audiobook), `/ask`, `/duas`, `/hadith`, `/khutba`, `/learn-quran` (course + quizzes), `/library`, `/recite` (recitation scoring), `/travel-duas`, `/hadith-of-day`, `/settings`, `/account`.
 - `lib/i18n.ts` — all UI strings as an EN/UR/HI translations object; every user-facing string must go through it.
 - `lib/native-bridge.ts` — `NoorAndroid` JS bridge for the Android WebView APK (audio playback queue, prayer/hadith alarm scheduling). Guard calls: the bridge only exists inside the APK. The Android Studio project is separate (`~/AndroidStudioProjects/noortravels`, not a git repo).
 - Prayer-time stack: `hooks/useSalah.ts` (fetch + timezone-aware midnight refresh) + `lib/salah.ts`, `lib/salah-streak.ts`, `lib/notification-schedule.ts`/`notification-prefs.ts`.
