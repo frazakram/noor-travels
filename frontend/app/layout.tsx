@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Amiri, Inter } from "next/font/google";
+import { JsonLd } from "@/components/JsonLd";
+import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 import { AppShellDetect } from "@/components/AppShellDetect";
 import { AppTabBar } from "@/components/AppTabBar";
 import { ChatProvider } from "@/components/ChatProvider";
@@ -16,10 +18,46 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const amiri = Amiri({
+  weight: ["400", "700"],
+  subsets: ["arabic", "latin"],
+  variable: "--font-amiri",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "Noor Safar — Remember Allah while travelling",
-  description: "Quran, Hadith, travel duas, live khutba, and precise Salah times for your area",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} — Quran, Hadith, Duas & Prayer Times`,
+    template: `%s · ${SITE_NAME}`,
+  },
+  description: DEFAULT_DESCRIPTION,
+  applicationName: SITE_NAME,
+  alternates: { canonical: "/" },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  openGraph: {
+    title: `${SITE_NAME} — Quran, Hadith, Duas & Prayer Times`,
+    description: DEFAULT_DESCRIPTION,
+    url: "/",
+    siteName: SITE_NAME,
+    type: "website",
+    locale: "en_IN",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE_NAME} — Quran, Hadith, Duas & Prayer Times`,
+    description: DEFAULT_DESCRIPTION,
+  },
   icons: {
     icon: "/logo-sm.png",
     apple: "/logo-192.png",
@@ -44,13 +82,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap"
-          rel="stylesheet"
+        <JsonLd
+          data={[
+            {
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              "@id": `${SITE_URL}/#organization`,
+              name: SITE_NAME,
+              url: SITE_URL,
+              logo: `${SITE_URL}/logo.png`,
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              "@id": `${SITE_URL}/#website`,
+              name: SITE_NAME,
+              url: SITE_URL,
+              description: DEFAULT_DESCRIPTION,
+              inLanguage: ["en", "ur", "hi"],
+              publisher: { "@id": `${SITE_URL}/#organization` },
+            },
+          ]}
         />
       </head>
       <body
-        className={`${inter.variable} min-h-screen bg-sand-50 pl-safe pr-safe font-sans text-noor-900 antialiased transition-colors duration-300 dark:bg-noor-950 dark:text-noor-50`}
+        className={`${inter.variable} ${amiri.variable} min-h-screen bg-sand-50 pl-safe pr-safe font-sans text-noor-900 antialiased transition-colors duration-300 dark:bg-noor-950 dark:text-noor-50`}
       >
         <ThemeProvider>
           <LangProvider>
