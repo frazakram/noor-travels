@@ -68,7 +68,10 @@ def search_hadith(q: str = Query(min_length=2)):
 
 
 @router.get("/daily")
-def daily_hadith(topic: str | None = Query(default=None, max_length=32)):
+def daily_hadith(
+    topic: str | None = Query(default=None, max_length=32),
+    date: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+):
     import hashlib
     from datetime import datetime, timezone
 
@@ -77,7 +80,9 @@ def daily_hadith(topic: str | None = Query(default=None, max_length=32)):
     # Seed by full date (+ topic) and scatter with a hash so consecutive days
     # jump across the whole collection. A plain day-of-year offset walks one
     # row per day and stays inside a single chapter for weeks.
-    date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    # `date` lets callers reproduce a past day's pick (permalink pages) —
+    # the same seed formula as "today" makes every date deterministic forever.
+    date_key = date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
     seed = int(hashlib.md5(f"{date_key}:{topic or 'all'}".encode()).hexdigest(), 16)
     chapters = chapters_for_topic(topic) if topic and topic != "all" else None
 

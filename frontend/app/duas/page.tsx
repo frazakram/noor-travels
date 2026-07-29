@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useLang } from "@/components/LangProvider";
 import { apiStatic } from "@/lib/api";
 import { t } from "@/lib/i18n";
@@ -49,7 +50,12 @@ export default function DuasPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-heading">{t(lang, "duas")}</h1>
+      <div>
+        <h1 className="text-2xl font-bold text-heading">{t(lang, "duas")}</h1>
+        <Link href="/library?category=dua" className="text-xs text-accent hover:underline">
+          {t(lang, "duaLibraryCrossLink")} →
+        </Link>
+      </div>
 
       {status === "loading" && (
         <div className="space-y-4">

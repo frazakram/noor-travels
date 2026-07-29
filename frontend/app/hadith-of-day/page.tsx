@@ -13,6 +13,7 @@ import {
   type HotdArchiveEntry,
 } from "@/lib/hadith-library";
 import { t } from "@/lib/i18n";
+import { todayDateString } from "@/lib/hadith-of-day";
 
 type DailyHadith = {
   id: number;
@@ -180,9 +181,9 @@ export default function HadithOfDayPage() {
           ) : (
             archive.map((entry) => (
               <article key={`${entry.date}-${entry.id}`} className="card space-y-2">
-                <p className="text-xs text-accent">
+                <Link href={`/hadith-of-day/${entry.date}`} className="text-xs text-accent hover:underline">
                   {entry.date} · {entry.reference}
-                </p>
+                </Link>
                 <p className="text-sm leading-relaxed text-body">
                   {entry.english.replace(/\s+/g, " ").trim().slice(0, 280)}
                   {entry.english.length > 280 ? "…" : ""}
@@ -194,6 +195,9 @@ export default function HadithOfDayPage() {
       )}
 
       <div className="flex flex-wrap gap-4 text-sm">
+        <Link href={`/hadith-of-day/${todayDateString()}`} className="text-accent hover:underline">
+          {t(lang, "hotdPermalink")} →
+        </Link>
         <Link href="/hadith" className="text-accent hover:underline">
           {t(lang, "browseAllHadith")} →
         </Link>

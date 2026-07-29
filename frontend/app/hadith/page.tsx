@@ -186,6 +186,9 @@ export default function HadithPage() {
         <div>
           <h1 className="text-2xl font-bold text-heading">{t(lang, "hadith")}</h1>
           <p className="text-sm text-muted">{t(lang, "hadithSubtitle")}</p>
+          <Link href="/library?category=hadith" className="text-xs text-accent hover:underline">
+            {t(lang, "hadithLibraryCrossLink")} →
+          </Link>
         </div>
         <div className="flex flex-wrap gap-2">
           <button

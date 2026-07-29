@@ -1,8 +1,9 @@
 import type { MetadataRoute } from "next";
+import { getAllLibraryItems, librarySlug } from "@/lib/library";
 import { SITE_URL } from "@/lib/seo";
 import { SURAHS } from "@/lib/surah-meta";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date();
 
   const staticRoutes: MetadataRoute.Sitemap = [
@@ -24,5 +25,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }));
 
-  return [...staticRoutes, ...surahRoutes];
+  const libraryItems = await getAllLibraryItems();
+  const libraryRoutes: MetadataRoute.Sitemap = libraryItems.map((item) => ({
+    url: `${SITE_URL}/library/${librarySlug(item)}`,
+    lastModified,
+    changeFrequency: "yearly",
+    priority: item.curated ? 0.6 : 0.5,
+  }));
+
+  return [...staticRoutes, ...surahRoutes, ...libraryRoutes];
 }

@@ -1,0 +1,131 @@
+const LABELS = {
+  en: {
+    beginner: "Beginner",
+    expert: "Expert",
+    hadith: "Hadith",
+    hadith_ext: "Hadith",
+    other_faith: "Other faiths",
+    surah: "Surah",
+    travel: "Travel",
+    tafsir: "Tafsir",
+    tafsir_ext: "Tafsir",
+    verse: "Verse",
+    verse_ext: "Verse",
+    dua: "Dua",
+    dua_ext: "Dua",
+    followup: "Follow-up",
+    generated: "General",
+    revert: "New Muslim",
+    kids: "Kids",
+    daily_life: "Daily life",
+    salah: "Salah",
+    faith: "Faith",
+    faith_ext: "Faith",
+    ramadan: "Ramadan",
+    prophets: "Prophets",
+    etiquette: "Etiquette",
+    misconceptions: "Misconceptions",
+    god_and_purpose: "God & purpose",
+    islam_science: "Islam & science",
+    jesus_and_bible: "Jesus & the Bible",
+    new_muslim: "New Muslim",
+    modern_life: "Modern life",
+  },
+  ur: {
+    beginner: "ابتدائی",
+    expert: "ماہر",
+    hadith: "حدیث",
+    hadith_ext: "حدیث",
+    other_faith: "دیگر مذاہب",
+    surah: "سورت",
+    travel: "سفر",
+    tafsir: "تفسیر",
+    tafsir_ext: "تفسیر",
+    verse: "آیت",
+    verse_ext: "آیت",
+    dua: "دعا",
+    dua_ext: "دعا",
+    followup: "فالو اپ",
+    generated: "عام",
+    revert: "نیا مسلمان",
+    kids: "بچے",
+    daily_life: "روزمرہ",
+    salah: "نماز",
+    faith: "ایمان",
+    faith_ext: "ایمان",
+    ramadan: "رمضان",
+    prophets: "انبیاء",
+    etiquette: "آداب",
+    misconceptions: "غلط فہمیاں",
+    god_and_purpose: "خدا اور مقصد",
+    islam_science: "اسلام اور سائنس",
+    jesus_and_bible: "عیسیٰؑ اور بائبل",
+    new_muslim: "نیا مسلمان",
+    modern_life: "جدید زندگی",
+  },
+  hi: {
+    beginner: "शुरुआती",
+    expert: "विशेषज्ञ",
+    hadith: "हदीस",
+    hadith_ext: "हदीस",
+    other_faith: "अन्य धर्म",
+    surah: "सूरह",
+    travel: "सफ़र",
+    tafsir: "तफ़सीर",
+    tafsir_ext: "तफ़सीर",
+    verse: "आयत",
+    verse_ext: "आयत",
+    dua: "दुआ",
+    dua_ext: "दुआ",
+    followup: "फ़ॉलो-अप",
+    generated: "सामान्य",
+    revert: "नए मुसलमान",
+    kids: "बच्चे",
+    daily_life: "रोज़मर्रा",
+    salah: "नमाज़",
+    faith: "ईमान",
+    faith_ext: "ईमान",
+    ramadan: "रमज़ान",
+    prophets: "पैग़म्बर",
+    etiquette: "आदाब",
+    misconceptions: "ग़लतफ़हमियाँ",
+    god_and_purpose: "ख़ुदा और मक़सद",
+    islam_science: "इस्लाम और विज्ञान",
+    jesus_and_bible: "ईसा और बाइबिल",
+    new_muslim: "नए मुसलमान",
+    modern_life: "आधुनिक जीवन",
+  },
+} as const;
+
+export function categoryLabel(lang: string, cat: string): string {
+  const table = LABELS[lang as keyof typeof LABELS] || LABELS.en;
+  return table[cat as keyof typeof table] || cat.replace(/_/g, " ");
+}
+
+/** Where a library category's "browse more" link should point — only categories with a real matching section. */
+const CATEGORY_BROWSE_PATH: Partial<Record<string, string>> = {
+  surah: "/quran",
+  verse: "/quran",
+  verse_ext: "/quran",
+  tafsir: "/quran",
+  tafsir_ext: "/quran",
+  hadith: "/hadith",
+  hadith_ext: "/hadith",
+  dua: "/duas",
+  dua_ext: "/duas",
+  travel: "/duas",
+};
+
+export function categoryBrowsePath(cat: string): string | undefined {
+  return CATEGORY_BROWSE_PATH[cat];
+}
+
+const BROWSE_LABEL: Record<string, string> = {
+  "/quran": "Read the Quran",
+  "/hadith": "Browse Hadith",
+  "/duas": "Browse Duas",
+};
+
+export function browsePathLabel(path: string): string {
+  return BROWSE_LABEL[path] ?? "Browse more";
+}

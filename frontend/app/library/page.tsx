@@ -1,9 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useLang } from "@/components/LangProvider";
 import { emitPageLoading } from "@/components/NavigationProgress";
 import { t, type Lang } from "@/lib/i18n";
+import { categoryLabel } from "@/lib/library-categories";
+import { librarySlug } from "@/lib/library-slug";
 
 type LibraryIndex = {
   version: number;
@@ -29,109 +33,6 @@ type LibraryAnswer = {
 };
 
 const PAGE_SIZE = 40;
-
-function categoryLabel(lang: string, cat: string): string {
-  const labels = {
-    en: {
-      beginner: "Beginner",
-      expert: "Expert",
-      hadith: "Hadith",
-      hadith_ext: "Hadith",
-      other_faith: "Other faiths",
-      surah: "Surah",
-      travel: "Travel",
-      tafsir: "Tafsir",
-      tafsir_ext: "Tafsir",
-      verse: "Verse",
-      verse_ext: "Verse",
-      dua: "Dua",
-      dua_ext: "Dua",
-      followup: "Follow-up",
-      generated: "General",
-      revert: "New Muslim",
-      kids: "Kids",
-      daily_life: "Daily life",
-      salah: "Salah",
-      faith: "Faith",
-      faith_ext: "Faith",
-      ramadan: "Ramadan",
-      prophets: "Prophets",
-      etiquette: "Etiquette",
-      misconceptions: "Misconceptions",
-      god_and_purpose: "God & purpose",
-      islam_science: "Islam & science",
-      jesus_and_bible: "Jesus & the Bible",
-      new_muslim: "New Muslim",
-      modern_life: "Modern life",
-    },
-    ur: {
-      beginner: "ابتدائی",
-      expert: "ماہر",
-      hadith: "حدیث",
-      hadith_ext: "حدیث",
-      other_faith: "دیگر مذاہب",
-      surah: "سورت",
-      travel: "سفر",
-      tafsir: "تفسیر",
-      tafsir_ext: "تفسیر",
-      verse: "آیت",
-      verse_ext: "آیت",
-      dua: "دعا",
-      dua_ext: "دعا",
-      followup: "فالو اپ",
-      generated: "عام",
-      revert: "نیا مسلمان",
-      kids: "بچے",
-      daily_life: "روزمرہ",
-      salah: "نماز",
-      faith: "ایمان",
-      faith_ext: "ایمان",
-      ramadan: "رمضان",
-      prophets: "انبیاء",
-      etiquette: "آداب",
-      misconceptions: "غلط فہمیاں",
-      god_and_purpose: "خدا اور مقصد",
-      islam_science: "اسلام اور سائنس",
-      jesus_and_bible: "عیسیٰؑ اور بائبل",
-      new_muslim: "نیا مسلمان",
-      modern_life: "جدید زندگی",
-    },
-    hi: {
-      beginner: "शुरुआती",
-      expert: "विशेषज्ञ",
-      hadith: "हदीस",
-      hadith_ext: "हदीस",
-      other_faith: "अन्य धर्म",
-      surah: "सूरह",
-      travel: "सफ़र",
-      tafsir: "तफ़सीर",
-      tafsir_ext: "तफ़सीर",
-      verse: "आयत",
-      verse_ext: "आयत",
-      dua: "दुआ",
-      dua_ext: "दुआ",
-      followup: "फ़ॉलो-अप",
-      generated: "सामान्य",
-      revert: "नए मुसलमान",
-      kids: "बच्चे",
-      daily_life: "रोज़मर्रा",
-      salah: "नमाज़",
-      faith: "ईमान",
-      faith_ext: "ईमान",
-      ramadan: "रमज़ान",
-      prophets: "पैग़म्बर",
-      etiquette: "आदाब",
-      misconceptions: "ग़लतफ़हमियाँ",
-      god_and_purpose: "ख़ुदा और मक़सद",
-      islam_science: "इस्लाम और विज्ञान",
-      jesus_and_bible: "ईसा और बाइबिल",
-      new_muslim: "नए मुसलमान",
-      modern_life: "आधुनिक जीवन",
-    },
-  } as const;
-  const table = labels[lang as keyof typeof labels] || labels.en;
-  return table[cat as keyof typeof table] || cat.replace(/_/g, " ");
-}
 
 function AnswerPanel({
   lang,
@@ -185,14 +86,23 @@ function AnswerPanel({
 }
 
 export default function QuestionLibraryPage() {
+  return (
+    <Suspense fallback={null}>
+      <QuestionLibraryPageInner />
+    </Suspense>
+  );
+}
+
+function QuestionLibraryPageInner() {
   const { lang } = useLang();
   const [index, setIndex] = useState<LibraryIndex | null>(null);
   const [answers, setAnswers] = useState<Record<string, LibraryAnswer> | null>(null);
   const [loading, setLoading] = useState(true);
   const [answersLoading, setAnswersLoading] = useState(false);
   const [error, setError] = useState("");
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("all");
+  const [category, setCategory] = useState(() => searchParams.get("category") || "all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
 
@@ -372,6 +282,12 @@ export default function QuestionLibraryPage() {
                         answer={answers?.[item.id] ?? null}
                         loading={answersLoading}
                       />
+                      <Link
+                        href={`/library/${librarySlug(item)}`}
+                        className="mt-2 inline-block text-xs font-medium text-accent hover:underline"
+                      >
+                        {t(lang, "libraryPermalink")} →
+                      </Link>
                     </div>
                   )}
                 </li>
