@@ -105,7 +105,7 @@ export function QiblaHijriWidget({ coords, times }: Props) {
             />
           </div>
           <div className="min-w-0 flex-1 space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">{t(lang, "qiblaCompass")}</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">{t(lang, "qiblaCompass")}</p>
             <p className="text-xl font-bold text-slate-800 dark:text-white sm:text-2xl">
               {coords ? `${Math.round(bearing)}° ${cardinal}` : "—"}
             </p>
@@ -123,7 +123,7 @@ export function QiblaHijriWidget({ coords, times }: Props) {
                 )}
               </p>
             )}
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
               {compassLive
                 ? aligned
                   ? t(lang, "qiblaFacing")

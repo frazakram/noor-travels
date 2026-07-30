@@ -138,7 +138,7 @@ export function Nav() {
                   className={`min-w-8 rounded-full px-2 py-1 text-xs font-semibold uppercase transition ${
                     lang === l
                       ? "bg-teal-700 text-white shadow-sm dark:bg-teal-500"
-                      : "text-slate-500 dark:text-slate-300"
+                      : "text-slate-600 dark:text-slate-300"
                   }`}
                 >
                   {l}

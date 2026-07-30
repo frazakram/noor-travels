@@ -68,25 +68,32 @@ export default async function SurahPage({ params }: Props) {
           ]}
         />
       )}
+      {meta && related.length > 0 && (
+        // A collapsed <details> keeps this compact and out of the way of the
+        // reader below it. Placed above SurahClient (not after) on purpose:
+        // SurahClient loads its ayahs client-side and grows substantially
+        // after first paint, so anything sitting below it inherits a large
+        // layout-shift score once that content lands.
+        <details className="mx-auto mb-3 max-w-2xl rounded-lg border border-subtle px-3 py-2 text-sm">
+          <summary className="cursor-pointer font-medium text-heading">
+            Questions about Surah {meta.name}
+          </summary>
+          <nav aria-label={`Questions about Surah ${meta.name}`}>
+            <ul className="mt-2 space-y-1.5">
+              {related.map((item) => (
+                <li key={item.id}>
+                  <Link href={`/library/${librarySlug(item)}`} className="text-accent hover:underline">
+                    {item.question}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </details>
+      )}
       <Suspense fallback={<p className="text-muted">Loading…</p>}>
         <SurahClient />
       </Suspense>
-      {meta && related.length > 0 && (
-        <nav aria-labelledby="surah-related-heading" className="mx-auto mt-6 max-w-2xl border-t border-subtle pt-4">
-          <h2 id="surah-related-heading" className="text-sm font-semibold text-heading">
-            Questions about Surah {meta.name}
-          </h2>
-          <ul className="mt-2 space-y-1.5">
-            {related.map((item) => (
-              <li key={item.id}>
-                <Link href={`/library/${librarySlug(item)}`} className="text-sm text-accent hover:underline">
-                  {item.question}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      )}
     </>
   );
 }

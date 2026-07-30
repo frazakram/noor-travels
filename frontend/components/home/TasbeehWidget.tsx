@@ -31,7 +31,7 @@ export function TasbeehWidget() {
     <section>
       <div className="relative flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:p-5">
         <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-slate-400">{t(lang, "tasbeehCounter")}</p>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">{t(lang, "tasbeehCounter")}</p>
           <p className="text-xs text-slate-600 dark:text-slate-300 sm:text-sm">{t(lang, "tasbeehHint")}</p>
         </div>
         <div className="flex items-center gap-3 sm:gap-4">

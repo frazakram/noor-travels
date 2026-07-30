@@ -182,7 +182,8 @@
   }
 
   .text-accent {
-    @apply text-gold-500 dark:text-gold-400;
+    /* gold-500 only hits 2.6:1 on white/sand-50 — gold-700 clears WCAG AA (4.5:1) for normal text. */
+    @apply text-gold-700 dark:text-gold-400;
   }
 
   .bg-surface-muted {
