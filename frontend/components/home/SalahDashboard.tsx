@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { NoticeCard } from "@/components/NoticeCard";
 import { ShareButton } from "@/components/ShareButton";
+import { useCardSheen } from "@/hooks/useCardSheen";
 import type { SharePayload } from "@/lib/share";
 import {
   getMonthStats,
@@ -120,6 +121,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
   const [showStats, setShowStats] = useState(false);
   const [showAllPrayers, setShowAllPrayers] = useState(false);
   const tz = times?.timezone ?? "UTC";
+  const sheen = useCardSheen();
 
   useEffect(() => {
     setNow(new Date());
@@ -238,10 +240,12 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
       {/* Next salah countdown */}
       {nextInfo && times && now && (
         <div
-          className={`animate-card-sheen relative overflow-hidden rounded-2xl bg-white/10 p-3 backdrop-blur-md transition-colors duration-500 sm:p-4 ${
+          className={`card-touch relative overflow-hidden rounded-2xl bg-white/10 p-3 backdrop-blur-md transition-colors duration-500 sm:p-4 ${
             justAdhan ? "animate-adhan-flash" : ""
           }`}
+          onPointerDown={sheen.trigger}
         >
+          {sheen.active && <span key={sheen.pulseId} className="card-sheen-pulse-dark" aria-hidden />}
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className={`relative h-12 w-12 shrink-0 sm:h-14 sm:w-14 ${justAdhan ? "animate-icon-breathe" : ""}`}>

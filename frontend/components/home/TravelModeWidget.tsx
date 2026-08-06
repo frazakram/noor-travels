@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useLang } from "@/components/LangProvider";
+import { useCardSheen } from "@/hooks/useCardSheen";
 import { apiStatic } from "@/lib/api";
 import { t } from "@/lib/i18n";
 
@@ -47,6 +48,7 @@ export function TravelModeWidget({ coords }: Props) {
   const [speedKmh, setSpeedKmh] = useState<number | null>(null);
   const [duas, setDuas] = useState<Dua[]>([]);
   const watchId = useRef<number | null>(null);
+  const sheen = useCardSheen();
 
   useEffect(() => {
     setManualOn(loadManualTravel());
@@ -123,7 +125,11 @@ export function TravelModeWidget({ coords }: Props) {
   }
 
   return (
-    <section className="animate-card-sheen-gold rounded-2xl border border-teal-200/70 bg-gradient-to-br from-teal-50 to-emerald-50/70 p-4 dark:border-teal-500/25 dark:from-teal-950/30 dark:to-emerald-950/20 sm:p-5">
+    <section
+      className="card-touch relative overflow-hidden rounded-2xl border border-teal-200/70 bg-gradient-to-br from-teal-50 to-emerald-50/70 p-4 dark:border-teal-500/25 dark:from-teal-950/30 dark:to-emerald-950/20 sm:p-5"
+      onPointerDown={sheen.trigger}
+    >
+      {sheen.active && <span key={sheen.pulseId} className="card-sheen-pulse" aria-hidden />}
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-teal-700 dark:text-teal-300">

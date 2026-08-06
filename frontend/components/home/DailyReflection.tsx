@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ShareButton } from "@/components/ShareButton";
+import { useCardSheen } from "@/hooks/useCardSheen";
 import { api } from "@/lib/api";
 import { cleanQuranText } from "@/lib/quran-display";
 import { t, type Lang } from "@/lib/i18n";
@@ -31,6 +32,7 @@ function dayOfYear(): number {
 export function DailyReflection({ lang }: { lang: Lang }) {
   const [ayah, setAyah] = useState<Ayah | null>(null);
   const [showTranslation, setShowTranslation] = useState(false);
+  const sheen = useCardSheen();
 
   useEffect(() => {
     async function load() {
@@ -55,7 +57,11 @@ export function DailyReflection({ lang }: { lang: Lang }) {
 
   return (
     <section>
-      <article className="animate-card-sheen-gold rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 to-emerald-50 p-4 dark:border-teal-800 dark:from-teal-900/20 dark:to-emerald-900/20 sm:p-5">
+      <article
+        className="card-touch relative overflow-hidden rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 to-emerald-50 p-4 dark:border-teal-800 dark:from-teal-900/20 dark:to-emerald-900/20 sm:p-5"
+        onPointerDown={sheen.trigger}
+      >
+        {sheen.active && <span key={sheen.pulseId} className="card-sheen-pulse" aria-hidden />}
         <div className="mb-3 flex items-center justify-between gap-2">
           <p className="text-xs font-semibold uppercase tracking-widest text-teal-600">{t(lang, "ayahOfTheDay")}</p>
           {ayah && (

@@ -266,34 +266,32 @@
     pointer-events: none;
   }
 
-  .animate-card-sheen {
-    position: relative;
-    overflow: hidden;
+  /* Suppresses the browser's own default tap flash on cards wired to useCardSheen — without
+     this, a real device shows its native gray tap-highlight for a frame before our sweep
+     starts, which reads as a separate "fast flash" ahead of the intended animation. */
+  .card-touch {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
-  .animate-card-sheen::before {
-    content: "";
+  /* One-shot gold sweep, fired on tap/click via useCardSheen — not a continuous loop.
+     Duration here must stay in sync with SHEEN_DURATION_MS in hooks/useCardSheen.ts. */
+  .card-sheen-pulse {
     position: absolute;
     inset: 0;
-    background: linear-gradient(100deg, transparent 35%, rgba(255, 255, 255, 0.12) 50%, transparent 65%);
+    background: linear-gradient(100deg, transparent 30%, rgba(212, 168, 83, 0.32) 50%, transparent 70%);
     background-size: 250% 100%;
-    animation: card-sheen 7s ease-in-out infinite;
+    animation: card-sheen-once 4s cubic-bezier(0.22, 1, 0.36, 1) both;
     pointer-events: none;
   }
 
-  /* Same sweep, tuned for light/cream card backgrounds (e.g. Hadith of the Day). */
-  .animate-card-sheen-gold {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .animate-card-sheen-gold::before {
-    content: "";
+  /* Same one-shot sweep, tuned for dark/translucent cards (e.g. the Salah countdown panel). */
+  .card-sheen-pulse-dark {
     position: absolute;
     inset: 0;
-    background: linear-gradient(100deg, transparent 35%, rgba(212, 168, 83, 0.22) 50%, transparent 65%);
+    background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.18) 50%, transparent 70%);
     background-size: 250% 100%;
-    animation: card-sheen 7s ease-in-out infinite;
+    animation: card-sheen-once 4s cubic-bezier(0.22, 1, 0.36, 1) both;
     pointer-events: none;
   }
 
@@ -620,12 +618,11 @@
   }
 }
 
-@keyframes card-sheen {
-  0%,
-  100% {
+@keyframes card-sheen-once {
+  from {
     background-position: 200% 0;
   }
-  50% {
+  to {
     background-position: -50% 0;
   }
 }
@@ -1039,9 +1036,12 @@ html.dark.high-contrast .ayah-word-active {
   .animate-tile-bounce,
   .animate-qibla-glow,
   .animate-tile-shimmer::after,
-  .animate-card-sheen::before,
-  .animate-card-sheen-gold::before,
   .hero-particle {
     animation: none !important;
+  }
+
+  .card-sheen-pulse,
+  .card-sheen-pulse-dark {
+    display: none;
   }
 }

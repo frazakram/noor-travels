@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
+import { useCardSheen } from "@/hooks/useCardSheen";
 import {
   getTodayEntry,
   loadJournal,
@@ -21,6 +22,7 @@ export function GratitudeJournal({ times }: Props) {
   const [store, setStore] = useState<JournalStore>({ entries: {}, streak: 0 });
   const [text, setText] = useState("");
   const [saved, setSaved] = useState(false);
+  const sheen = useCardSheen();
 
   useEffect(() => {
     const s = loadJournal();
@@ -39,7 +41,11 @@ export function GratitudeJournal({ times }: Props) {
   }
 
   return (
-    <section className="animate-card-sheen-gold rounded-2xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50 to-teal-50/60 p-4 dark:border-emerald-500/25 dark:from-emerald-950/25 dark:to-teal-950/15 sm:p-5">
+    <section
+      className="card-touch relative overflow-hidden rounded-2xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50 to-teal-50/60 p-4 dark:border-emerald-500/25 dark:from-emerald-950/25 dark:to-teal-950/15 sm:p-5"
+      onPointerDown={sheen.trigger}
+    >
+      {sheen.active && <span key={sheen.pulseId} className="card-sheen-pulse" aria-hidden />}
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">

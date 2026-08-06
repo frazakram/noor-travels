@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ShareButton } from "@/components/ShareButton";
+import { useCardSheen } from "@/hooks/useCardSheen";
 import { api } from "@/lib/api";
 import { HADITH_TOPICS } from "@/lib/hadith-topics";
 import { t, type Lang } from "@/lib/i18n";
@@ -38,6 +39,7 @@ export function HadithOfTheDay({ lang }: { lang: Lang }) {
   const [hadith, setHadith] = useState<DailyHadith | null>(null);
   const [failed, setFailed] = useState(false);
   const [topic, setTopic] = useState("all");
+  const sheen = useCardSheen();
 
   useEffect(() => {
     const saved = localStorage.getItem(TOPIC_KEY);
@@ -75,7 +77,11 @@ export function HadithOfTheDay({ lang }: { lang: Lang }) {
 
   return (
     <section>
-      <article className="animate-card-sheen-gold rounded-2xl border border-gold-200/70 bg-gradient-to-br from-amber-50 to-yellow-50/60 p-4 dark:border-gold-500/25 dark:from-amber-950/20 dark:to-yellow-950/10 sm:p-5">
+      <article
+        className="card-touch relative overflow-hidden rounded-2xl border border-gold-200/70 bg-gradient-to-br from-amber-50 to-yellow-50/60 p-4 dark:border-gold-500/25 dark:from-amber-950/20 dark:to-yellow-950/10 sm:p-5"
+        onPointerDown={sheen.trigger}
+      >
+        {sheen.active && <span key={sheen.pulseId} className="card-sheen-pulse" aria-hidden />}
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-semibold uppercase tracking-widest text-amber-600 dark:text-amber-400">
             {t(lang, "hadithOfTheDay")}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
+import { useCardSheen } from "@/hooks/useCardSheen";
 import { formatKhutbaDate, lastSavedKhutba, type SavedKhutba } from "@/lib/khutba-history";
 import { t } from "@/lib/i18n";
 
@@ -11,6 +12,7 @@ import { t } from "@/lib/i18n";
 export function LastSavedKhutba() {
   const { lang } = useLang();
   const [khutba, setKhutba] = useState<SavedKhutba | null>(null);
+  const sheen = useCardSheen();
 
   useEffect(() => {
     setKhutba(lastSavedKhutba());
@@ -26,7 +28,11 @@ export function LastSavedKhutba() {
     .slice(0, 220);
 
   return (
-    <section className="card animate-card-sheen-gold border-gold-100 bg-gradient-to-br from-gold-50 to-white p-4 dark:border-gold-500/30 dark:from-noor-900 dark:to-noor-950 sm:p-5">
+    <section
+      className="card card-touch relative overflow-hidden border-gold-100 bg-gradient-to-br from-gold-50 to-white p-4 dark:border-gold-500/30 dark:from-noor-900 dark:to-noor-950 sm:p-5"
+      onPointerDown={sheen.trigger}
+    >
+      {sheen.active && <span key={sheen.pulseId} className="card-sheen-pulse" aria-hidden />}
       <div className="absolute -right-14 -top-14 h-36 w-36 rounded-full bg-gold-300/20 blur-3xl" />
       <p className="text-xs font-semibold uppercase tracking-wider text-accent">
         {t(lang, "lastSavedKhutbaTitle")}
