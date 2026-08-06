@@ -23,10 +23,21 @@ type Surah = {
   ayah_count: number;
 };
 
-function dayOfYear(): number {
+function todayDateKey(): string {
   const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 0);
-  return Math.floor((now.getTime() - start.getTime()) / 86_400_000);
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+/** Deterministic string hash (FNV-1a) — scatters the daily seed across the whole Quran instead
+ * of walking one ayah per day, which (via `dayOfYear() % total` — a no-op since dayOfYear caps
+ * at 366 and total is ~6236) used to stay inside Al-Baqarah for most of the year. */
+function hashString(s: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    hash ^= s.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
 }
 
 export function DailyReflection({ lang }: { lang: Lang }) {
@@ -38,7 +49,7 @@ export function DailyReflection({ lang }: { lang: Lang }) {
     async function load() {
       const data = await api<{ surahs: Surah[] }>("/api/quran/surahs");
       const total = data.surahs.reduce((sum, s) => sum + s.ayah_count, 0);
-      let index = dayOfYear() % total;
+      let index = hashString(todayDateKey()) % total;
       for (const surah of data.surahs) {
         if (index < surah.ayah_count) {
           const row = await api<Ayah>(`/api/quran/ayahs/${surah.number}:${index + 1}`);
