@@ -26,7 +26,7 @@ export function LastSavedKhutba() {
     .slice(0, 220);
 
   return (
-    <section className="card relative overflow-hidden border-gold-100 bg-gradient-to-br from-gold-50 to-white p-4 dark:border-gold-500/30 dark:from-noor-900 dark:to-noor-950 sm:p-5">
+    <section className="card animate-card-sheen-gold border-gold-100 bg-gradient-to-br from-gold-50 to-white p-4 dark:border-gold-500/30 dark:from-noor-900 dark:to-noor-950 sm:p-5">
       <div className="absolute -right-14 -top-14 h-36 w-36 rounded-full bg-gold-300/20 blur-3xl" />
       <p className="text-xs font-semibold uppercase tracking-wider text-accent">
         {t(lang, "lastSavedKhutbaTitle")}

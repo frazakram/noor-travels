@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
+import { ShareButton } from "@/components/ShareButton";
 import { api } from "@/lib/api";
 import { HADITH_TOPICS, type HadithTopic } from "@/lib/hadith-topics";
 import {
@@ -67,17 +68,20 @@ function HadithCard({
           {h.reference}
           {"chapter_en" in h && h.chapter_en ? ` · ${h.chapter_en}` : ""}
         </p>
-        <button
-          type="button"
-          onClick={onToggleSave}
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
-            saved
-              ? "bg-gold-500 text-white dark:bg-gold-400 dark:text-noor-950"
-              : "border border-subtle text-muted"
-          }`}
-        >
-          {saved ? t(lang, "savedHadith") : t(lang, "saveHadith")}
-        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={onToggleSave}
+            className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+              saved
+                ? "bg-gold-500 text-white dark:bg-gold-400 dark:text-noor-950"
+                : "border border-subtle text-muted"
+            }`}
+          >
+            {saved ? t(lang, "savedHadith") : t(lang, "saveHadith")}
+          </button>
+          <ShareButton lang={lang} getPayload={() => hadithSharePayload(h)} tipSide="top" />
+        </div>
       </div>
       <p className="font-arabic mt-2 text-right" dir="rtl">
         {h.arabic}
@@ -85,6 +89,11 @@ function HadithCard({
       <p className="mt-3 text-sm leading-relaxed text-body">{h.english}</p>
     </article>
   );
+}
+
+function hadithSharePayload(h: Hadith | FavoriteHadith) {
+  const text = `${h.english}\n\n— ${h.reference}\n${typeof window !== "undefined" ? window.location.origin + "/hadith" : ""}`;
+  return { title: h.reference, text };
 }
 
 export default function HadithPage() {

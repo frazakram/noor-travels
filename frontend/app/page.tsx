@@ -92,21 +92,35 @@ export default function HomePage() {
       </TimeOfDayHero>
 
       <div className="space-y-4">
-        <ContinueReadingCard />
+        <div className="animate-fade-in-up" style={{ animationDelay: "40ms" }}>
+          <ContinueReadingCard />
+        </div>
 
-        <TravelModeWidget coords={salah.coords} />
+        <div className="animate-fade-in-up" style={{ animationDelay: "90ms" }}>
+          <TravelModeWidget coords={salah.coords} />
+        </div>
 
-        <DailyReflection lang={lang} />
+        <div className="animate-fade-in-up" style={{ animationDelay: "140ms" }}>
+          <DailyReflection lang={lang} />
+        </div>
 
-        <GratitudeJournal times={salah.times} />
+        <div className="animate-fade-in-up" style={{ animationDelay: "190ms" }}>
+          <GratitudeJournal times={salah.times} />
+        </div>
 
-        <HadithOfTheDay lang={lang} />
+        <div className="animate-fade-in-up" style={{ animationDelay: "240ms" }}>
+          <HadithOfTheDay lang={lang} />
+        </div>
 
-        <TasbeehWidget />
+        <div className="animate-fade-in-up" style={{ animationDelay: "290ms" }}>
+          <TasbeehWidget />
+        </div>
 
-        <QiblaHijriWidget coords={salah.coords} times={salah.times} />
+        <div className="animate-fade-in-up" style={{ animationDelay: "340ms" }}>
+          <QiblaHijriWidget coords={salah.coords} times={salah.times} />
+        </div>
 
-        <div className="grid items-start gap-4 sm:grid-cols-2">
+        <div className="grid animate-fade-in-up items-start gap-4 sm:grid-cols-2" style={{ animationDelay: "390ms" }}>
           <SalahSettingsPanel
             settings={salah.settings}
             times={salah.times}

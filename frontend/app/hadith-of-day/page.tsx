@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
+import { ShareButton } from "@/components/ShareButton";
 import { api } from "@/lib/api";
 import { HADITH_TOPICS } from "@/lib/hadith-topics";
 import {
@@ -149,7 +150,7 @@ export default function HadithOfDayPage() {
 
       {hadith && (
         <article className="card space-y-4 border-gold-200/70 dark:border-gold-500/25">
-          <div className="flex justify-end">
+          <div className="flex items-center justify-end gap-1.5">
             <button
               type="button"
               onClick={handleSave}
@@ -161,6 +162,14 @@ export default function HadithOfDayPage() {
             >
               {saved ? t(lang, "savedHadith") : t(lang, "saveHadith")}
             </button>
+            <ShareButton
+              lang={lang}
+              getPayload={() => ({
+                title: hadith?.reference ?? "Hadith",
+                text: `${hadith?.english ?? ""}\n\n— ${hadith?.reference ?? ""}\n${typeof window !== "undefined" ? window.location.href : ""}`,
+              })}
+              tipSide="top"
+            />
           </div>
           <p
             className="font-arabic text-right text-lg leading-loose text-slate-800 dark:text-white sm:text-xl"

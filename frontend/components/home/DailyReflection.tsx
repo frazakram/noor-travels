@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ShareButton } from "@/components/ShareButton";
 import { api } from "@/lib/api";
 import { cleanQuranText } from "@/lib/quran-display";
 import { t, type Lang } from "@/lib/i18n";
@@ -54,8 +55,20 @@ export function DailyReflection({ lang }: { lang: Lang }) {
 
   return (
     <section>
-      <article className="rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 to-emerald-50 p-4 dark:border-teal-800 dark:from-teal-900/20 dark:to-emerald-900/20 sm:p-5">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-600">{t(lang, "ayahOfTheDay")}</p>
+      <article className="animate-card-sheen-gold rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 to-emerald-50 p-4 dark:border-teal-800 dark:from-teal-900/20 dark:to-emerald-900/20 sm:p-5">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-teal-600">{t(lang, "ayahOfTheDay")}</p>
+          {ayah && (
+            <ShareButton
+              lang={lang}
+              getPayload={() => ({
+                title: `${ayah.name_en ?? "Quran"} ${ayah.verse_key}`,
+                text: `${ayah.arabic}\n\n${ayahTranslation}\n\n— ${ayah.name_en ?? "Quran"} ${ayah.verse_key}\n${typeof window !== "undefined" ? window.location.origin + "/quran/" + ayah.verse_key.split(":")[0] + "?ayah=" + ayah.verse_key.split(":")[1] : ""}`,
+              })}
+              tipSide="top"
+            />
+          )}
+        </div>
         {ayah ? (
           <>
             <p className="font-arabic mb-3 text-right text-xl leading-loose text-slate-800 dark:text-white sm:text-2xl" dir="rtl">{ayah.arabic}</p>

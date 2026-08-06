@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/JsonLd";
+import { ShareButton } from "@/components/ShareButton";
 import {
   getHadithForDate,
   isValidDateString,
@@ -117,6 +118,16 @@ export default async function HadithOfDayDatePage({ params }: Props) {
       </header>
 
       <section className="card space-y-4 border-gold-200/70 dark:border-gold-500/25">
+        <div className="flex justify-end">
+          <ShareButton
+            lang="en"
+            payload={{
+              title: hadith.reference,
+              text: `${hadith.english}\n\n— ${hadith.reference}\n${pageUrl}`,
+            }}
+            tipSide="top"
+          />
+        </div>
         <p
           className="font-arabic text-right text-lg leading-loose text-slate-800 dark:text-white sm:text-xl"
           dir="rtl"

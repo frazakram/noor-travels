@@ -48,6 +48,7 @@ QURANCDN_TIMINGS = (
     "https://api.qurancdn.com/api/qdc/audio/reciters/{recitation_id}/audio_files"
     "?chapter={chapter}&segments=true"
 )
+QURANCDN_ALL_DURATIONS = "https://api.qurancdn.com/api/qdc/audio/reciters/{recitation_id}/audio_files"
 
 TRANSLATION_FIELDS = {
     "en": "translation_en",
@@ -316,5 +317,42 @@ def get_word_timings(
             "available": bool(ayahs),
             "ayahs": ayahs,
         },
+        headers={"Cache-Control": _CACHE_WORDS},
+    )
+
+
+@lru_cache(maxsize=32)
+def _fetch_all_durations(recitation_id: int) -> tuple[tuple[int, int], ...]:
+    """(chapter_id, duration_ms) for all 114 chapters, from the real recording."""
+    url = QURANCDN_ALL_DURATIONS.format(recitation_id=recitation_id)
+    with httpx.Client(timeout=45) as client:
+        r = client.get(url, headers={"User-Agent": "NoorSafar/1.0"})
+        r.raise_for_status()
+        data = r.json()
+    files = data.get("audio_files") or []
+    return tuple(
+        (int(f["chapter_id"]), int(f.get("duration") or 0))
+        for f in files
+        if f.get("chapter_id")
+    )
+
+
+@router.get("/durations")
+def get_surah_durations(reciter: str = Query("ar.alafasy", min_length=3, max_length=64)):
+    """Per-surah recitation length (seconds) for every surah, sourced from the
+    reciter's actual recording. Reciters without timing data fall back to
+    Alafasy's recording, same convention as word-timings borrowing."""
+    rid = RECITER_TIMING_IDS.get(reciter)
+    is_fallback = rid is None
+    if rid is None:
+        rid = RECITER_TIMING_IDS["ar.alafasy"]
+    try:
+        raw = _fetch_all_durations(rid)
+    except Exception as exc:
+        raise HTTPException(502, "Could not fetch recitation durations") from exc
+
+    durations = {str(chapter): round(ms / 1000) for chapter, ms in raw if ms > 0}
+    return JSONResponse(
+        {"reciter": reciter, "is_fallback": is_fallback, "durations": durations},
         headers={"Cache-Control": _CACHE_WORDS},
     )

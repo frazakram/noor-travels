@@ -123,7 +123,7 @@ export function TravelModeWidget({ coords }: Props) {
   }
 
   return (
-    <section className="rounded-2xl border border-teal-200/70 bg-gradient-to-br from-teal-50 to-emerald-50/70 p-4 dark:border-teal-500/25 dark:from-teal-950/30 dark:to-emerald-950/20 sm:p-5">
+    <section className="animate-card-sheen-gold rounded-2xl border border-teal-200/70 bg-gradient-to-br from-teal-50 to-emerald-50/70 p-4 dark:border-teal-500/25 dark:from-teal-950/30 dark:to-emerald-950/20 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-teal-700 dark:text-teal-300">

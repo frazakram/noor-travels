@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useLang } from "@/components/LangProvider";
+import { ShareButton } from "@/components/ShareButton";
 import { apiStatic } from "@/lib/api";
 import { t } from "@/lib/i18n";
 
@@ -81,9 +82,20 @@ export default function DuasPage() {
       <div className="space-y-4">
         {duas.map((d) => (
           <article key={d.id} className="card">
-            <h2 className="font-semibold text-heading" dir={lang === "ur" ? "rtl" : "ltr"}>
-              {title(d)}
-            </h2>
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="font-semibold text-heading" dir={lang === "ur" ? "rtl" : "ltr"}>
+                {title(d)}
+              </h2>
+              <ShareButton
+                lang={lang}
+                getPayload={() => ({
+                  title: title(d),
+                  text: `${title(d)}\n\n${d.arabic}\n\n${translation(d)}\n\n— ${d.source}\n${typeof window !== "undefined" ? window.location.origin + "/duas" : ""}`,
+                })}
+                tipSide="top"
+                className="shrink-0"
+              />
+            </div>
             <p className="font-arabic mt-3 text-right text-xl" dir="rtl">{d.arabic}</p>
             <p className="mt-2 text-sm italic text-faint">{d.transliteration}</p>
             <p className="mt-3 text-sm leading-relaxed text-body" dir={lang === "ur" ? "rtl" : "ltr"}>

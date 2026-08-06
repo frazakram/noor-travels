@@ -80,16 +80,16 @@ export function QiblaHijriWidget({ coords, times }: Props) {
                 N
               </text>
             </svg>
-            {/* Kaaba marker — fixed qibla direction from your location */}
+            {/* Qibla marker — fixed direction from your location */}
             {coords && (
               <span
-                className="absolute left-1/2 top-1/2 text-sm"
+                className="animate-qibla-glow absolute left-1/2 top-1/2 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-600 text-[8px] font-bold leading-none text-white shadow dark:bg-emerald-500"
                 style={{
                   transform: `translate(-50%, -50%) rotate(${bearing}deg) translateY(-1.35rem)`,
                 }}
                 aria-hidden
               >
-                🕋
+                Q
               </span>
             )}
             {/* Your location at center */}

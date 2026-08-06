@@ -138,15 +138,26 @@ export function msUntilTime(time: string, tz: string, now = new Date()): number 
 }
 
 export function formatCountdown(ms: number): string {
-  if (ms <= 0) return "00:00:00";
+  if (ms <= 0) return "00m 00s";
   const totalSec = Math.floor(ms / 1000);
   const h = Math.floor(totalSec / 3600);
   const m = Math.floor((totalSec % 3600) / 60);
   const s = totalSec % 60;
   if (h > 0) {
-    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    return `${h}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
   }
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
+}
+
+export type CountdownParts = { h: number | null; m: string; s: string };
+
+/** Same breakdown as formatCountdown, split so a UI can animate each segment independently. */
+export function countdownParts(ms: number): CountdownParts {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return { h: h > 0 ? h : null, m: String(m).padStart(2, "0"), s: String(s).padStart(2, "0") };
 }
 
 export type NextPrayerInfo = {

@@ -19,7 +19,7 @@ export function ContinueReadingCard() {
   if (!last && bookmarks.length === 0) return null;
 
   return (
-    <section className="rounded-2xl border border-noor-200/80 bg-gradient-to-br from-noor-50 to-white p-4 dark:border-noor-600/40 dark:from-noor-900/40 dark:to-slate-900/40 sm:p-5">
+    <section className="animate-card-sheen-gold rounded-2xl border border-noor-200/80 bg-gradient-to-br from-noor-50 to-white p-4 dark:border-noor-600/40 dark:from-noor-900/40 dark:to-slate-900/40 sm:p-5">
       <p className="text-xs font-semibold uppercase tracking-widest text-noor-700 dark:text-noor-300">
         {t(lang, "continueReading")}
       </p>

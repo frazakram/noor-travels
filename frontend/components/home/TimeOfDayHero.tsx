@@ -101,6 +101,9 @@ const PHASES: Record<TimePhase, PhaseTheme> = {
 
 const WINDOW_LIGHTS = ["20%", "28%", "42%", "58%", "72%", "80%"];
 
+/** Ambient drifting light motes across the sky — present in every phase. */
+const PARTICLE_OFFSETS = [6, 17, 29, 38, 47, 58, 67, 76, 85, 93];
+
 // One continuous silhouette: wall, two minarets, two side domes, central dome + finial.
 const SKYLINE_PATH =
   "M597,40 L597,18 L603,18 L603,40 Z " +
@@ -238,6 +241,20 @@ export function TimeOfDayHero({ phase, coords, children }: Props) {
           <span />
         </div>
       )}
+
+      <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden" aria-hidden="true">
+        {PARTICLE_OFFSETS.map((left, i) => (
+          <span
+            key={i}
+            className="hero-particle"
+            style={{
+              left: `${left}%`,
+              animationDelay: `${(i % 5) * 1.6}s`,
+              animationDuration: `${8 + (i % 4) * 2}s`,
+            }}
+          />
+        ))}
+      </div>
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-20 sm:h-24" aria-hidden="true">
         <svg viewBox="0 0 1200 160" preserveAspectRatio="none" className="h-full w-full">

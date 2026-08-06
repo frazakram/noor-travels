@@ -39,7 +39,7 @@ export function GratitudeJournal({ times }: Props) {
   }
 
   return (
-    <section className="rounded-2xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50 to-teal-50/60 p-4 dark:border-emerald-500/25 dark:from-emerald-950/25 dark:to-teal-950/15 sm:p-5">
+    <section className="animate-card-sheen-gold rounded-2xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50 to-teal-50/60 p-4 dark:border-emerald-500/25 dark:from-emerald-950/25 dark:to-teal-950/15 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">

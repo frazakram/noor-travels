@@ -10,7 +10,7 @@ type Props = {
   href?: string;
   disabled?: boolean;
   active?: boolean;
-  variant?: "default" | "gold" | "primary";
+  variant?: "default" | "gold" | "primary" | "hero";
   className?: string;
   type?: "button" | "submit";
   tipSide?: "top" | "bottom";
@@ -23,6 +23,8 @@ const variants = {
     "border-gold-300 bg-gold-50 text-noor-800 hover:bg-gold-100 dark:border-gold-600 dark:bg-noor-800 dark:text-gold-400 dark:hover:bg-noor-700",
   primary:
     "border-noor-700 bg-noor-700 text-white hover:bg-noor-800 dark:border-noor-500 dark:bg-noor-600 dark:hover:bg-noor-500",
+  /** For placement on the always-dark Salah hero, regardless of site theme. */
+  hero: "border-transparent bg-white/15 text-white hover:bg-white/25",
 };
 
 const baseClass =
@@ -138,4 +140,7 @@ export const Icons = {
   book: "📖",
   ayah: "①",
   search: "🔍",
+  share: svgIcon(
+    <path d="M18 16.08a2.92 2.92 0 0 0-1.96.77l-7.13-4.15a2.6 2.6 0 0 0 0-1.4l7.05-4.11a3 3 0 1 0-.91-2.11 3 3 0 0 0 .09.7L8.04 9.81A3 3 0 1 0 6 15a2.92 2.92 0 0 0 2.04-.81l7.12 4.16a2.6 2.6 0 0 0-.08.65 2.92 2.92 0 1 0 2.92-2.92Z" />,
+  ),
 } as const;

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { JsonLd } from "@/components/JsonLd";
+import { ShareButton } from "@/components/ShareButton";
 import {
   getCuratedLibraryItems,
   getLibraryItem,
@@ -111,11 +112,22 @@ export default async function LibraryQuestionPage({ params }: Props) {
         </Link>
       </nav>
 
-      <header>
-        <h1 className="text-xl font-bold text-heading">{item.question}</h1>
-        <p className="mt-1 text-[10px] uppercase tracking-wide text-faint">
-          {categoryLabel("en", item.category)}
-        </p>
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-heading">{item.question}</h1>
+          <p className="mt-1 text-[10px] uppercase tracking-wide text-faint">
+            {categoryLabel("en", item.category)}
+          </p>
+        </div>
+        <ShareButton
+          lang="en"
+          payload={{
+            title: item.question,
+            text: `${item.question}\n\n${truncate(answer.answer, 400)}\n\n${pageUrl}`,
+          }}
+          tipSide="top"
+          className="shrink-0"
+        />
       </header>
 
       <section

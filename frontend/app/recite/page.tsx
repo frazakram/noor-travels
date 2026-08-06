@@ -63,7 +63,7 @@ export default function RecitePage() {
   const [surahs, setSurahs] = useState<SurahSummary[]>([]);
   const [surah, setSurah] = useState(1);
   const [ayahFrom, setAyahFrom] = useState(1);
-  const [ayahTo, setAyahTo] = useState(4);
+  const [ayahTo, setAyahTo] = useState(1);
   const [ayahs, setAyahs] = useState<Ayah[]>([]);
   const [showText, setShowText] = useState(true);
   const [recording, setRecording] = useState(false);
@@ -103,7 +103,14 @@ export default function RecitePage() {
     };
   }, [surah]);
 
-  // Keep the selection valid: inside the surah and within the attempt cap.
+  // Default range: ayah 1 → last ayah (capped at MAX), whenever the surah changes.
+  useEffect(() => {
+    if (!surahMeta) return;
+    setAyahFrom(1);
+    setAyahTo(Math.min(surahMeta.ayah_count, MAX_AYAHS_PER_ATTEMPT));
+  }, [surah, surahMeta?.ayah_count]);
+
+  // Keep the selection valid if counts arrive late or the user edits past the end.
   useEffect(() => {
     setAyahFrom((f) => Math.min(Math.max(1, f), ayahCount));
     setAyahTo((to) => Math.min(Math.max(1, to), ayahCount));
@@ -112,8 +119,6 @@ export default function RecitePage() {
   function changeSurah(n: number) {
     stopRecording(true);
     setSurah(n);
-    setAyahFrom(1);
-    setAyahTo(Math.min(4, surahs.find((s) => s.number === n)?.ayah_count ?? 4));
     setResult(null);
     setScoreError("");
   }

@@ -9,6 +9,7 @@ import { api, apiStatic } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import { cleanQuranText, displaySurahName } from "@/lib/quran-display";
 import { loadBookmarks, loadLastRead, type QuranBookmark, type QuranLastRead } from "@/lib/quran-bookmarks";
+import { formatSurahDuration, getPreferredReciter, getSurahDurations } from "@/lib/quran-durations";
 
 type Surah = {
   number: number;
@@ -41,10 +42,12 @@ export default function QuranPage() {
   const [activeSurah, setActiveSurah] = useState<number | null>(null);
   const [lastRead, setLastRead] = useState<QuranLastRead | null>(null);
   const [bookmarks, setBookmarks] = useState<QuranBookmark[]>([]);
+  const [durations, setDurations] = useState<Record<string, number>>({});
 
   useEffect(() => {
     setLastRead(loadLastRead());
     setBookmarks(loadBookmarks());
+    getSurahDurations(getPreferredReciter()).then(setDurations);
     apiStatic<{ surahs: Surah[] }>("/api/quran/surahs")
       .then((d) => {
         setSurahs(d.surahs);
@@ -231,6 +234,7 @@ export default function QuranPage() {
               </p>
               <p className="text-xs text-faint">
                 {s.name_en_translation} · {s.ayah_count} {t(lang, "ayahs")}
+                {durations[String(s.number)] ? ` · ${formatSurahDuration(durations[String(s.number)], lang)}` : ""}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">

@@ -13,6 +13,7 @@ import { api } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import { isBookmarked, saveLastRead, toggleBookmark } from "@/lib/quran-bookmarks";
 import { cleanQuranText, displaySurahName, stripLeadingBismillah } from "@/lib/quran-display";
+import { formatSurahDuration, getSurahDurations } from "@/lib/quran-durations";
 import type { Ayah, TranslationLang } from "@/lib/quran-types";
 import { sourcesForPref, type TafsirPref, type TafsirSource } from "@/lib/tafsir";
 
@@ -50,14 +51,16 @@ export default function SurahClient() {
   const [tafsirPref, setTafsirPref] = useState<TafsirPref>("en");
 
   const [reciter, setReciter] = useState("ar.alafasy");
+  const [surahDurationSec, setSurahDurationSec] = useState<number | null>(null);
   const [includeTranslation, setIncludeTranslation] = useState(true);
   const [includeTafsir, setIncludeTafsir] = useState(false);
   const [tafsirSource, setTafsirSource] = useState<TafsirSource>("ibn_kathir_en");
   const [repeatScope, setRepeatScope] = useState<RepeatScope>("ayah");
   const [audioRepeatCount, setAudioRepeatCount] = useState(1);
   // 1-based ayah numbers for the memorisation loop ("range" scope).
+  // rangeEnd 0 = "last ayah of surah" until ayahs load (not a fixed 3-ayah window).
   const [rangeStart, setRangeStart] = useState(1);
-  const [rangeEnd, setRangeEnd] = useState(3);
+  const [rangeEnd, setRangeEnd] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [autoPlayNext, setAutoPlayNext] = useState(false);
   const [showAudioOpts, setShowAudioOpts] = useState(false);
@@ -120,7 +123,7 @@ export default function SurahClient() {
     repeatScope,
     repeatCount: audioRepeatCount,
     rangeStart: rangeStart - 1,
-    rangeEnd: rangeEnd - 1,
+    rangeEnd: (rangeEnd < 1 ? ayahs.length || 1 : rangeEnd) - 1,
     playbackSpeed,
     onPlayIndex: (i) => {
       setViewIndex(i);
@@ -232,6 +235,17 @@ export default function SurahClient() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    getSurahDurations(reciter).then((durations) => {
+      if (cancelled) return;
+      setSurahDurationSec(durations[String(surahNumber)] ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [reciter, surahNumber]);
+
+  useEffect(() => {
     if (!prefsHydrated) return;
     localStorage.setItem("noor-quran-translation", translation);
     localStorage.setItem("noor-quran-study-mode", studyMode ? "1" : "0");
@@ -265,16 +279,17 @@ export default function SurahClient() {
     setExpanded({});
   }, [tafsirPref, surahNumber]);
 
-  // Loop range is per-surah: reset on navigation, clamp once ayahs load.
+  // Loop range is per-surah: reset on navigation; resolve end→last once ayahs load.
+  // Only reset on surah change (not translation reload) so a custom From/To sticks.
   useEffect(() => {
     setRangeStart(1);
-    setRangeEnd(3);
+    setRangeEnd(0);
   }, [surahNumber]);
 
   useEffect(() => {
     if (!ayahs.length) return;
     setRangeStart((s) => Math.min(Math.max(1, s), ayahs.length));
-    setRangeEnd((e) => Math.min(Math.max(1, e), ayahs.length));
+    setRangeEnd((e) => (e < 1 || e > ayahs.length ? ayahs.length : e));
   }, [ayahs.length]);
 
   // Persist last-read position (debounced) so travelers can resume.
@@ -475,6 +490,23 @@ export default function SurahClient() {
     }
   }
 
+  // Spacebar toggles play/pause, like any media player — but not while the
+  // user is typing/selecting in a form control (reciter picker, repeat count, etc).
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.code !== "Space" && e.key !== " ") return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isFormControl =
+        tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!target?.isContentEditable;
+      if (isFormControl) return;
+      e.preventDefault();
+      toggleToolbarPlay();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [toggleToolbarPlay]);
+
   const activeIndex = audio.playing
     ? audio.isPlayingBismillah
       ? -1
@@ -501,9 +533,14 @@ export default function SurahClient() {
 
       <div className="card sticky-below-header space-y-3 sticky-toolbar py-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-xl font-bold text-heading">
-            {surahNumber}. {surahName}
-          </h1>
+          <div>
+            <h1 className="text-xl font-bold text-heading">
+              {surahNumber}. {surahName}
+            </h1>
+            {surahDurationSec != null && (
+              <p className="text-xs text-faint">{formatSurahDuration(surahDurationSec, lang)}</p>
+            )}
+          </div>
           <span className="text-xs text-faint">
             {ayahs.length ? `${activeIndex + 1}/${ayahs.length}` : "—"}
           </span>
@@ -695,12 +732,16 @@ export default function SurahClient() {
                 type="button"
                 disabled={audio.playing}
                 onClick={() => {
-                  if (repeatScope !== "range") {
-                    const len = ayahs.length || 1;
-                    const from = Math.min(viewIndex + 1, len);
-                    setRangeStart(from);
-                    setRangeEnd(Math.min(from + 2, len));
+                  // Toggle: click again to turn off loop-range (back to per-ayah).
+                  if (repeatScope === "range") {
+                    setRepeatScope("ayah");
+                    if (audioRepeatCount === 0) setAudioRepeatCount(1);
+                    return;
                   }
+                  const len = ayahs.length || 1;
+                  const from = Math.min(viewIndex + 1, len);
+                  setRangeStart(from);
+                  setRangeEnd(len);
                   setRepeatScope("range");
                 }}
                 className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs ${
@@ -708,6 +749,10 @@ export default function SurahClient() {
                     ? "bg-noor-700 text-white dark:bg-noor-600"
                     : "border border-noor-200 dark:border-noor-600"
                 }`}
+                aria-pressed={repeatScope === "range"}
+                title={
+                  repeatScope === "range" ? t(lang, "loopRangeOff") : t(lang, "loopRangeHint")
+                }
               >
                 {Icons.repeat} {t(lang, "loopRange")}
               </button>
@@ -754,7 +799,9 @@ export default function SurahClient() {
                     onChange={(e) => {
                       const v = Number(e.target.value);
                       setRangeStart(v);
-                      setRangeEnd((end) => Math.max(end, v));
+                      setRangeEnd((end) =>
+                        Math.max(end < 1 ? ayahs.length : end, v)
+                      );
                     }}
                   >
                     {ayahs.map((a) => (
@@ -766,7 +813,7 @@ export default function SurahClient() {
                   <label className="text-xs text-muted">{t(lang, "loopTo")}</label>
                   <select
                     className="input w-auto py-1 text-xs"
-                    value={rangeEnd}
+                    value={rangeEnd < 1 ? ayahs.length || 1 : rangeEnd}
                     disabled={audio.playing}
                     onChange={(e) => {
                       const v = Number(e.target.value);
@@ -905,7 +952,7 @@ export default function SurahClient() {
                   <p className="text-xs font-medium text-accent">{a.verse_key}</p>
                   {repeatScope === "range" &&
                     a.ayah_number >= rangeStart &&
-                    a.ayah_number <= rangeEnd && (
+                    a.ayah_number <= (rangeEnd < 1 ? ayahs.length : rangeEnd) && (
                       <span
                         className="inline-flex items-center rounded-full border border-gold-300 bg-gold-50 px-1.5 py-0.5 text-[10px] font-medium text-noor-800 dark:border-gold-600 dark:bg-noor-800 dark:text-gold-400"
                         title={t(lang, "loopRange")}
@@ -925,7 +972,7 @@ export default function SurahClient() {
                     onClick={() => toggleAyahBookmark(a)}
                   />
                   <IconButton
-                    icon="↗"
+                    icon={Icons.share}
                     label={shareStatus || t(lang, "shareAyah")}
                     tipSide="top"
                     onClick={() => void shareAyah(a)}
