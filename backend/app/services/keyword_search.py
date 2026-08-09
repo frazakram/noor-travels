@@ -683,12 +683,15 @@ def _search_ayahs(terms: list[str], limit: int) -> list[dict]:
         pat = f"%{t}%"
         params.extend([pat, pat, pat])
 
+    # No SQL-level LIMIT here on purpose: it used to truncate the candidate pool BEFORE
+    # relevance scoring ran below, so a correct match past the first N table-order rows
+    # was silently dropped no matter how well it would have scored. ayahs is only 6,236
+    # rows — scoring the full WHERE-matched set in Python is cheap.
     where = " OR ".join(clauses)
     sql = f"""
         SELECT verse_key, arabic, transliteration, translation_en, translation_ur
-        FROM ayahs WHERE {where} LIMIT ?
+        FROM ayahs WHERE {where}
     """
-    params.append(limit * 4)
 
     results = []
     with get_cursor() as cur:
@@ -748,9 +751,10 @@ def _search_hadiths(terms: list[str], limit: int) -> list[dict]:
         pat = f"%{t}%"
         params.extend([pat, pat])
 
+    # No SQL-level LIMIT — see _search_ayahs for why. hadiths is ~7,277 rows, cheap to
+    # score fully in Python before slicing to `limit` below.
     where = " OR ".join(clauses)
-    sql = f"SELECT id, reference, chapter_en, arabic, english FROM hadiths WHERE {where} LIMIT ?"
-    params.append(limit * 3)
+    sql = f"SELECT id, reference, chapter_en, arabic, english FROM hadiths WHERE {where}"
 
     results = []
     with get_cursor() as cur:
@@ -794,10 +798,10 @@ def _search_duas(terms: list[str], limit: int, dua_categories: list[str] | None 
         category_sql = f" AND category IN ({placeholders})"
         params.extend(dua_categories)
 
+    # No SQL-level LIMIT — see _search_ayahs for why. duas is a small curated table.
     sql = """
         SELECT id, title_en, arabic, transliteration, translation_en, translation_ur, source, category
-        FROM duas WHERE (""" + where + ")" + category_sql + " LIMIT ?"
-    params.append(limit * 2)
+        FROM duas WHERE (""" + where + ")" + category_sql
 
     results = []
     with get_cursor() as cur:
@@ -889,13 +893,12 @@ def _search_tafsir(terms: list[str], limit: int) -> list[dict]:
         clauses.append("text LIKE ?")
         params.append(f"%{t}%")
 
+    # No SQL-level LIMIT — see _search_ayahs for why. tafsir is 6,236 rows.
     where = " OR ".join(clauses)
     sql = f"""
         SELECT verse_key, source, text FROM tafsir
         WHERE source IN ('ibn_kathir_en', 'maududi_ur') AND ({where})
-        LIMIT ?
     """
-    params.append(limit * 2)
 
     results = []
     with get_cursor() as cur:

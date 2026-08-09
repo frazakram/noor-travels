@@ -832,6 +832,28 @@ TAFSIR_HINT = re.compile(
 )
 TRAVEL_HINT = re.compile(r"\b(travel|journey|safar|سفر|trip)\b", re.I)
 
+QUOTE_SPAN = re.compile(r'["“‘\']([^"”’\']{15,600})["”’\']')
+VERSE_IDENTIFY_HINT = re.compile(
+    r"\b(which|what)\s+(chapter|surah|sura|verse|ayah)\b|"
+    r"\bchapter\s+and\s+verse\b|\bsurah\s+and\s+(ayah|verse)\b",
+    re.I,
+)
+
+
+def extract_quote_to_identify(question: str) -> str | None:
+    """A quoted span (15+ chars) + 'which chapter/verse' wording means the user is
+    pasting a literal translation and asking for its source, not asking a thematic
+    question — route that to app.services.quran_identify instead of generic keyword/
+    semantic retrieval, which isn't built for exact-quote matching. Deliberately
+    conservative: both the wording AND an actual quote must be present, so "what does
+    the verse about patience mean" (no quote) or "which chapter talks about patience"
+    (no quote) fall through unchanged to existing behavior."""
+    if not VERSE_IDENTIFY_HINT.search(question):
+        return None
+    m = QUOTE_SPAN.search(question)
+    return m.group(1).strip() if m else None
+
+
 _CLUSTER_BY_ID: dict[str, dict[str, Any]] = {c["id"]: c for c in THEMATIC_CLUSTERS}
 
 
