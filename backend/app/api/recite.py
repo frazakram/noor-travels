@@ -16,34 +16,15 @@ from pydantic import BaseModel, Field
 from app.api.khutba import _transcribe_arabic
 from app.core.config import get_settings
 from app.db import get_cursor
+from app.services.text_normalize import normalize_arabic
 
 router = APIRouter()
 
 MAX_RANGE_AYAHS = 15
 CLOSE_MATCH_RATIO = 0.66
 
-# Marks stripped before comparison: harakat, Quranic annotation signs,
-# superscript alef, tatweel, small high/low marks.
-_MARKS = re.compile("[ؐ-ًؚ-ٰٟۖ-ۭۥۦـ࣓-ࣿ]")
-_ALEF_FORMS = re.compile("[آأإٱ]")
-_NON_ARABIC = re.compile("[^ء-ي ]")
-
 # Uthmani "بِسْمِ ٱللَّهِ ..." prefix on ayah 1 (mirrors frontend stripLeadingBismillah).
 _BISMILLAH_NORM = ["بسم", "الله", "الرحمن", "الرحيم"]
-
-
-def normalize_arabic(text: str) -> str:
-    """Fold Uthmani orthography and diacritics so the Quran text and Whisper's
-    plain transcription compare on equal footing."""
-    # Uthmani long-a spellings: الصلوٰة → الصلاة, موسىٰ keeps its alef maqsura.
-    t = text.replace("وٰ", "ا")  # وٰ → ا
-    t = t.replace("ىٰ", "ى")  # ىٰ → ى
-    t = _MARKS.sub("", t)
-    t = _ALEF_FORMS.sub("ا", t)
-    t = t.replace("ى", "ي")  # ى → ي
-    t = t.replace("ة", "ه")  # ة → ه
-    t = _NON_ARABIC.sub(" ", t)
-    return re.sub(r"\s+", " ", t).strip()
 
 
 def _word_ratio(a: str, b: str) -> float:

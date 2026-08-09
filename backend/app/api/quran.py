@@ -6,8 +6,10 @@ from typing import Any
 import httpx
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 
 from app.db import get_cursor
+from app.services import quran_identify
 
 router = APIRouter()
 
@@ -175,6 +177,21 @@ def search_quran(q: str = Query(min_length=2)):
             (pattern, pattern, pattern, pattern, pattern, pattern),
         )
         return {"results": cur.fetchall()}
+
+
+class IdentifyRequest(BaseModel):
+    """Text extracted client-side (Tesseract.js OCR, possibly user-edited) from a
+    screenshot — Arabic and/or English. No image ever reaches the backend."""
+
+    text: str = Field(min_length=3, max_length=1500)
+
+
+@router.post("/identify")
+def identify_verse(body: IdentifyRequest):
+    """Match OCR'd screenshot text to its source surah:ayah. No LLM anywhere in this
+    path — Arabic uses fuzzy text matching, English uses embeddings, both grounded
+    in the actual Quran tables (see app/services/quran_identify.py)."""
+    return quran_identify.identify(body.text)
 
 
 def _normalize_word(w: dict[str, Any]) -> dict[str, str] | None:

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { NoticeCard } from "@/components/NoticeCard";
+import { Icons } from "@/components/IconButton";
 import { emitPageLoading } from "@/components/NavigationProgress";
 import { api, apiStatic } from "@/lib/api";
 import { t } from "@/lib/i18n";
@@ -164,6 +165,22 @@ export default function QuranPage() {
           {t(lang, "search")}
         </button>
       </form>
+
+      <Link
+        href="/quran/find"
+        className="card flex items-center gap-3 hover:border-noor-300 dark:hover:border-noor-500"
+      >
+        <span
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gold-300 bg-gold-50 text-noor-800 dark:border-gold-600 dark:bg-noor-800 dark:text-gold-400"
+          aria-hidden
+        >
+          {Icons.camera}
+        </span>
+        <div className="min-w-0">
+          <p className="font-medium text-heading">{t(lang, "findFromScreenshot")}</p>
+          <p className="text-xs text-faint">{t(lang, "findFromScreenshotDesc")}</p>
+        </div>
+      </Link>
 
       {loadError && (
         <NoticeCard

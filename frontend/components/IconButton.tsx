@@ -143,4 +143,10 @@ export const Icons = {
   share: svgIcon(
     <path d="M18 16.08a2.92 2.92 0 0 0-1.96.77l-7.13-4.15a2.6 2.6 0 0 0 0-1.4l7.05-4.11a3 3 0 1 0-.91-2.11 3 3 0 0 0 .09.7L8.04 9.81A3 3 0 1 0 6 15a2.92 2.92 0 0 0 2.04-.81l7.12 4.16a2.6 2.6 0 0 0-.08.65 2.92 2.92 0 1 0 2.92-2.92Z" />,
   ),
+  camera: svgIcon(
+    <>
+      <path d="M8.6 5.4 7.4 7H4.5A1.5 1.5 0 0 0 3 8.5v9A1.5 1.5 0 0 0 4.5 19h15a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 19.5 7h-2.9l-1.2-1.6a1.5 1.5 0 0 0-1.2-.6h-4.4a1.5 1.5 0 0 0-1.2.6Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <circle cx="12" cy="13" r="3.4" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    </>,
+  ),
 } as const;
