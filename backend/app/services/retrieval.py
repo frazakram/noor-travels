@@ -122,8 +122,28 @@ def retrieve_for_question(
     """Retrieve relevant chunks: semantic (bge-m3) when indexed, plus keyword expansion."""
     settings = get_settings()
 
-    from app.services.keyword_search import _has_surah_context, detect_surah_number, is_verse_query
-    from app.services.query_expansion import match_themes
+    from app.services.keyword_search import _fetch_ayah_chunks, _has_surah_context, detect_surah_number, is_verse_query
+    from app.services.query_expansion import extract_quote_to_identify, match_themes
+
+    # User pasted a literal translation quote and wants its source verse — this needs
+    # exact/near-exact quote matching (quran_identify), not thematic keyword/semantic
+    # retrieval, which isn't built for it (see app/services/quran_identify.py docstring).
+    quoted = extract_quote_to_identify(question)
+    if quoted:
+        from app.services.quran_identify import identify as identify_quote
+
+        quote_result = identify_quote(quoted)
+        quote_candidates = quote_result["candidates"]
+        if quote_candidates and quote_candidates[0]["confidence"] in ("high", "medium"):
+            top_verse = quote_candidates[0]["verse_key"]
+            chunks = _fetch_ayah_chunks([c["verse_key"] for c in quote_candidates[:3]])
+            return chunks, {
+                "intent": "verse_lookup",
+                "verse_keys": [top_verse],
+                "search_terms": extract_search_terms(quoted),
+            }
+        # No confident match — fall through to the generic retrieval below unchanged,
+        # so the user still gets something rather than nothing.
 
     is_explanation = bool(TAFSIR_HINT.search(question))
     ctx_keys = context_verse_keys or []

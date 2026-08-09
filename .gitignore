@@ -31,7 +31,9 @@ dist/
 *.tsbuildinfo
 
 # Local database & generated data
-backend/data/
+backend/data/*
+!backend/data/quran_en_embeddings.npy
+!backend/data/quran_en_verse_keys.json
 *.db
 *.sqlite
 *.sqlite3
@@ -45,6 +47,7 @@ data/sources/tafsir/maududi-pdf/
 # ML model cache
 .cache/
 .huggingface/
+*.traineddata
 
 # Logs & eval artifacts
 *.log

@@ -10,3 +10,4 @@ websockets==14.1
 python-multipart==0.0.20
 indic-transliteration==2.3.82
 edge-tts==7.2.8
+numpy==2.4.6
