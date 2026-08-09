@@ -36,7 +36,7 @@ export function NoticeCard({ title, message, tone = "info", actionLabel, onActio
             <button
               type="button"
               onClick={onAction}
-              className="mt-3 rounded-xl bg-current px-3 py-1.5 text-xs font-semibold text-white opacity-90 transition hover:opacity-100 dark:text-noor-950"
+              className="mt-3 rounded-xl bg-noor-700 px-3 py-1.5 text-xs font-semibold text-white opacity-90 transition hover:bg-noor-800 hover:opacity-100 dark:bg-noor-600 dark:hover:bg-noor-500"
             >
               {actionLabel}
             </button>
