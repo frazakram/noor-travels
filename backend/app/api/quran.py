@@ -9,7 +9,6 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from app.db import get_cursor
-from app.services import quran_identify
 
 router = APIRouter()
 
@@ -190,7 +189,14 @@ class IdentifyRequest(BaseModel):
 def identify_verse(body: IdentifyRequest):
     """Match OCR'd screenshot text to its source surah:ayah. No LLM anywhere in this
     path — Arabic uses fuzzy text matching, English uses embeddings, both grounded
-    in the actual Quran tables (see app/services/quran_identify.py)."""
+    in the actual Quran tables (see app/services/quran_identify.py).
+
+    Import is deliberately lazy (not at module top level): quran_identify imports
+    numpy, and this router is imported eagerly at app startup — a missing/broken
+    numpy install must only break this one endpoint, not crash the whole app and
+    take down every unrelated route with it (this happened once already)."""
+    from app.services import quran_identify
+
     return quran_identify.identify(body.text)
 
 
