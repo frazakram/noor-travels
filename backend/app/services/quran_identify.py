@@ -22,13 +22,17 @@ No free-form guessing — every candidate returned is a real row from the Quran
 tables, never an LLM-recalled reference.
 """
 
+from __future__ import annotations
+
 import json
 import re
 from difflib import SequenceMatcher
 from functools import lru_cache
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import numpy as np
+if TYPE_CHECKING:
+    import numpy as np
 
 from app.core.config import get_settings
 from app.db import get_cursor
@@ -201,7 +205,16 @@ def match_arabic(query_text: str, top_k: int = 5) -> list[dict]:
 @lru_cache(maxsize=1)
 def _load_english_embeddings() -> tuple[np.ndarray, list[str]]:
     """Row-normalized [N, dim] matrix (unit vectors, so cosine similarity is just a
-    dot product) + parallel verse_key list, from the offline precompute script."""
+    dot product) + parallel verse_key list, from the offline precompute script.
+
+    numpy is imported here, not at module level: this function is only ever reached
+    from inside _match_english_semantic's try/except, so if numpy can't be imported
+    at all on this runtime, that's caught there — an unconditional module-level
+    `import numpy` would instead fail while *loading this file*, before any function
+    in it is even defined, which crashed every caller of this module, screenshot
+    endpoint and chat quote-detection alike, the first time this bit us."""
+    import numpy as np
+
     matrix = np.load(_DATA_DIR / "quran_en_embeddings.npy")
     with open(_DATA_DIR / "quran_en_verse_keys.json", encoding="utf-8") as f:
         verse_keys = json.load(f)
@@ -238,6 +251,8 @@ def _match_english_semantic(query_text: str, top_k: int = 5) -> list[dict]:
     for real once already: an eager, non-lazy import of this module crashed every
     unrelated endpoint in the app, not just this one."""
     try:
+        import numpy as np
+
         settings = get_settings()
         embeddings = embed_texts([_strip_ocr_noise(query_text)])
         if not embeddings:
