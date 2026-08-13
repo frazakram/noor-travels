@@ -228,37 +228,49 @@ def _strip_ocr_noise(text: str) -> str:
 def _match_english_semantic(query_text: str, top_k: int = 5) -> list[dict]:
     """Catches paraphrases and loose wording — weak on a short verbatim excerpt of a
     long multi-sentence ayah, since one whole-ayah embedding represents the average
-    of everything in it, not any single sentence within it (see _match_english_exact)."""
-    settings = get_settings()
-    embeddings = embed_texts([_strip_ocr_noise(query_text)])
-    if not embeddings:
-        return []
-    query_vec = np.array(embeddings[0], dtype=np.float32)
-    norm = np.linalg.norm(query_vec)
-    if norm == 0:
-        return []
-    query_vec /= norm
+    of everything in it, not any single sentence within it (see _match_english_exact).
 
-    matrix, verse_keys = _load_english_embeddings()
-    similarities = matrix @ query_vec
-    # Grab extra candidates before the floor cut — some may not clear rag_min_similarity.
-    top_indices = np.argsort(-similarities)[: top_k * 4]
+    Wrapped defensively: this is the one sub-pass with an external dependency (numpy)
+    and a committed data file (quran_en_embeddings.npy) — either failing (a numpy
+    binary-compat issue on an unfamiliar runtime, a file path that doesn't resolve
+    the same way in a serverless bundle as it does locally) must degrade to "no
+    semantic candidates this time," not take down the whole request. This happened
+    for real once already: an eager, non-lazy import of this module crashed every
+    unrelated endpoint in the app, not just this one."""
+    try:
+        settings = get_settings()
+        embeddings = embed_texts([_strip_ocr_noise(query_text)])
+        if not embeddings:
+            return []
+        query_vec = np.array(embeddings[0], dtype=np.float32)
+        norm = np.linalg.norm(query_vec)
+        if norm == 0:
+            return []
+        query_vec /= norm
 
-    by_verse_key = _ayah_by_verse_key()
-    candidates = []
-    for idx in top_indices:
-        score = float(similarities[idx])
-        if score < settings.rag_min_similarity:
-            break  # sorted descending, nothing after this clears the floor either
-        row = by_verse_key.get(verse_keys[idx])
-        if not row:
-            continue
-        candidates.append(
-            _candidate(row, score=score, match_type="english", confidence=_tier_english(score))
-        )
-        if len(candidates) >= top_k:
-            break
-    return candidates
+        matrix, verse_keys = _load_english_embeddings()
+        similarities = matrix @ query_vec
+        # Grab extra candidates before the floor cut — some may not clear rag_min_similarity.
+        top_indices = np.argsort(-similarities)[: top_k * 4]
+
+        by_verse_key = _ayah_by_verse_key()
+        candidates = []
+        for idx in top_indices:
+            score = float(similarities[idx])
+            if score < settings.rag_min_similarity:
+                break  # sorted descending, nothing after this clears the floor either
+            row = by_verse_key.get(verse_keys[idx])
+            if not row:
+                continue
+            candidates.append(
+                _candidate(row, score=score, match_type="english", confidence=_tier_english(score))
+            )
+            if len(candidates) >= top_k:
+                break
+        return candidates
+    except Exception as exc:  # noqa: BLE001 - deliberate: never let this sub-pass crash the request
+        print(f"quran_identify: semantic match unavailable ({exc!r}); continuing with exact-match only")
+        return []
 
 
 def _match_english_exact(query_text: str, top_k: int = 5) -> list[dict]:
