@@ -236,20 +236,70 @@ async def khutba_live(ws: WebSocket):
         pass
 
 
+# Whisper was trained on scraped YouTube subtitles, so on non-speech audio it
+# emits subtitle boilerplate at high confidence instead of an empty string.
+# nova-3 does not do this, but the filter stays as a backstop for any model.
+_HALLUCINATIONS = {
+    "اشتركوا في القناة",
+    "اشترك في القناة",
+    "شكرا للمشاهدة",
+    "شكرا على المشاهدة",
+    "ترجمة نانسي قنقر",
+    "الى اللقاء في الحلقه القادمه",
+    "subscribe to the channel",
+    "thanks for watching",
+}
+
+
+# Folds the same orthographic variants as khutbah_match.normalize_arabic, but
+# keeps ASCII letters too so the English boilerplate can be keyed as well.
+_DENY_MARKS = re.compile(r"[ً-ٰٟـۖ-ۭ]")
+_DENY_KEEP = re.compile(r"[^ء-يa-z ]")
+
+
+def _denylist_key(text: str) -> str:
+    key = text.strip().lower()
+    key = _DENY_MARKS.sub("", key)
+    key = re.sub("[أإآٱ]", "ا", key)
+    key = key.replace("ى", "ي").replace("ة", "ه")
+    key = _DENY_KEEP.sub(" ", key)
+    return re.sub(r"\s+", " ", key).strip()
+
+
+_HALLUCINATIONS_NORM = {_denylist_key(phrase) for phrase in _HALLUCINATIONS}
+
+
+def _strip_hallucination(transcript: str) -> str:
+    """Drop transcripts that are nothing but known subtitle boilerplate.
+
+    Only whole-transcript matches are dropped — a segment that merely contains
+    the phrase alongside real speech is kept, so genuine content is never lost.
+    """
+    stripped = transcript.strip()
+    if not stripped:
+        return ""
+    return "" if _denylist_key(stripped) in _HALLUCINATIONS_NORM else stripped
+
+
 async def _transcribe_arabic(
     api_key: str, audio_bytes: bytes, content_type: str = "audio/webm"
 ) -> str:
-    # nova-2 has no Arabic support; Deepgram serves Arabic through hosted Whisper.
+    # nova-3 is the only Deepgram tier that serves Arabic (nova-2 400s on it).
+    # It replaced hosted Whisper here: whisper-medium queued unpredictably —
+    # measured 3s at best but 65s+ on ~75% of calls at a 10s request cadence,
+    # which permanently backlogs the live page's sequential upload queue.
     # Header values must be printable ASCII with no stray whitespace, or h11
     # raises LocalProtocolError — an empty key yields "Token " (trailing space)
     # and pasted keys can carry zero-width characters, so sanitize both.
     clean_key = re.sub(r"[^\x21-\x7E]", "", api_key)
     clean_ct = re.sub(r"[^\x20-\x7E]", "", content_type).strip() or "audio/webm"
-    async with httpx.AsyncClient(timeout=60.0) as http:
+    # nova-3 answers in ~1.7s; a chunk slower than this is never worth the
+    # queue backlog it causes, so fail fast and let the next segment through.
+    async with httpx.AsyncClient(timeout=15.0) as http:
         resp = await http.post(
             "https://api.deepgram.com/v1/listen",
             params={
-                "model": "whisper-medium",
+                "model": "nova-3",
                 "language": "ar",
                 "punctuate": "true",
                 "smart_format": "true",
@@ -263,6 +313,7 @@ async def _transcribe_arabic(
         resp.raise_for_status()
         payload = resp.json()
         try:
-            return payload["results"]["channels"][0]["alternatives"][0]["transcript"]
+            transcript = payload["results"]["channels"][0]["alternatives"][0]["transcript"]
         except (KeyError, IndexError):
             return ""
+        return _strip_hallucination(transcript)

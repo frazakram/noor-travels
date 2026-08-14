@@ -15,6 +15,11 @@ import {
   type SavedKhutba,
 } from "@/lib/khutba-history";
 
+/** RMS below which a 10s segment is treated as speechless. Sits ~2x above the
+ *  loudest room tone measured and ~30x below speech, so quiet talking is still
+ *  transcribed while pauses cost nothing. */
+const SILENCE_RMS = 0.005;
+
 type Translation = {
   arabic: string;
   english: string;
@@ -47,8 +52,13 @@ export default function KhutbaPage() {
   const [savedToast, setSavedToast] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeRef = useRef(false);
+  // Bumped by start() and by unmount. Queued segments carry the id they were
+  // recorded under and drop themselves if it has moved on, which lets stop()
+  // end the recording while still letting already-captured audio finish.
+  const sessionRef = useRef(0);
   const accumulatedRef = useRef("");
   const accumulatedArRef = useRef("");
   const uploadQueueRef = useRef<Promise<void>>(Promise.resolve());
@@ -102,18 +112,53 @@ export default function KhutbaPage() {
     }
   }, []);
 
-  function stop() {
+  /** Release the mic and timers. Safe to call repeatedly. */
+  const teardownCapture = useCallback(() => {
     activeRef.current = false;
     if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = null;
+    // stop() flushes the last partial segment through ondataavailable, so this
+    // must run before the tracks end for the closing dua to be captured.
     if (recorderRef.current?.state === "recording") recorderRef.current.stop();
     recorderRef.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
+  }, []);
+
+  function stop() {
+    if (!activeRef.current) return;
+    const recorder = recorderRef.current;
+    // MediaRecorder fires "stop" after "dataavailable", so this resolves once
+    // the closing segment is already sitting in the upload queue.
+    const flushed =
+      recorder?.state === "recording"
+        ? new Promise<void>((resolve) =>
+            recorder.addEventListener("stop", () => resolve(), { once: true }),
+          )
+        : Promise.resolve();
+    teardownCapture();
     setActive(false);
     setStatus("");
     // Auto-save the session (with date + location) so it can be re-read later.
-    persistSession();
+    // Waits for the final segment and then for the queue to drain, so the
+    // closing dua is in the saved transcript rather than dropped on stop.
+    void flushed
+      .then(() => uploadQueueRef.current)
+      .catch(() => undefined)
+      .then(() => persistSession());
   }
+
+  // Leaving the page mid-session must kill the mic and the upload loop. Without
+  // this the interval outlives the unmounted component, so the recorder keeps
+  // capturing and posting a segment every 10s until the tab is closed.
+  useEffect(() => {
+    return () => {
+      sessionRef.current += 1;
+      teardownCapture();
+      audioCtxRef.current?.close().catch(() => undefined);
+      audioCtxRef.current = null;
+    };
+  }, [teardownCapture]);
 
   function pickMimeType(): string {
     if (typeof MediaRecorder === "undefined") return "";
@@ -135,8 +180,30 @@ export default function KhutbaPage() {
     });
   }
 
-  async function sendChunk(blob: Blob) {
-    if (!activeRef.current || blob.size < 1000) return;
+  /** True when a segment carries no speech, so it is not worth transcribing.
+   *
+   * Byte size cannot tell us this — 10s of digital silence still encodes to
+   * ~5KB of Opus, well past any size guard. Measured levels: speech sits near
+   * RMS 0.16, while room tone that models happily transcribe as subtitle
+   * boilerplate ("subscribe to the channel") sits at 0.0007–0.0023. */
+  async function isSilent(blob: Blob): Promise<boolean> {
+    try {
+      const ctx = (audioCtxRef.current ??= new AudioContext());
+      const buffer = await ctx.decodeAudioData(await blob.arrayBuffer());
+      const samples = buffer.getChannelData(0);
+      let sum = 0;
+      for (let i = 0; i < samples.length; i += 1) sum += samples[i] * samples[i];
+      return Math.sqrt(sum / samples.length) < SILENCE_RMS;
+    } catch {
+      // Never let a decode failure swallow real speech — transcribe it.
+      return false;
+    }
+  }
+
+  async function sendChunk(blob: Blob, session: number) {
+    if (sessionRef.current !== session || blob.size < 1000) return;
+    if (await isSilent(blob)) return;
+    if (sessionRef.current !== session) return;
     // Base64 in JSON: Vercel's Python runtime corrupts binary multipart bodies.
     const audioB64 = await blobToBase64(blob);
     const data = await api<{
@@ -159,7 +226,7 @@ export default function KhutbaPage() {
         accumulated_ar: accumulatedArRef.current,
       }),
     });
-    if (!activeRef.current) return;
+    if (sessionRef.current !== session) return;
     if (data.type === "translation") {
       accumulatedRef.current = data.accumulated || accumulatedRef.current;
       accumulatedArRef.current = data.accumulated_ar || accumulatedArRef.current;
@@ -179,10 +246,10 @@ export default function KhutbaPage() {
     }
   }
 
-  function queueChunk(blob: Blob) {
+  function queueChunk(blob: Blob, session: number) {
     // Segments must be transcribed in order so the accumulated text stays coherent.
     uploadQueueRef.current = uploadQueueRef.current
-      .then(() => sendChunk(blob))
+      .then(() => sendChunk(blob, session))
       .catch(() => {
         if (activeRef.current) setStatus(t(lang, "khutbaChunkError"));
       });
@@ -200,6 +267,7 @@ export default function KhutbaPage() {
       fullLinesRef.current = [];
       matchedTitleRef.current = undefined;
       uploadQueueRef.current = Promise.resolve();
+      const session = (sessionRef.current += 1);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
@@ -210,7 +278,7 @@ export default function KhutbaPage() {
       recorderRef.current = recorder;
 
       recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) queueChunk(e.data);
+        if (e.data.size > 0) queueChunk(e.data, session);
       };
 
       activeRef.current = true;

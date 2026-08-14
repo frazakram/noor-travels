@@ -29,6 +29,15 @@ EN_SHINGLE = 8
 AR_SHINGLE = 5
 EN_EXACT_THRESHOLD = 12.0
 AR_EXACT_THRESHOLD = 10.0
+# Arabic hits must come from at least this many separated passages of the same
+# khutbah before the match is trusted enough to stop live translation — one
+# contiguous run is a single quoted ayah, not a sermon match.
+AR_MIN_RUNS = 2
+# Words of transcript that must sit between two hits for them to count as
+# separate passages. Wide enough that an unmatched stretch inside one continuous
+# recitation (Ayat al-Kursi splits at a smaller gap) stays a single run, and far
+# below the hundreds of words separating genuinely distinct quotations.
+AR_RUN_GAP = 15
 FUZZY_MIN_WORDS = 60
 FUZZY_THRESHOLD = 0.35
 FUZZY_MARGIN = 1.3
@@ -83,6 +92,9 @@ class MatchResult:
     score: float
     matched_phrase: str
     tier: str = "exact"  # "exact" (safe to auto-open) or "fuzzy" (suggest only)
+    # How many separated regions of the khutbah the hits came from. One long
+    # contiguous run is a single quotation, not evidence of the whole sermon.
+    runs: int = 1
 
 
 def _shingles(words: list[str], size: int) -> list[str]:
@@ -166,18 +178,42 @@ def clear_khutbah_index_cache() -> None:
     _load_khutbah_index.cache_clear()
 
 
+def _count_runs(positions: list[int], max_gap: int) -> int:
+    """Number of separated regions among matched shingle positions.
+
+    Measured over the *query* (what the imam has said so far), never over the
+    document: normalize_arabic collapses a library page to Arabic-only, so
+    quotations that sit paragraphs apart end up adjacent in its shingle list.
+    In query space the signal is honest — reciting one ayah lights up a single
+    contiguous stretch, whereas genuinely delivering a khutbah scatters hits
+    across separated moments of continuous Arabic speech.
+    """
+    if not positions:
+        return 0
+    ordered = sorted(positions)
+    runs = 1
+    for prev, cur in zip(ordered, ordered[1:]):
+        if cur - prev > max_gap:
+            runs += 1
+    return runs
+
+
 def _best_shingle_match(
     query_words: list[str],
     shingle_index: dict[str, list[str]],
     rec_by_slug: dict[str, KhutbahRecord],
     size: int,
-    recent: int,
 ) -> MatchResult | None:
-    query_shingles: set[str] = set()
-    for chunk in (query_words, query_words[-recent:]):
-        query_shingles.update(_shingles(chunk, size))
-    if not query_shingles:
+    # Positional, so hits can be located back in the query. The old code also
+    # unioned in shingles of the last `recent` words, which is a strict subset
+    # of these and so never added anything.
+    query_list = _shingles(query_words, size)
+    if not query_list:
         return None
+    query_positions: dict[str, list[int]] = {}
+    for i, shingle in enumerate(query_list):
+        query_positions.setdefault(shingle, []).append(i)
+    query_shingles = set(query_positions)
 
     best: MatchResult | None = None
     for slug, rec_shingles in shingle_index.items():
@@ -186,7 +222,13 @@ def _best_shingle_match(
             continue
         score = len(hits) * 2.0 + size * 0.1
         if best is None or score > best.score:
-            best = MatchResult(khutbah=rec_by_slug[slug], score=score, matched_phrase=next(iter(hits)))
+            positions = [p for shingle in hits for p in query_positions[shingle]]
+            best = MatchResult(
+                khutbah=rec_by_slug[slug],
+                score=score,
+                matched_phrase=next(iter(hits)),
+                runs=_count_runs(positions, max_gap=AR_RUN_GAP),
+            )
     return best
 
 
@@ -202,10 +244,22 @@ def match_transcript(
     rec_by_slug = {r.slug: r for r in index.records}
 
     # Tier 1: Arabic verbatim — strongest signal when the imam speaks Arabic.
+    #
+    # Every khutba quotes Quran, and one recited ayah alone lights up enough
+    # overlapping shingles to clear the score threshold on whichever khutbah
+    # happens to quote it: Surah Al-Asr scores 20.5 against "The Importance of
+    # Time" off the recitation alone. Such a hit is often topically right, so
+    # it is worth surfacing — but it is evidence the imam quoted a verse, not
+    # evidence of which sermon he is delivering, and an "exact" result stops
+    # live translation outright. Corroboration across separated passages earns
+    # that; a single passage is downgraded to a tappable suggestion so the
+    # session keeps running either way.
     ar_words = normalize_arabic(accumulated_arabic).split()
     if len(ar_words) >= AR_SHINGLE * 2:
-        best = _best_shingle_match(ar_words, index.ar_shingles, rec_by_slug, AR_SHINGLE, recent=80)
+        best = _best_shingle_match(ar_words, index.ar_shingles, rec_by_slug, AR_SHINGLE)
         if best and best.score >= AR_EXACT_THRESHOLD:
+            if best.runs < AR_MIN_RUNS:
+                best.tier = "fuzzy"
             return best
 
     en_words = normalize(accumulated_english).split()
@@ -214,7 +268,7 @@ def match_transcript(
 
     # Tier 2: English verbatim. Verbatim passages score 40+; boilerplate
     # openings score ~5, so several distinct phrase hits are required.
-    best = _best_shingle_match(en_words, index.en_shingles, rec_by_slug, EN_SHINGLE, recent=60)
+    best = _best_shingle_match(en_words, index.en_shingles, rec_by_slug, EN_SHINGLE)
     if best and best.score >= EN_EXACT_THRESHOLD:
         return best
 
