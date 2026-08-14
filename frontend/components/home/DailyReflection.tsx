@@ -5,6 +5,7 @@ import { ShareButton } from "@/components/ShareButton";
 import { useCardSheen } from "@/hooks/useCardSheen";
 import { api } from "@/lib/api";
 import { cleanQuranText } from "@/lib/quran-display";
+import { FEATURED_VERSE_KEYS } from "@/lib/featured-verses";
 import { t, type Lang } from "@/lib/i18n";
 
 type Ayah = {
@@ -15,12 +16,6 @@ type Ayah = {
   translation_en: string;
   translation_ur: string;
   translation_hi?: string;
-};
-
-type Surah = {
-  number: number;
-  name_en: string;
-  ayah_count: number;
 };
 
 function todayDateKey(): string {
@@ -47,17 +42,9 @@ export function DailyReflection({ lang }: { lang: Lang }) {
 
   useEffect(() => {
     async function load() {
-      const data = await api<{ surahs: Surah[] }>("/api/quran/surahs");
-      const total = data.surahs.reduce((sum, s) => sum + s.ayah_count, 0);
-      let index = hashString(todayDateKey()) % total;
-      for (const surah of data.surahs) {
-        if (index < surah.ayah_count) {
-          const row = await api<Ayah>(`/api/quran/ayahs/${surah.number}:${index + 1}`);
-          setAyah({ ...row, name_en: surah.name_en });
-          return;
-        }
-        index -= surah.ayah_count;
-      }
+      const verseKey = FEATURED_VERSE_KEYS[hashString(todayDateKey()) % FEATURED_VERSE_KEYS.length];
+      const row = await api<Ayah>(`/api/quran/ayahs/${verseKey}`);
+      setAyah(row);
     }
     void load().catch(() => setAyah(null));
   }, []);
