@@ -27,13 +27,18 @@ export async function fetchAppVersion(): Promise<AppVersion | null> {
   }
 }
 
-/** True inside the Android WebView, where offering the APK is pointless. */
+/** True inside the Android WebView, where offering the APK is pointless.
+ *
+ * Detected by user-agent ONLY — deliberately not the `app-shell` class.
+ * AppShellDetect applies that class for `display-mode: fullscreen` too, and
+ * Chrome matches that media query whenever the browser window is merely
+ * fullscreen (macOS green-button / F11 browsing). Anyone browsing fullscreen
+ * would have the download card silently hidden from them — which happened,
+ * and took a console-table diagnostic to find. MainActivity appends
+ * "NoorSafarAndroid" to the UA, so that token is the reliable signal. */
 export function isInsideApp(): boolean {
   if (typeof window === "undefined") return false;
-  return (
-    /NoorSafarAndroid/i.test(navigator.userAgent || "") ||
-    document.documentElement.classList.contains("app-shell")
-  );
+  return /NoorSafarAndroid|; wv\)/i.test(navigator.userAgent || "");
 }
 
 export function isAndroidBrowser(): boolean {

@@ -5,13 +5,13 @@ import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 import { AppShellDetect } from "@/components/AppShellDetect";
 import { AppTabBar } from "@/components/AppTabBar";
 import { ChatProvider } from "@/components/ChatProvider";
-import { InstallAppBanner } from "@/components/InstallAppBanner";
 import { ChatWidget } from "@/components/ChatWidget";
 import { Footer } from "@/components/Footer";
 import { LangProvider } from "@/components/LangProvider";
 import { Nav } from "@/components/Nav";
 import { AuthNudge } from "@/components/AuthNudge";
 import { NavigationProgress } from "@/components/NavigationProgress";
+import { InstallAppPrompt } from "@/components/home/InstallAppPrompt";
 import { PageWrapper } from "@/components/PageWrapper";
 import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -117,13 +117,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <main className="mx-auto max-w-5xl px-4 py-4 pb-28 sm:py-6 md:pb-safe">
                 <PageWrapper>{children}</PageWrapper>
               </main>
+              <InstallAppPrompt />
               <div className="pb-24 md:pb-0">
                 <Footer />
               </div>
               <AppTabBar />
               <RegisterServiceWorker />
               <ChatWidget />
-              <InstallAppBanner />
               <AuthNudge />
             </ChatProvider>
           </LangProvider>

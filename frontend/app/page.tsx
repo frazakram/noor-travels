@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ContinueReadingCard } from "@/components/home/ContinueReadingCard";
 import { DailyReflection } from "@/components/home/DailyReflection";
+import { GetTheAppCard } from "@/components/home/GetTheAppCard";
 import { GratitudeJournal } from "@/components/home/GratitudeJournal";
 import { HadithOfTheDay } from "@/components/home/HadithOfTheDay";
 import { LastSavedKhutba } from "@/components/home/LastSavedKhutba";
@@ -94,6 +95,10 @@ export default function HomePage() {
       <div className="space-y-4">
         <div className="animate-fade-in-up" style={{ animationDelay: "40ms" }}>
           <ContinueReadingCard />
+        </div>
+
+        <div className="animate-fade-in-up" style={{ animationDelay: "65ms" }}>
+          <GetTheAppCard />
         </div>
 
         <div className="animate-fade-in-up" style={{ animationDelay: "90ms" }}>

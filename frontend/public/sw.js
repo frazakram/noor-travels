@@ -1,4 +1,4 @@
-const CACHE = "noor-safar-v4";
+const CACHE = "noor-safar-v5";
 const ASSETS = ["/", "/quran", "/duas", "/hadith", "/khutba", "/logo.png", "/logo-sm.png", "/logo-192.png"];
 
 self.addEventListener("install", (event) => {

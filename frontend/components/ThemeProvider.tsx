@@ -48,7 +48,6 @@ function readStoredTheme(): Theme {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("light");
   const [a11y, setA11y] = useState<A11yPrefs>(DEFAULT_A11Y);
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const initial = readStoredTheme();
@@ -57,7 +56,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const prefs = loadA11yPrefs();
     setA11y(prefs);
     applyA11yPrefs(prefs);
-    setReady(true);
   }, []);
 
   useEffect(() => wirePrefsSyncOnAuth(), []);
@@ -120,11 +118,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // Always provide context so toggles work during hydration (theme still applied via script + effect).
+  // theme must start "light" on every render path — server and client alike — and
+  // only pick up the real value once the effect above runs. Reading localStorage
+  // here on the client's first render (as this used to) makes that first render
+  // diverge from the server's, which is a hydration mismatch: React throws
+  // (minified error #418) and, in a production build, that is fatal — it aborts
+  // hydration for the whole tree, so every client component below downgrades to
+  // inert HTML (this took out the chat FAB, the install prompt and the download
+  // card together, which is what made them look "missing"). The inline blocking
+  // script in <head> already applies the dark class before first paint, so there
+  // is no flash-of-wrong-theme to trade away by waiting for the effect here.
   return (
     <ThemeContext.Provider
       value={{
-        theme: ready ? theme : readStoredThemeSafe(),
+        theme,
         setTheme,
         toggleTheme,
         fontScale: a11y.fontScale,
@@ -136,11 +143,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       {children}
     </ThemeContext.Provider>
   );
-}
-
-function readStoredThemeSafe(): Theme {
-  if (typeof window === "undefined") return "light";
-  return readStoredTheme();
 }
 
 export function useTheme() {
