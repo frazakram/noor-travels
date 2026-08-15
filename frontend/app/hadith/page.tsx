@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { ShareButton } from "@/components/ShareButton";
-import { api } from "@/lib/api";
+import { api, apiStatic } from "@/lib/api";
 import { HADITH_TOPICS, type HadithTopic } from "@/lib/hadith-topics";
 import {
   isHadithFavorite,
@@ -28,6 +28,49 @@ type BrowseResponse = {
   total: number;
   chapter: string;
 };
+
+type TravelDua = {
+  id: string;
+  title_en: string;
+  title_ur: string;
+  title_hi: string;
+  arabic: string;
+  transliteration: string;
+  translation_en: string;
+  translation_ur: string;
+  translation_hi: string;
+  source: string;
+};
+
+function TravelDuaCard({ d }: { d: TravelDua }) {
+  const { lang } = useLang();
+  const title = lang === "ur" ? d.title_ur : lang === "hi" ? d.title_hi : d.title_en;
+  const translation = lang === "ur" ? d.translation_ur : lang === "hi" ? d.translation_hi : d.translation_en;
+  return (
+    <article className="card">
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="font-semibold text-heading" dir={lang === "ur" ? "rtl" : "ltr"}>
+          {title}
+        </h3>
+        <ShareButton
+          lang={lang}
+          getPayload={() => ({
+            title,
+            text: `${title}\n\n${d.arabic}\n\n${translation}\n\n— ${d.source}\n${typeof window !== "undefined" ? window.location.origin + "/hadith" : ""}`,
+          })}
+          tipSide="top"
+          className="shrink-0"
+        />
+      </div>
+      <p className="font-arabic mt-3 text-right text-xl" dir="rtl">{d.arabic}</p>
+      <p className="mt-2 text-sm italic text-faint">{d.transliteration}</p>
+      <p className="mt-3 text-sm leading-relaxed text-body" dir={lang === "ur" ? "rtl" : "ltr"}>
+        {translation}
+      </p>
+      <p className="mt-2 text-xs text-accent">{d.source}</p>
+    </article>
+  );
+}
 
 const PAGE_SIZE = 40;
 
@@ -110,10 +153,34 @@ export default function HadithPage() {
   const [browseLoading, setBrowseLoading] = useState(false);
   const [favorites, setFavorites] = useState<FavoriteHadith[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [showTravelDuas, setShowTravelDuas] = useState(false);
+  const [travelDuas, setTravelDuas] = useState<TravelDua[]>([]);
+  const [travelStatus, setTravelStatus] = useState<"idle" | "loading" | "error" | "done">("idle");
 
   useEffect(() => {
     setFavorites(loadHadithFavorites());
+    // window.location.search rather than useSearchParams: the latter forces a
+    // Suspense boundary around the whole page for a param only needed once at
+    // mount — same avoidance already used by app/khutba/page.tsx.
+    if (new URLSearchParams(window.location.search).get("section") === "travel") {
+      openTravelDuas();
+    }
   }, []);
+
+  function openTravelDuas() {
+    setShowFavorites(false);
+    setSearched(false);
+    setShowTravelDuas(true);
+    if (travelStatus === "idle" || travelStatus === "error") {
+      setTravelStatus("loading");
+      apiStatic<{ duas: TravelDua[] }>("/api/duas/travel")
+        .then((d) => {
+          setTravelDuas(d.duas);
+          setTravelStatus("done");
+        })
+        .catch(() => setTravelStatus("error"));
+    }
+  }
 
   const loadChapter = useCallback(async (chapter: string, offset = 0) => {
     setBrowseLoading(true);
@@ -140,6 +207,7 @@ export default function HadithPage() {
     setSearchResults([]);
     setQuery("");
     setShowFavorites(false);
+    setShowTravelDuas(false);
     void loadChapter(topic.chapters[0], 0);
   }
 
@@ -157,6 +225,7 @@ export default function HadithPage() {
     setSearched(true);
     clearBrowse();
     setShowFavorites(false);
+    setShowTravelDuas(false);
     try {
       const d = await api<{ results: Hadith[] }>(`/api/hadith/search?q=${encodeURIComponent(query)}`);
       setSearchResults(d.results);
@@ -186,7 +255,7 @@ export default function HadithPage() {
     setFavorites(next);
   }
 
-  const showBrowse = !searched && !showFavorites;
+  const showBrowse = !searched && !showFavorites && !showTravelDuas;
   const canLoadMore = browseResults.length < browseTotal;
 
   return (
@@ -204,6 +273,7 @@ export default function HadithPage() {
             type="button"
             onClick={() => {
               setShowFavorites(true);
+              setShowTravelDuas(false);
               setSearched(false);
               clearBrowse();
               setFavorites(loadHadithFavorites());
@@ -216,6 +286,17 @@ export default function HadithPage() {
           >
             {t(lang, "hadithFavorites")}
             {favorites.length ? ` (${favorites.length})` : ""}
+          </button>
+          <button
+            type="button"
+            onClick={openTravelDuas}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+              showTravelDuas
+                ? "bg-gold-500 text-white dark:bg-gold-400 dark:text-noor-950"
+                : "border border-subtle text-muted"
+            }`}
+          >
+            {t(lang, "travelDuas")}
           </button>
           <Link
             href="/hadith-of-day"
@@ -255,6 +336,34 @@ export default function HadithPage() {
               />
             ))
           )}
+        </section>
+      )}
+
+      {showTravelDuas && (
+        <section className="space-y-4">
+          <button type="button" onClick={() => setShowTravelDuas(false)} className="text-sm text-accent hover:underline">
+            ← {t(lang, "hadithBrowseTopics")}
+          </button>
+          {travelStatus === "loading" && (
+            <div className="space-y-4">
+              {[0, 1].map((i) => (
+                <div key={i} className="card animate-pulse space-y-3">
+                  <div className="h-4 w-1/3 rounded bg-surface-muted" />
+                  <div className="h-6 w-full rounded bg-surface-muted" />
+                  <div className="h-4 w-2/3 rounded bg-surface-muted" />
+                </div>
+              ))}
+            </div>
+          )}
+          {travelStatus === "error" && (
+            <div className="card text-center">
+              <p className="text-sm text-muted">{t(lang, "learnQuranLoadError")}</p>
+              <button type="button" onClick={openTravelDuas} className="btn-primary mt-3 text-sm">
+                {t(lang, "learnQuranRetry")}
+              </button>
+            </div>
+          )}
+          {travelStatus === "done" && travelDuas.map((d) => <TravelDuaCard key={d.id} d={d} />)}
         </section>
       )}
 

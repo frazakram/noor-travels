@@ -9,15 +9,16 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { AUTH_CHANGED_EVENT, getUser } from "@/lib/auth";
 import { t, type Lang } from "@/lib/i18n";
 
+// Recite and Learn Quran are reachable from cards on /quran instead of a top
+// nav slot (both remain full routes, still in AppTabBar's mobile "More" sheet
+// and sitemap) — this is what actually thinned the crowded header down.
 const links = [
   { href: "/", key: "home" as const },
   { href: "/quran", key: "quran" as const },
-  { href: "/learn-quran", key: "learnQuran" as const },
   { href: "/hadith", key: "hadith" as const },
   { href: "/library", key: "questionLibrary" as const },
   { href: "/duas", key: "duas" as const },
   { href: "/khutba", key: "khutba" as const },
-  { href: "/recite", key: "recite" as const },
   { href: "/settings", key: "settings" as const },
 ];
 

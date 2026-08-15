@@ -182,6 +182,39 @@ export default function QuranPage() {
         </div>
       </Link>
 
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Link
+          href="/recite"
+          className="card flex items-center gap-3 hover:border-noor-300 dark:hover:border-noor-500"
+        >
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gold-300 bg-gold-50 text-noor-800 dark:border-gold-600 dark:bg-noor-800 dark:text-gold-400"
+            aria-hidden
+          >
+            {Icons.mic}
+          </span>
+          <div className="min-w-0">
+            <p className="font-medium text-heading">{t(lang, "recite")}</p>
+            <p className="text-xs text-faint">{t(lang, "reciteCardDesc")}</p>
+          </div>
+        </Link>
+        <Link
+          href="/learn-quran"
+          className="card flex items-center gap-3 hover:border-noor-300 dark:hover:border-noor-500"
+        >
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gold-300 bg-gold-50 text-noor-800 dark:border-gold-600 dark:bg-noor-800 dark:text-gold-400"
+            aria-hidden
+          >
+            {Icons.book}
+          </span>
+          <div className="min-w-0">
+            <p className="font-medium text-heading">{t(lang, "learnQuran")}</p>
+            <p className="text-xs text-faint">{t(lang, "learnQuranDesc")}</p>
+          </div>
+        </Link>
+      </div>
+
       {loadError && (
         <NoticeCard
           tone="warning"

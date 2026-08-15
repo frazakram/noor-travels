@@ -149,4 +149,11 @@ export const Icons = {
       <circle cx="12" cy="13" r="3.4" fill="none" stroke="currentColor" strokeWidth="1.8" />
     </>,
   ),
+  mic: svgIcon(
+    <>
+      <rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M6 11v1a6 6 0 0 0 12 0v-1" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M12 18v3M9 21h6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </>,
+  ),
 } as const;
