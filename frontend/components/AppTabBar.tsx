@@ -18,7 +18,8 @@ type IconName =
   | "khutba"
   | "recite"
   | "settings"
-  | "account";
+  | "account"
+  | "about";
 
 const primary = [
   { href: "/", key: "home" as const, icon: "home" as const },
@@ -32,6 +33,7 @@ const moreLinks = [
   { href: "/duas", key: "duas" as const, icon: "duas" as const },
   { href: "/khutba", key: "khutba" as const, icon: "khutba" as const },
   { href: "/recite", key: "recite" as const, icon: "recite" as const },
+  { href: "/about", key: "about" as const, icon: "about" as const },
   { href: "/settings", key: "settings" as const, icon: "settings" as const },
   { href: "/account", key: "account" as const, icon: "account" as const },
 ];
@@ -83,6 +85,8 @@ function NavIcon({ name, className = "h-5 w-5" }: { name: IconName; className?: 
       return <svg {...common}><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" /><path d="M5.5 10.5a6.5 6.5 0 0 0 13 0M12 17v4M9 21h6" /></svg>;
     case "recite":
       return <svg {...common}><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" /><path d="M5.5 10.5a6.5 6.5 0 0 0 13 0" /><path d="m9.5 19.5 1.8 1.8 3.6-3.6" /></svg>;
+    case "about":
+      return <svg {...common}><circle cx="12" cy="12" r="9" /><path d="M12 11v5.5" /><circle cx="12" cy="7.8" r="0.9" fill="currentColor" stroke="none" /></svg>;
     case "settings":
       return <svg {...common}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" /></svg>;
     case "account":

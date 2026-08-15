@@ -19,6 +19,7 @@ const links = [
   { href: "/library", key: "questionLibrary" as const },
   { href: "/duas", key: "duas" as const },
   { href: "/khutba", key: "khutba" as const },
+  { href: "/about", key: "about" as const },
   { href: "/settings", key: "settings" as const },
 ];
 
