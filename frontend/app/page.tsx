@@ -55,7 +55,7 @@ export default function HomePage() {
       <TimeOfDayHero phase={phase} coords={salah.coords}>
         <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between" dir="ltr">
           <div className="flex min-w-0 items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-xl bg-white/10 shadow-lg ring-1 ring-white/20 backdrop-blur-sm sm:h-12 sm:w-12">
+            <div className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-xl bg-white/10 shadow-lg ring-1 ring-white/20 md:backdrop-blur-sm sm:h-12 sm:w-12">
               <svg viewBox="0 0 64 64" className="h-6 w-6 text-white sm:h-7 sm:w-7" aria-hidden="true">
                 <circle cx="32" cy="32" r="27" fill="none" stroke="currentColor" strokeOpacity="0.45" strokeWidth="2" />
                 <path

@@ -114,6 +114,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <NavigationProgress />
               <AppShellDetect />
               <Nav />
+              {/* Fixed chrome goes BEFORE <main>: HTML streams and paints in
+                  document order, so anything after the page content only shows
+                  once the whole document has arrived — on slow devices the
+                  bottom tab bar visibly popped in seconds late. position:fixed
+                  makes DOM order irrelevant visually; z-index already stacks. */}
+              <AppTabBar />
+              <ChatWidget />
               <main className="mx-auto max-w-5xl px-4 py-4 pb-28 sm:py-6 md:pb-safe">
                 <PageWrapper>{children}</PageWrapper>
               </main>
@@ -121,9 +128,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div className="pb-24 md:pb-0">
                 <Footer />
               </div>
-              <AppTabBar />
               <RegisterServiceWorker />
-              <ChatWidget />
               <AuthNudge />
             </ChatProvider>
           </LangProvider>

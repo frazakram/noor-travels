@@ -101,7 +101,7 @@ export function Nav() {
     <>
       <header
         dir="ltr"
-        className={`sticky top-0 z-50 border-b border-white/20 bg-white/95 pt-safe backdrop-blur-md transition-shadow duration-300 dark:bg-slate-900/95 ${
+        className={`sticky top-0 z-50 border-b border-white/20 bg-white/95 pt-safe md:backdrop-blur-md transition-shadow duration-300 dark:bg-slate-900/95 ${
           scrolled ? "shadow-md shadow-noor-950/10" : "shadow-none"
         }`}
       >

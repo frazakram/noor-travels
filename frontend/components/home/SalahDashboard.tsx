@@ -240,7 +240,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
       {/* Next salah countdown */}
       {nextInfo && times && now && (
         <div
-          className={`card-touch relative overflow-hidden rounded-2xl bg-white/10 p-3 backdrop-blur-md transition-colors duration-500 sm:p-4 ${
+          className={`card-touch relative overflow-hidden rounded-2xl bg-white/10 p-3 md:backdrop-blur-md transition-colors duration-500 sm:p-4 ${
             justAdhan ? "animate-adhan-flash" : ""
           }`}
           onPointerDown={sheen.trigger}
@@ -531,7 +531,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
 
 
       {monthStats && yearStats && (monthStats.daysTracked > 0 || yearStats.daysTracked > 0) && (
-        <div className="rounded-2xl bg-white/10 backdrop-blur-md">
+        <div className="rounded-2xl bg-white/10 md:backdrop-blur-md">
           <button
             type="button"
             onClick={() => setShowStats((v) => !v)}
@@ -573,7 +573,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
       )}
 
       {loading && !times && (
-        <div className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-6 backdrop-blur-sm">
+        <div className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-6 md:backdrop-blur-sm">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-gold-400" />
           <p className="text-sm text-white/80">{t(lang, "salahLoading")}</p>
         </div>

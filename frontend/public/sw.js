@@ -1,4 +1,14 @@
-const CACHE = "noor-safar-v5";
+const CACHE = "noor-safar-v6";
+
+/** Audio must never enter Cache Storage: every TTS clip and recitation ayah
+ *  was being written to disk on the fetch path (a multi-MB cache.put per
+ *  request — jank while scrolling/playing, and unbounded storage growth).
+ *  Offline audio wouldn't play from here anyway; the native queue streams. */
+function isAudio(req, res) {
+  if (/\/api\/tts\/|\/api\/quran\/audio\/|\.(mp3|m4a|ogg|wav|webm)(\?|$)/.test(req.url)) return true;
+  const type = res.headers.get("content-type") || "";
+  return type.startsWith("audio/");
+}
 const ASSETS = ["/", "/quran", "/duas", "/hadith", "/khutba", "/logo.png", "/logo-sm.png", "/logo-192.png"];
 
 self.addEventListener("install", (event) => {
@@ -22,7 +32,7 @@ self.addEventListener("fetch", (event) => {
     fetch(req)
       .then((res) => {
         // Never cache errors — a cached 404 poisons the offline fallback.
-        if (res.ok && req.url.startsWith(self.location.origin)) {
+        if (res.ok && req.url.startsWith(self.location.origin) && !isAudio(req, res)) {
           const copy = res.clone();
           caches.open(CACHE).then((cache) => cache.put(req, copy));
         }

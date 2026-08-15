@@ -64,7 +64,7 @@ export function InstallAppPrompt() {
       className="fixed inset-x-3 z-40 flex justify-start pb-[env(safe-area-inset-bottom,0px)] md:pb-3"
       style={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))" }}
     >
-      <div className="flex w-full max-w-[15.5rem] items-center gap-3 rounded-2xl border border-teal-200/70 bg-white/97 p-3 shadow-xl shadow-noor-950/20 backdrop-blur animate-fade-in-up sm:max-w-sm dark:border-teal-700/60 dark:bg-noor-900/97">
+      <div className="flex w-full max-w-[15.5rem] items-center gap-3 rounded-2xl border border-teal-200/70 bg-white/97 p-3 shadow-xl shadow-noor-950/20 md:backdrop-blur animate-fade-in-up sm:max-w-sm dark:border-teal-700/60 dark:bg-noor-900/97">
         <Image
           src="/logo-sm.png"
           alt=""
