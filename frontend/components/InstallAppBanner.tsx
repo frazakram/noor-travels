@@ -1,12 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { t } from "@/lib/i18n";
 
-const APK_URL =
-  "https://github.com/frazakram/noor-safar-releases/releases/latest/download/app-release.apk";
 const DISMISS_KEY = "noor-install-banner-dismissed";
 
 /** Invites Android browser visitors to install the APK. Never shows inside the app itself. */
@@ -47,13 +46,15 @@ export function InstallAppBanner() {
           <p className="text-sm font-semibold text-heading">{t(lang, "installApp")}</p>
           <p className="truncate text-xs text-muted">{t(lang, "installAppHint")}</p>
         </div>
-        <a
-          href={APK_URL}
+        {/* Points at /download rather than the APK directly: the install steps
+            there are what get a sideload past Android's unknown-source prompt. */}
+        <Link
+          href="/download"
           onClick={dismiss}
           className="btn-primary shrink-0 px-3 py-2 text-xs font-semibold"
         >
           {t(lang, "installAppCta")}
-        </a>
+        </Link>
         <button
           type="button"
           onClick={dismiss}

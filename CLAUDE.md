@@ -59,8 +59,16 @@ The Android Studio project (`~/AndroidStudioProjects/noortravels`) is separate a
 Whenever you change the native side, bump the version in the same pass — otherwise there is no way to tell an old APK from a new one on the phone:
 
 1. `app/build.gradle.kts` — increment `versionCode` (integer, must always go up) and `versionName` (human string).
-2. `frontend/public/app-version.json` — set the same `versionCode`/`versionName`. `MainActivity.checkForAppUpdate()` polls this file and prompts to update when its `versionCode` exceeds the installed one, so an un-bumped JSON means no user is ever offered the build.
-3. Rebuild and install, then confirm in **Settings → App version** (from `NoorJsBridge.appVersion()`, shown only inside the APK).
+2. Rebuild, install, and confirm in **Settings → App version** (from `NoorJsBridge.appVersion()`, shown only inside the APK).
+3. **Publish the GitHub release** — upload the new `app-release.apk` to `frazakram/noor-safar-releases` under a tag matching `versionName`. `/download` and the in-app updater both resolve `releases/latest/download/app-release.apk`, so until this happens every user still gets the previous APK.
+4. **Only then** bump `frontend/public/app-version.json` to the same `versionCode`/`versionName`.
+
+**Step 4 must come after step 3, never before.** `MainActivity.checkForAppUpdate()` prompts whenever the JSON's `versionCode` exceeds the installed one and then downloads `releases/latest`. If the JSON advertises a version that has no release yet, users are told to update, receive the *old* APK, and get prompted again on every launch — an endless update loop. Verify with:
+
+```bash
+curl -sIL "https://github.com/frazakram/noor-safar-releases/releases/latest/download/app-release.apk" \
+  | grep -iE "^location" | head -1   # the tag it resolves to must match app-version.json
+```
 
 Verify native changes compile before handing them over — the JS side fails silently otherwise:
 ```bash

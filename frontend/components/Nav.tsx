@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AppLogo } from "@/components/AppLogo";
 import { useLang } from "@/components/LangProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { isInsideApp } from "@/lib/apk";
 import { AUTH_CHANGED_EVENT, getUser } from "@/lib/auth";
 import { t, type Lang } from "@/lib/i18n";
 
@@ -69,6 +70,33 @@ function AccountButton() {
   );
 }
 
+/** Persistent route to the real download page. Hidden inside the APK, where
+ *  the user already has the app, and mounted only after the user-agent check
+ *  so SSR never bakes one device's answer into the shared HTML. */
+function GetAppButton() {
+  const { lang } = useLang();
+  const [show, setShow] = useState(false);
+
+  useEffect(() => setShow(!isInsideApp()), []);
+  if (!show) return null;
+
+  return (
+    <Link
+      href="/download"
+      aria-label={t(lang, "downloadTitle")}
+      title={t(lang, "downloadTitle")}
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-teal-600/40 px-2.5 py-1.5 text-[11px] font-semibold text-teal-700 transition hover:bg-teal-50 active:scale-95 sm:px-3 sm:text-xs dark:border-teal-400/40 dark:text-teal-300 dark:hover:bg-teal-950/40"
+    >
+      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M12 3v12" />
+        <path d="M7 12l5 5 5-5" />
+        <path d="M4 21h16" />
+      </svg>
+      <span className="hidden whitespace-nowrap sm:inline">{t(lang, "getApp")}</span>
+    </Link>
+  );
+}
+
 export function Nav() {
   const pathname = usePathname();
   const { lang, setLang } = useLang();
@@ -127,6 +155,7 @@ export function Nav() {
             ))}
           </nav>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2" dir="ltr">
+            <GetAppButton />
             <AccountButton />
             <ThemeToggle variant="inline" />
             <div className="hidden rounded-full bg-slate-100 p-1 shadow-inner sm:flex dark:bg-slate-800">
