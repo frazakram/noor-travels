@@ -16,25 +16,33 @@ type Feature = {
   emoji: string;
   titleKey: TKey;
   descKey: TKey;
+  /** Real figure counted from the live data, not an estimate — omitted where
+   *  no such count exists (Salah, Khutba, Recite have no meaningful global
+   *  number to cite, so nothing is invented for them). */
+  detailKey?: TKey;
   href: string;
 };
 
 const FEATURES: Feature[] = [
-  { emoji: "📖", titleKey: "aboutFeatureQuranTitle", descKey: "aboutFeatureQuranDesc", href: "/quran" },
+  { emoji: "📖", titleKey: "aboutFeatureQuranTitle", descKey: "aboutFeatureQuranDesc", detailKey: "aboutFeatureQuranDetail", href: "/quran" },
   { emoji: "🕌", titleKey: "aboutFeatureSalahTitle", descKey: "aboutFeatureSalahDesc", href: "/" },
-  { emoji: "📜", titleKey: "aboutFeatureHadithTitle", descKey: "aboutFeatureHadithDesc", href: "/hadith" },
-  { emoji: "🤲", titleKey: "aboutFeatureDuasTitle", descKey: "aboutFeatureDuasDesc", href: "/duas" },
-  { emoji: "💬", titleKey: "aboutFeatureAskTitle", descKey: "aboutFeatureAskDesc", href: "/library" },
+  { emoji: "📜", titleKey: "aboutFeatureHadithTitle", descKey: "aboutFeatureHadithDesc", detailKey: "aboutFeatureHadithDetail", href: "/hadith" },
+  { emoji: "🤲", titleKey: "aboutFeatureDuasTitle", descKey: "aboutFeatureDuasDesc", detailKey: "aboutFeatureDuasDetail", href: "/duas" },
+  { emoji: "💬", titleKey: "aboutFeatureAskTitle", descKey: "aboutFeatureAskDesc", detailKey: "aboutFeatureAskDetail", href: "/library" },
   { emoji: "🎙️", titleKey: "aboutFeatureKhutbaTitle", descKey: "aboutFeatureKhutbaDesc", href: "/khutba" },
-  { emoji: "🎓", titleKey: "aboutFeatureLearnTitle", descKey: "aboutFeatureLearnDesc", href: "/learn-quran" },
+  { emoji: "🎓", titleKey: "aboutFeatureLearnTitle", descKey: "aboutFeatureLearnDesc", detailKey: "aboutFeatureLearnDetail", href: "/learn-quran" },
   { emoji: "🎧", titleKey: "aboutFeatureReciteTitle", descKey: "aboutFeatureReciteDesc", href: "/recite" },
 ];
 
+// Counted directly from the live database/data files this session, not
+// rounded guesses: 31 duas across 20 categories (GET /api/duas/), 7,277
+// hadiths (SELECT COUNT(*) FROM hadiths), 48 lessons and 6,071 library
+// entries (public/data/learn-quran/lessons.json, question-library-index.json).
 const STATS: { value: number; suffix: string; key: TKey }[] = [
   { value: 114, suffix: "", key: "aboutStatSurahs" },
   { value: 6236, suffix: "", key: "aboutStatAyahs" },
-  { value: 7000, suffix: "+", key: "aboutStatHadiths" },
-  { value: 30, suffix: "+", key: "aboutStatDuas" },
+  { value: 7277, suffix: "", key: "aboutStatHadiths" },
+  { value: 31, suffix: "", key: "aboutStatDuas" },
   { value: 3, suffix: "", key: "aboutStatLanguages" },
 ];
 
@@ -298,6 +306,9 @@ export default function AboutPage() {
                 <div className="min-w-0">
                   <p className="font-medium text-heading">{t(lang, f.titleKey)}</p>
                   <p className="mt-0.5 text-xs leading-relaxed text-faint">{t(lang, f.descKey)}</p>
+                  {f.detailKey && (
+                    <p className="mt-1 text-[11px] font-medium text-accent">{t(lang, f.detailKey)}</p>
+                  )}
                 </div>
               </Link>
             ))}
