@@ -52,11 +52,31 @@ Monorepo deployed as **two Vercel Services** (defined in root `vercel.json`): `f
 - Audio stack: `hooks/useSurahAudio.ts` + `lib/quran-audio.ts` (web speech + native queue) + `lib/media-session.ts`.
 - `scripts/patch-onnx.js` (postinstall) stubs onnxruntime-node with onnxruntime-web so `@huggingface/transformers` runs pure-WASM on Vercel; `next.config.js` keeps it in `serverExternalPackages`. Don't "fix" these away.
 
+### Android APK releases
+
+The Android Studio project (`~/AndroidStudioProjects/noortravels`) is separate and not a git repo, so its changes are never part of a backend/frontend commit. **Any change under `app/src/main/java/` needs an APK rebuild before it does anything on a device.**
+
+Whenever you change the native side, bump the version in the same pass — otherwise there is no way to tell an old APK from a new one on the phone:
+
+1. `app/build.gradle.kts` — increment `versionCode` (integer, must always go up) and `versionName` (human string).
+2. `frontend/public/app-version.json` — set the same `versionCode`/`versionName`. `MainActivity.checkForAppUpdate()` polls this file and prompts to update when its `versionCode` exceeds the installed one, so an un-bumped JSON means no user is ever offered the build.
+3. Rebuild and install, then confirm in **Settings → App version** (from `NoorJsBridge.appVersion()`, shown only inside the APK).
+
+Verify native changes compile before handing them over — the JS side fails silently otherwise:
+```bash
+cd ~/AndroidStudioProjects/noortravels && \
+  JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew :app:compileDebugKotlin
+```
+
+New bridge methods must be optional in `lib/native-bridge.ts` (`method?:`) and guarded at the call site, because users run older APKs for a long time.
+
 ### Vercel runtime gotchas (Python serverless)
 
 - WebSockets don't work (frames dropped at edge) — khutba live uses HTTP POST `/api/khutba/live-chunk` with base64 audio in JSON.
 - Binary multipart bodies get corrupted — always send audio as base64-in-JSON, never raw multipart.
 - No Vercel CLI on this machine — env vars only via the Vercel dashboard, then Redeploy. See `VERCEL_DEPLOY.md` for env var list and one-time Postgres seeding steps.
+- **`backend/pyproject.toml` is what Vercel installs from, not `requirements.txt`.** It carries its own `dependencies` list plus the `[tool.vercel]` block; `requirements.txt` only serves the local venv. A dependency added to just one of them installs locally, works in every local test, and is missing in production — add new packages to **both**. (`numpy` sits in `requirements.txt` alone, which is why `quran_identify` has to treat its import as optional.)
+- Never import an optional/heavy dependency at module scope in a router. `app/main.py` imports every router, so one failed import 500s the entire API — `/api/health` included — instead of just the feature that needs it. Import inside the handler and return a typed error (see `khutba_pdf`).
 
 ## Environment
 

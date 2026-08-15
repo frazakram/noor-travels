@@ -15,6 +15,10 @@ dependencies = [
     "python-multipart==0.0.20",
     "indic-transliteration==2.3.82",
     "edge-tts==7.2.8",
+    # Khutba PDF export. uharfbuzz shapes Arabic/Urdu for fpdf2; without it the
+    # script renders as disconnected glyphs in reverse order.
+    "fpdf2==2.8.8",
+    "uharfbuzz==0.56.0",
 ]
 
 [tool.vercel]

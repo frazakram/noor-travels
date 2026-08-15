@@ -10,6 +10,7 @@ import { useTheme } from "@/components/ThemeProvider";
 import { useSalah } from "@/hooks/useSalah";
 import type { FontScale } from "@/lib/a11y";
 import { t, type Lang } from "@/lib/i18n";
+import { nativeAppVersion } from "@/lib/native-bridge";
 import Link from "next/link";
 
 const FONT_SCALES: FontScale[] = ["sm", "md", "lg", "xl"];
@@ -18,6 +19,10 @@ export default function SettingsPage() {
   const { lang, setLang } = useLang();
   const { fontScale, setFontScale, highContrast, setHighContrast } = useTheme();
   const salah = useSalah();
+  // Read after mount: the bridge is injected by the WebView, so it is absent
+  // during SSR and would desync hydration if read during render.
+  const [appVersion, setAppVersion] = useState("");
+  useEffect(() => setAppVersion(nativeAppVersion()), []);
 
   const [draftLang, setDraftLang] = useState<Lang>(lang);
   const [draftFont, setDraftFont] = useState<FontScale>(fontScale);
@@ -155,6 +160,13 @@ export default function SettingsPage() {
         <Link href="/account" className="block text-sm text-accent hover:underline">
           {t(lang, "account")}
         </Link>
+        {appVersion && (
+          // Only inside the APK — on the web the bridge is absent and the
+          // version of a web build is not a thing the reader can act on.
+          <p className="pt-2 text-xs text-faint">
+            {t(lang, "appVersion")}: {appVersion}
+          </p>
+        )}
       </section>
 
       <SavedToast
