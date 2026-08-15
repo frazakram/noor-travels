@@ -21,6 +21,8 @@ type NoorAndroidBridge = {
   ) => void;
   scheduleHadithNotification?: (hour: number, minute: number, enabled: boolean) => void;
   share?: (title: string, text: string) => void;
+  /** Added for khutba PDF export; absent on APKs built before that shipped. */
+  savePdf?: (filename: string, base64: string) => boolean;
 };
 
 function bridge(): NoorAndroidBridge | null {
@@ -116,6 +118,18 @@ export function nativeScheduleHadithNotification(hour: number, minute: number, e
 
 /** Native Android share sheet (image card via FileProvider — reaches WhatsApp/Instagram Stories,
  * unlike the WebView's missing Web Share API). Returns false when the bridge isn't available. */
+/** Hand PDF bytes to Android to write and open. False on older APKs and on the
+ *  web, so callers fall back to a normal blob download. */
+export function nativeSavePdf(filename: string, base64: string): boolean {
+  try {
+    const b = bridge();
+    if (!b?.savePdf) return false;
+    return b.savePdf(filename, base64) !== false;
+  } catch {
+    return false;
+  }
+}
+
 export function nativeShare(title: string, text: string): boolean {
   try {
     const b = bridge();

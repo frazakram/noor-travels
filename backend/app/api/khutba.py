@@ -3,12 +3,13 @@ import json
 import re
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, Query, Response, WebSocket, WebSocketDisconnect
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
 from app.db import get_cursor
+from app.services.khutba_pdf import KhutbaLine, build_khutba_pdf
 from app.services.khutbah_match import match_transcript
 
 router = APIRouter()
@@ -175,6 +176,42 @@ async def khutba_live_chunk(body: LiveChunkRequest):
         # suggestion so live listening keeps going.
         response["suggestion" if match.tier == "fuzzy" else "match"] = payload
     return response
+
+
+class PdfLine(BaseModel):
+    arabic: str = Field(default="", max_length=4000)
+    english: str = Field(default="", max_length=4000)
+    urdu: str = Field(default="", max_length=4000)
+
+
+class KhutbaPdfRequest(BaseModel):
+    """A saved khutba, posted back for rendering.
+
+    Saved sessions live in the browser's localStorage, so the client has to send
+    the transcript up to be typeset — the server never stored it.
+    """
+
+    title: str = Field(default="Saved Khutba", max_length=300)
+    saved_at: str = Field(default="", max_length=64)
+    location: str = Field(default="", max_length=200)
+    coverage: str = Field(default="", max_length=300)
+    lines: list[PdfLine] = Field(min_length=1, max_length=2000)
+
+
+@router.post("/pdf")
+def khutba_pdf(body: KhutbaPdfRequest):
+    pdf_bytes = build_khutba_pdf(
+        title=body.title.strip() or "Saved Khutba",
+        saved_at=body.saved_at,
+        location=body.location,
+        coverage=body.coverage,
+        lines=[KhutbaLine(arabic=l.arabic, english=l.english, urdu=l.urdu) for l in body.lines],
+    )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="khutba.pdf"'},
+    )
 
 
 @router.websocket("/live")

@@ -12,8 +12,10 @@ import {
   formatKhutbaDate,
   loadSavedKhutbas,
   saveKhutba,
+  type KhutbaCoverage,
   type SavedKhutba,
 } from "@/lib/khutba-history";
+import { coverageSummary, downloadKhutbaPdf } from "@/lib/khutba-pdf";
 
 /** RMS below which a 10s segment is treated as speechless. Sits ~2x above the
  *  loudest room tone measured and ~30x below speech, so quiet talking is still
@@ -50,6 +52,8 @@ export default function KhutbaPage() {
   const [savedList, setSavedList] = useState<SavedKhutba[]>([]);
   const [openSaved, setOpenSaved] = useState<SavedKhutba | null>(null);
   const [savedToast, setSavedToast] = useState(false);
+  const [pdfBusyId, setPdfBusyId] = useState<string | null>(null);
+  const [pdfNotice, setPdfNotice] = useState("");
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -66,6 +70,7 @@ export default function KhutbaPage() {
   // is capped at 20 lines, but the saved khutba must keep everything.
   const fullLinesRef = useRef<Translation[]>([]);
   const matchedTitleRef = useRef<string | undefined>(undefined);
+  const coverageRef = useRef<KhutbaCoverage>({ segments: 0, translated: 0, skipped: 0, failed: 0 });
 
   const loadSermons = useCallback(async (q = "") => {
     const path = q.trim().length >= 2 ? `/api/khutba/sermons?q=${encodeURIComponent(q)}` : "/api/khutba/sermons";
@@ -103,9 +108,11 @@ export default function KhutbaPage() {
       location,
       lines: fullLinesRef.current,
       matchedTitle: matchedTitleRef.current,
+      coverage: { ...coverageRef.current },
     });
     fullLinesRef.current = [];
     matchedTitleRef.current = undefined;
+    coverageRef.current = { segments: 0, translated: 0, skipped: 0, failed: 0 };
     if (saved) {
       setSavedList(loadSavedKhutbas());
       setSavedToast(true);
@@ -202,7 +209,11 @@ export default function KhutbaPage() {
 
   async function sendChunk(blob: Blob, session: number) {
     if (sessionRef.current !== session || blob.size < 1000) return;
-    if (await isSilent(blob)) return;
+    coverageRef.current.segments += 1;
+    if (await isSilent(blob)) {
+      coverageRef.current.skipped += 1;
+      return;
+    }
     if (sessionRef.current !== session) return;
     // Base64 in JSON: Vercel's Python runtime corrupts binary multipart bodies.
     const audioB64 = await blobToBase64(blob);
@@ -228,12 +239,16 @@ export default function KhutbaPage() {
     });
     if (sessionRef.current !== session) return;
     if (data.type === "translation") {
+      coverageRef.current.translated += 1;
       accumulatedRef.current = data.accumulated || accumulatedRef.current;
       accumulatedArRef.current = data.accumulated_ar || accumulatedArRef.current;
       const line = { arabic: data.arabic ?? "", english: data.english ?? "", urdu: data.urdu ?? "" };
       fullLinesRef.current = [...fullLinesRef.current, line];
       setLines((prev) => [line, ...prev].slice(0, 20));
       setStatus(t(lang, "khutbaHint"));
+    } else {
+      // "empty" — the segment reached Deepgram but held no speech.
+      coverageRef.current.skipped += 1;
     }
     if (data.match) {
       matchedTitleRef.current = decodeHtmlEntities(data.match.title);
@@ -251,6 +266,7 @@ export default function KhutbaPage() {
     uploadQueueRef.current = uploadQueueRef.current
       .then(() => sendChunk(blob, session))
       .catch(() => {
+        coverageRef.current.failed += 1;
         if (activeRef.current) setStatus(t(lang, "khutbaChunkError"));
       });
   }
@@ -266,6 +282,7 @@ export default function KhutbaPage() {
       accumulatedArRef.current = "";
       fullLinesRef.current = [];
       matchedTitleRef.current = undefined;
+      coverageRef.current = { segments: 0, translated: 0, skipped: 0, failed: 0 };
       uploadQueueRef.current = Promise.resolve();
       const session = (sessionRef.current += 1);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -301,6 +318,25 @@ export default function KhutbaPage() {
   function removeSaved(id: string) {
     setSavedList(deleteSavedKhutba(id));
     setOpenSaved((cur) => (cur?.id === id ? null : cur));
+  }
+
+  async function exportPdf(khutba: SavedKhutba) {
+    if (pdfBusyId) return;
+    setPdfBusyId(khutba.id);
+    setPdfNotice(t(lang, "khutbaPdfPreparing"));
+    const result = await downloadKhutbaPdf(khutba, lang, t(lang, "savedKhutbaTitle"));
+    setPdfBusyId(null);
+    setPdfNotice(
+      t(
+        lang,
+        result === "saved"
+          ? "khutbaPdfSaved"
+          : result === "downloaded"
+            ? "khutbaPdfDownloaded"
+            : "khutbaPdfFailed",
+      ),
+    );
+    window.setTimeout(() => setPdfNotice(""), 4000);
   }
 
   return (
@@ -396,6 +432,21 @@ export default function KhutbaPage() {
                 {formatKhutbaDate(openSaved.savedAt, lang)}
                 {openSaved.location ? ` · 📍 ${openSaved.location}` : ""}
               </p>
+              <p className="mt-1 text-xs text-faint">
+                {t(lang, "khutbaCoverage")}:{" "}
+                {coverageSummary(openSaved.coverage) || t(lang, "khutbaCoverageNone")}
+              </p>
+              <button
+                type="button"
+                onClick={() => void exportPdf(openSaved)}
+                disabled={pdfBusyId === openSaved.id}
+                className="btn-primary mt-3 min-h-11 disabled:opacity-60"
+              >
+                {pdfBusyId === openSaved.id
+                  ? t(lang, "khutbaPdfPreparing")
+                  : `⬇ ${t(lang, "khutbaDownloadPdf")}`}
+              </button>
+              {pdfNotice && <p className="mt-2 text-xs text-accent">{pdfNotice}</p>}
             </div>
             <div className="space-y-3">
               {openSaved.lines.map((line, i) => (
@@ -450,6 +501,16 @@ export default function KhutbaPage() {
                       {formatKhutbaDate(k.savedAt, lang)}
                       {k.location ? ` · 📍 ${k.location}` : ""}
                     </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void exportPdf(k)}
+                    disabled={pdfBusyId === k.id}
+                    aria-label={t(lang, "khutbaDownloadPdf")}
+                    title={t(lang, "khutbaDownloadPdf")}
+                    className="shrink-0 rounded-md px-1.5 py-0.5 text-sm text-faint hover:text-accent disabled:opacity-50"
+                  >
+                    {pdfBusyId === k.id ? "…" : "⬇"}
                   </button>
                   <button
                     type="button"

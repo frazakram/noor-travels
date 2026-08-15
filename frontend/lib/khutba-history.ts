@@ -4,6 +4,24 @@ export type SavedKhutbaLine = {
   urdu: string;
 };
 
+/** How much of the sermon actually made it into the transcript.
+ *
+ * Reported instead of a per-line confidence score: Deepgram's confidence sits
+ * in a 0.93-0.99 band for anything containing speech (it even rose when noise
+ * was added), so it cannot tell a listener which lines to trust — and it rates
+ * the Arabic transcription, not the English/Urdu translation people would read
+ * it as. Segment counts are a plain fact about what was captured. */
+export type KhutbaCoverage = {
+  /** 10-second segments recorded over the session. */
+  segments: number;
+  /** Segments that produced a translated line. */
+  translated: number;
+  /** Segments with no speech in them — a pause, not a loss. */
+  skipped: number;
+  /** Segments lost to a transcription or network error. */
+  failed: number;
+};
+
 export type SavedKhutba = {
   id: string;
   /** ISO timestamp of when the recording was stopped. */
@@ -14,6 +32,8 @@ export type SavedKhutba = {
   lines: SavedKhutbaLine[];
   /** Title of the matched pre-loaded khutbah, when one was detected. */
   matchedTitle?: string;
+  /** Absent on sessions saved before coverage tracking shipped. */
+  coverage?: KhutbaCoverage;
 };
 
 const KEY = "noor-khutba-history";
