@@ -9,8 +9,13 @@ from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
 from app.db import get_cursor
-from app.services.khutba_pdf import KhutbaLine, build_khutba_pdf
 from app.services.khutbah_match import match_transcript
+
+# app.services.khutba_pdf is imported lazily inside the endpoint. It pulls in
+# fpdf2/uharfbuzz, and uharfbuzz is a compiled wheel — importing it at module
+# scope means any packaging problem on the serverless runtime takes down the
+# whole API, not just PDF export. This module is reached from app.main, so a
+# failure here 500s /api/health and every other router with it.
 
 router = APIRouter()
 
@@ -200,13 +205,22 @@ class KhutbaPdfRequest(BaseModel):
 
 @router.post("/pdf")
 def khutba_pdf(body: KhutbaPdfRequest):
-    pdf_bytes = build_khutba_pdf(
-        title=body.title.strip() or "Saved Khutba",
-        saved_at=body.saved_at,
-        location=body.location,
-        coverage=body.coverage,
-        lines=[KhutbaLine(arabic=l.arabic, english=l.english, urdu=l.urdu) for l in body.lines],
-    )
+    try:
+        from app.services.khutba_pdf import KhutbaLine, build_khutba_pdf
+    except Exception as exc:  # missing wheel, bad build, absent font
+        raise HTTPException(503, f"PDF export unavailable ({type(exc).__name__})") from exc
+
+    try:
+        pdf_bytes = build_khutba_pdf(
+            title=body.title.strip() or "Saved Khutba",
+            saved_at=body.saved_at,
+            location=body.location,
+            coverage=body.coverage,
+            lines=[KhutbaLine(arabic=l.arabic, english=l.english, urdu=l.urdu) for l in body.lines],
+        )
+    except Exception as exc:
+        raise HTTPException(502, f"PDF render failed ({type(exc).__name__})") from exc
+
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
