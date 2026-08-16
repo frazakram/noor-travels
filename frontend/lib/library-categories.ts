@@ -111,9 +111,9 @@ const CATEGORY_BROWSE_PATH: Partial<Record<string, string>> = {
   tafsir_ext: "/quran",
   hadith: "/hadith",
   hadith_ext: "/hadith",
-  dua: "/duas",
-  dua_ext: "/duas",
-  travel: "/duas",
+  dua: "/hadith?section=duas",
+  dua_ext: "/hadith?section=duas",
+  travel: "/hadith?section=duas&category=travel",
 };
 
 export function categoryBrowsePath(cat: string): string | undefined {
@@ -123,7 +123,8 @@ export function categoryBrowsePath(cat: string): string | undefined {
 const BROWSE_LABEL: Record<string, string> = {
   "/quran": "Read the Quran",
   "/hadith": "Browse Hadith",
-  "/duas": "Browse Duas",
+  "/hadith?section=duas": "Browse Duas",
+  "/hadith?section=duas&category=travel": "Browse Duas",
 };
 
 export function browsePathLabel(path: string): string {

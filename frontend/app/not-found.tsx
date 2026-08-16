@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 const links = [
   { href: "/", label: "Home" },
   { href: "/quran", label: "Read the Quran" },
-  { href: "/duas", label: "Duas" },
+  { href: "/hadith?section=duas", label: "Duas" },
   { href: "/hadith", label: "Hadith" },
   { href: "/learn-quran", label: "Learn Quran" },
 ];

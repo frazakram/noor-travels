@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { ShareButton } from "@/components/ShareButton";
 import { api, apiStatic } from "@/lib/api";
@@ -29,7 +29,7 @@ type BrowseResponse = {
   chapter: string;
 };
 
-type TravelDua = {
+type Dua = {
   id: string;
   title_en: string;
   title_ur: string;
@@ -40,23 +40,60 @@ type TravelDua = {
   translation_ur: string;
   translation_hi: string;
   source: string;
+  category: string;
 };
 
-function TravelDuaCard({ d }: { d: TravelDua }) {
+type TKey = Parameters<typeof t>[1];
+
+// Labels only for categories with real UI text; anything else in the data
+// still renders, just title-cased from its raw category string.
+const DUA_CATEGORY_KEYS: Record<string, TKey> = {
+  travel: "duaCategoryTravel",
+  morning: "duaCategoryMorning",
+  evening: "duaCategoryEvening",
+  sleep: "duaCategorySleep",
+  anxiety: "duaCategoryAnxiety",
+  forgiveness: "duaCategoryForgiveness",
+  protection: "duaCategoryProtection",
+  health: "duaCategoryHealth",
+  guidance: "duaCategoryGuidance",
+  knowledge: "duaCategoryKnowledge",
+  patience: "duaCategoryPatience",
+  marriage: "duaCategoryMarriage",
+  newborn: "duaCategoryNewborn",
+  rizq: "duaCategoryRizq",
+  home: "duaCategoryHome",
+  rain: "duaCategoryRain",
+  death: "duaCategoryDeath",
+  exam: "duaCategoryExam",
+  study: "duaCategoryStudy",
+  general: "duaCategoryGeneral",
+};
+
+function duaCategoryLabel(lang: Lang, category: string): string {
+  const key = DUA_CATEGORY_KEYS[category];
+  if (key) return t(lang, key);
+  return category.charAt(0).toUpperCase() + category.slice(1);
+}
+
+function DuaCard({ d }: { d: Dua }) {
   const { lang } = useLang();
   const title = lang === "ur" ? d.title_ur : lang === "hi" ? d.title_hi : d.title_en;
   const translation = lang === "ur" ? d.translation_ur : lang === "hi" ? d.translation_hi : d.translation_en;
   return (
     <article className="card">
       <div className="flex items-start justify-between gap-3">
-        <h3 className="font-semibold text-heading" dir={lang === "ur" ? "rtl" : "ltr"}>
-          {title}
-        </h3>
+        <div className="min-w-0">
+          <p className="text-xs text-accent">{duaCategoryLabel(lang, d.category)}</p>
+          <h3 className="font-semibold text-heading" dir={lang === "ur" ? "rtl" : "ltr"}>
+            {title}
+          </h3>
+        </div>
         <ShareButton
           lang={lang}
           getPayload={() => ({
             title,
-            text: `${title}\n\n${d.arabic}\n\n${translation}\n\n— ${d.source}\n${typeof window !== "undefined" ? window.location.origin + "/hadith" : ""}`,
+            text: `${title}\n\n${d.arabic}\n\n${translation}\n\n— ${d.source}\n${typeof window !== "undefined" ? window.location.origin + "/hadith?section=duas" : ""}`,
           })}
           tipSide="top"
           className="shrink-0"
@@ -153,34 +190,48 @@ export default function HadithPage() {
   const [browseLoading, setBrowseLoading] = useState(false);
   const [favorites, setFavorites] = useState<FavoriteHadith[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
-  const [showTravelDuas, setShowTravelDuas] = useState(false);
-  const [travelDuas, setTravelDuas] = useState<TravelDua[]>([]);
-  const [travelStatus, setTravelStatus] = useState<"idle" | "loading" | "error" | "done">("idle");
+
+  const [showDuas, setShowDuas] = useState(false);
+  const [duas, setDuas] = useState<Dua[]>([]);
+  const [duasStatus, setDuasStatus] = useState<"idle" | "loading" | "error" | "done">("idle");
+  const [activeDuaCategory, setActiveDuaCategory] = useState<string | null>(null);
+
+  const openDuas = useCallback((category: string | null = null) => {
+    setShowFavorites(false);
+    setSearched(false);
+    setShowDuas(true);
+    setActiveDuaCategory(category);
+    setDuasStatus((prev) => {
+      if (prev !== "idle" && prev !== "error") return prev;
+      apiStatic<{ duas: Dua[] }>("/api/duas/")
+        .then((d) => {
+          setDuas(d.duas);
+          setDuasStatus("done");
+        })
+        .catch(() => setDuasStatus("error"));
+      return "loading";
+    });
+  }, []);
 
   useEffect(() => {
     setFavorites(loadHadithFavorites());
     // window.location.search rather than useSearchParams: the latter forces a
     // Suspense boundary around the whole page for a param only needed once at
     // mount — same avoidance already used by app/khutba/page.tsx.
-    if (new URLSearchParams(window.location.search).get("section") === "travel") {
-      openTravelDuas();
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("section") === "duas" || params.get("section") === "travel") {
+      openDuas(params.get("category") ?? (params.get("section") === "travel" ? "travel" : null));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function openTravelDuas() {
-    setShowFavorites(false);
-    setSearched(false);
-    setShowTravelDuas(true);
-    if (travelStatus === "idle" || travelStatus === "error") {
-      setTravelStatus("loading");
-      apiStatic<{ duas: TravelDua[] }>("/api/duas/travel")
-        .then((d) => {
-          setTravelDuas(d.duas);
-          setTravelStatus("done");
-        })
-        .catch(() => setTravelStatus("error"));
-    }
-  }
+  const duaCategories = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const d of duas) counts.set(d.category, (counts.get(d.category) ?? 0) + 1);
+    return [...counts.entries()].sort((a, b) => duaCategoryLabel(lang, a[0]).localeCompare(duaCategoryLabel(lang, b[0])));
+  }, [duas, lang]);
+
+  const visibleDuas = activeDuaCategory ? duas.filter((d) => d.category === activeDuaCategory) : duas;
 
   const loadChapter = useCallback(async (chapter: string, offset = 0) => {
     setBrowseLoading(true);
@@ -207,7 +258,7 @@ export default function HadithPage() {
     setSearchResults([]);
     setQuery("");
     setShowFavorites(false);
-    setShowTravelDuas(false);
+    setShowDuas(false);
     void loadChapter(topic.chapters[0], 0);
   }
 
@@ -225,7 +276,7 @@ export default function HadithPage() {
     setSearched(true);
     clearBrowse();
     setShowFavorites(false);
-    setShowTravelDuas(false);
+    setShowDuas(false);
     try {
       const d = await api<{ results: Hadith[] }>(`/api/hadith/search?q=${encodeURIComponent(query)}`);
       setSearchResults(d.results);
@@ -255,7 +306,7 @@ export default function HadithPage() {
     setFavorites(next);
   }
 
-  const showBrowse = !searched && !showFavorites && !showTravelDuas;
+  const showBrowse = !searched && !showFavorites && !showDuas;
   const canLoadMore = browseResults.length < browseTotal;
 
   return (
@@ -273,7 +324,7 @@ export default function HadithPage() {
             type="button"
             onClick={() => {
               setShowFavorites(true);
-              setShowTravelDuas(false);
+              setShowDuas(false);
               setSearched(false);
               clearBrowse();
               setFavorites(loadHadithFavorites());
@@ -289,14 +340,14 @@ export default function HadithPage() {
           </button>
           <button
             type="button"
-            onClick={openTravelDuas}
+            onClick={() => openDuas()}
             className={`rounded-full px-3 py-1.5 text-xs font-medium ${
-              showTravelDuas
+              showDuas
                 ? "bg-gold-500 text-white dark:bg-gold-400 dark:text-noor-950"
                 : "border border-subtle text-muted"
             }`}
           >
-            {t(lang, "travelDuas")}
+            {t(lang, "duas")}
           </button>
           <Link
             href="/hadith-of-day"
@@ -339,14 +390,22 @@ export default function HadithPage() {
         </section>
       )}
 
-      {showTravelDuas && (
+      {showDuas && (
         <section className="space-y-4">
-          <button type="button" onClick={() => setShowTravelDuas(false)} className="text-sm text-accent hover:underline">
+          <button
+            type="button"
+            onClick={() => {
+              setShowDuas(false);
+              setActiveDuaCategory(null);
+            }}
+            className="text-sm text-accent hover:underline"
+          >
             ← {t(lang, "hadithBrowseTopics")}
           </button>
-          {travelStatus === "loading" && (
+
+          {duasStatus === "loading" && (
             <div className="space-y-4">
-              {[0, 1].map((i) => (
+              {[0, 1, 2].map((i) => (
                 <div key={i} className="card animate-pulse space-y-3">
                   <div className="h-4 w-1/3 rounded bg-surface-muted" />
                   <div className="h-6 w-full rounded bg-surface-muted" />
@@ -355,15 +414,54 @@ export default function HadithPage() {
               ))}
             </div>
           )}
-          {travelStatus === "error" && (
+
+          {duasStatus === "error" && (
             <div className="card text-center">
               <p className="text-sm text-muted">{t(lang, "learnQuranLoadError")}</p>
-              <button type="button" onClick={openTravelDuas} className="btn-primary mt-3 text-sm">
+              <button type="button" onClick={() => openDuas(activeDuaCategory)} className="btn-primary mt-3 text-sm">
                 {t(lang, "learnQuranRetry")}
               </button>
             </div>
           )}
-          {travelStatus === "done" && travelDuas.map((d) => <TravelDuaCard key={d.id} d={d} />)}
+
+          {duasStatus === "done" && (
+            <>
+              {duaCategories.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveDuaCategory(null)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                      activeDuaCategory === null
+                        ? "border-noor-600 bg-noor-700 text-white dark:border-gold-400 dark:bg-gold-400 dark:text-noor-950"
+                        : "border-subtle bg-white text-body hover:border-noor-300 dark:bg-noor-900 dark:hover:border-noor-500"
+                    }`}
+                  >
+                    {t(lang, "duaCategoryAll")} ({duas.length})
+                  </button>
+                  {duaCategories.map(([cat, count]) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setActiveDuaCategory(cat)}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                        activeDuaCategory === cat
+                          ? "border-noor-600 bg-noor-700 text-white dark:border-gold-400 dark:bg-gold-400 dark:text-noor-950"
+                          : "border-subtle bg-white text-body hover:border-noor-300 dark:bg-noor-900 dark:hover:border-noor-500"
+                      }`}
+                    >
+                      {duaCategoryLabel(lang, cat)} ({count})
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="space-y-4">
+                {visibleDuas.map((d) => (
+                  <DuaCard key={d.id} d={d} />
+                ))}
+              </div>
+            </>
+          )}
         </section>
       )}
 

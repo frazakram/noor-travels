@@ -27,7 +27,7 @@ const FEATURES: Feature[] = [
   { emoji: "📖", titleKey: "aboutFeatureQuranTitle", descKey: "aboutFeatureQuranDesc", detailKey: "aboutFeatureQuranDetail", href: "/quran" },
   { emoji: "🕌", titleKey: "aboutFeatureSalahTitle", descKey: "aboutFeatureSalahDesc", href: "/" },
   { emoji: "📜", titleKey: "aboutFeatureHadithTitle", descKey: "aboutFeatureHadithDesc", detailKey: "aboutFeatureHadithDetail", href: "/hadith" },
-  { emoji: "🤲", titleKey: "aboutFeatureDuasTitle", descKey: "aboutFeatureDuasDesc", detailKey: "aboutFeatureDuasDetail", href: "/duas" },
+  { emoji: "🤲", titleKey: "aboutFeatureDuasTitle", descKey: "aboutFeatureDuasDesc", detailKey: "aboutFeatureDuasDetail", href: "/hadith?section=duas" },
   { emoji: "💬", titleKey: "aboutFeatureAskTitle", descKey: "aboutFeatureAskDesc", detailKey: "aboutFeatureAskDetail", href: "/library" },
   { emoji: "🎙️", titleKey: "aboutFeatureKhutbaTitle", descKey: "aboutFeatureKhutbaDesc", href: "/khutba" },
   { emoji: "🎓", titleKey: "aboutFeatureLearnTitle", descKey: "aboutFeatureLearnDesc", detailKey: "aboutFeatureLearnDetail", href: "/learn-quran" },

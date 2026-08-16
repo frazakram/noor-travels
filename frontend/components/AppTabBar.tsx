@@ -14,7 +14,6 @@ type IconName =
   | "learn"
   | "hadith"
   | "library"
-  | "duas"
   | "khutba"
   | "recite"
   | "settings"
@@ -30,7 +29,6 @@ const primary = [
 
 const moreLinks = [
   { href: "/library", key: "questionLibrary" as const, icon: "library" as const },
-  { href: "/duas", key: "duas" as const, icon: "duas" as const },
   { href: "/khutba", key: "khutba" as const, icon: "khutba" as const },
   { href: "/recite", key: "recite" as const, icon: "recite" as const },
   { href: "/about", key: "about" as const, icon: "about" as const },
@@ -79,8 +77,6 @@ function NavIcon({ name, className = "h-5 w-5" }: { name: IconName; className?: 
       return <svg {...common}><path d="M5 3h12a2 2 0 0 1 2 2v16H7a2 2 0 0 1-2-2V3Z" /><path d="M7 17h12M9 7h6M9 11h6" /></svg>;
     case "library":
       return <svg {...common}><path d="M4 5.5h5V20H4zM10 3h5v17h-5zM16 7h4v13h-4z" /></svg>;
-    case "duas":
-      return <svg {...common}><path d="M8.5 12.5c-2-2-2.2-4.4-.7-5.7 1.1-1 2.5-.4 3.2.8M15.5 12.5c2-2 2.2-4.4.7-5.7-1.1-1-2.5-.4-3.2.8" /><path d="M7 12c1.5 3 3 5 5 7 2-2 3.5-4 5-7M12 7v6" /></svg>;
     case "khutba":
       return <svg {...common}><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" /><path d="M5.5 10.5a6.5 6.5 0 0 0 13 0M12 17v4M9 21h6" /></svg>;
     case "recite":

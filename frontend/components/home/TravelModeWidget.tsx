@@ -172,7 +172,7 @@ export function TravelModeWidget({ coords }: Props) {
               {duas.map((d) => (
                 <Link
                   key={d.id}
-                  href="/hadith?section=travel"
+                  href="/hadith?section=duas&category=travel"
                   className="block rounded-lg bg-white/60 px-3 py-2 text-sm text-heading hover:bg-white dark:bg-slate-900/50 dark:hover:bg-slate-900"
                 >
                   {duaTitle(d)}
@@ -181,7 +181,7 @@ export function TravelModeWidget({ coords }: Props) {
             </div>
           )}
 
-          <Link href="/hadith?section=travel" className="inline-block text-xs font-medium text-accent hover:underline">
+          <Link href="/hadith?section=duas&category=travel" className="inline-block text-xs font-medium text-accent hover:underline">
             {t(lang, "allTravelDuas")} →
           </Link>
         </div>

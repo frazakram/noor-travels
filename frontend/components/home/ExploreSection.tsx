@@ -38,10 +38,13 @@ const items = [
     accent: "border-l-teal-500 bg-teal-50/60 dark:bg-teal-950/20",
   },
   {
-    href: "/duas",
+    href: "/hadith?section=duas",
     key: "duas" as const,
-    desc: "Authentic duas for journeys",
-    stat: "12 Duas for travel",
+    desc: "Authentic duas for every occasion",
+    // 31 duas across 20 categories — counted from GET /api/duas/, not a
+    // rounded guess (the "12 for travel" it replaced was already stale: the
+    // real travel count is 6, and duas were never limited to travel).
+    stat: "31 Duas · 20 categories",
     icon: "🤲",
     accent: "border-l-sky-500 bg-sky-50/60 dark:bg-sky-950/20",
   },
