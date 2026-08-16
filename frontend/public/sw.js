@@ -1,5 +1,3 @@
-const CACHE = "noor-safar-v7";
-
 /** Audio must never enter Cache Storage: every TTS clip and recitation ayah
  *  was being written to disk on the fetch path (a multi-MB cache.put per
  *  request — jank while scrolling/playing, and unbounded storage growth).
@@ -9,7 +7,21 @@ function isAudio(req, res) {
   const type = res.headers.get("content-type") || "";
   return type.startsWith("audio/");
 }
-const ASSETS = ["/", "/quran", "/duas", "/hadith", "/khutba", "/logo.png", "/logo-sm.png", "/logo-192.png"];
+
+/** Dynamic API JSON must not sit in Cache Storage — an empty cold response
+ *  (e.g. before a seed) would otherwise sticky-serve "No results" after data
+ *  lands. Audio is already excluded above; this covers the rest of /api/*. */
+function isApiData(req) {
+  try {
+    return new URL(req.url).pathname.startsWith("/api/");
+  } catch {
+    return false;
+  }
+}
+
+const CACHE = "noor-safar-v8";
+const ASSETS = ["/", "/quran", "/duas", "/hadith", "/khutba", "/adhkar", "/logo.png", "/logo-sm.png", "/logo-192.png"];
+
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
@@ -32,7 +44,12 @@ self.addEventListener("fetch", (event) => {
     fetch(req)
       .then((res) => {
         // Never cache errors — a cached 404 poisons the offline fallback.
-        if (res.ok && req.url.startsWith(self.location.origin) && !isAudio(req, res)) {
+        if (
+          res.ok &&
+          req.url.startsWith(self.location.origin) &&
+          !isAudio(req, res) &&
+          !isApiData(req)
+        ) {
           const copy = res.clone();
           caches.open(CACHE).then((cache) => cache.put(req, copy));
         }

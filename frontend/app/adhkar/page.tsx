@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { ShareButton } from "@/components/ShareButton";
 import { IconButton, Icons } from "@/components/IconButton";
-import { apiStatic } from "@/lib/api";
+import { api, apiStatic } from "@/lib/api";
 import {
   incrementDhikrCount,
   loadDhikrBookmarks,
@@ -258,10 +258,13 @@ export default function AdhkarPage() {
     setProgress(loadDhikrProgress());
     setBookmarks(loadDhikrBookmarks());
     setStatus("loading");
-    apiStatic<{ adhkar: Adhkar[] }>("/api/adhkar/")
+    // no-store: an earlier empty seed response was Cache-Control'd for 1h and
+    // sticky-served "No results" even after Postgres was populated.
+    api<{ adhkar: Adhkar[] }>("/api/adhkar/")
       .then((d) => {
-        setItems(d.adhkar);
-        setStatus("done");
+        const list = Array.isArray(d?.adhkar) ? d.adhkar : [];
+        setItems(list);
+        setStatus(list.length ? "done" : "error");
       })
       .catch(() => setStatus("error"));
 
