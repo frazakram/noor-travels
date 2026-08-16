@@ -24,6 +24,7 @@ export function Footer() {
         <p>For learning and remembrance. Not a source of fatwa. Verify with qualified scholars.</p>
         <div className="flex items-center gap-4">
           <Link href="/about" className="hover:text-heading">About</Link>
+          <Link href="/support" className="hover:text-heading">Support Us</Link>
           <Link href="/" className="hover:text-heading">Privacy</Link>
           <span className="rounded-full bg-noor-50 px-2 py-1 text-[10px] font-medium dark:bg-noor-900">
             {version}
