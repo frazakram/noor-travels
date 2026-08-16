@@ -16,6 +16,7 @@ const links = [
   { href: "/", key: "home" as const },
   { href: "/quran", key: "quran" as const },
   { href: "/hadith", key: "hadith" as const },
+  { href: "/adhkar", key: "dhikr" as const },
   { href: "/library", key: "questionLibrary" as const },
   { href: "/khutba", key: "khutba" as const },
   { href: "/about", key: "about" as const },

@@ -1,0 +1,693 @@
+"use client";
+
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLang } from "@/components/LangProvider";
+import { ShareButton } from "@/components/ShareButton";
+import { IconButton, Icons } from "@/components/IconButton";
+import { apiStatic } from "@/lib/api";
+import {
+  incrementDhikrCount,
+  loadDhikrBookmarks,
+  loadDhikrProgress,
+  resetDhikrCount,
+  toggleDhikrBookmark,
+  type DhikrProgress,
+} from "@/lib/dhikr-library";
+import { t, type Lang } from "@/lib/i18n";
+
+const API = process.env.NEXT_PUBLIC_API_URL || "";
+
+type Adhkar = {
+  id: string;
+  category: "morning" | "evening" | "night";
+  order_index: number;
+  title_en: string;
+  title_ur: string;
+  title_hi: string;
+  arabic: string;
+  transliteration: string;
+  translation_en: string;
+  translation_ur: string;
+  translation_hi: string;
+  source: string;
+  repeat_count: number;
+  verse_keys: string | null;
+};
+
+type Category = "morning" | "evening" | "night";
+
+const CATEGORIES: { id: Category; labelKey: "dhikrCategoryMorning" | "dhikrCategoryEvening" | "dhikrCategoryNight" }[] = [
+  { id: "morning", labelKey: "dhikrCategoryMorning" },
+  { id: "evening", labelKey: "dhikrCategoryEvening" },
+  { id: "night", labelKey: "dhikrCategoryNight" },
+];
+
+type SurahAyahAudio = { ayah_number: number; audio: string | null };
+type PlayKind = "recitation" | "translation" | "all";
+type PlayState = { id: string; kind: PlayKind } | null;
+type AudioSegment = { itemId: string; url: string };
+
+function localized(item: Adhkar, lang: Lang, field: "title" | "translation"): string {
+  const suffix = lang === "ur" ? "ur" : lang === "hi" ? "hi" : "en";
+  return item[`${field}_${suffix}` as keyof Adhkar] as string;
+}
+
+function stopAudioEl(el: HTMLAudioElement) {
+  try {
+    el.pause();
+    el.currentTime = 0;
+  } catch {
+    /* ignore */
+  }
+}
+
+async function fetchTtsUrl(text: string, lang: Lang): Promise<string | null> {
+  const trimmed = text.trim().slice(0, 2000);
+  if (!trimmed) return null;
+  const res = await fetch(`${API}/api/tts/speak`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: trimmed, lang }),
+  });
+  if (!res.ok) return null;
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
+
+function DhikrCard({
+  item,
+  lang,
+  translationLang,
+  count,
+  bookmarked,
+  playing,
+  audioBusy,
+  onIncrement,
+  onReset,
+  onToggleBookmark,
+  onPlayRecitation,
+  onPlayTranslation,
+}: {
+  item: Adhkar;
+  lang: Lang;
+  translationLang: Lang;
+  count: number;
+  bookmarked: boolean;
+  playing: PlayState;
+  audioBusy: boolean;
+  onIncrement: () => void;
+  onReset: () => void;
+  onToggleBookmark: () => void;
+  onPlayRecitation: () => void;
+  onPlayTranslation: () => void;
+}) {
+  const title = localized(item, translationLang, "title");
+  const translation = localized(item, translationLang, "translation");
+  const done = count >= item.repeat_count;
+  const isActive = playing?.id === item.id;
+  const isPlayingRecitation = isActive && (playing.kind === "recitation" || playing.kind === "all");
+  const isPlayingTranslation = isActive && playing.kind === "translation";
+  const canRecite = Boolean(item.verse_keys);
+
+  return (
+    <article
+      className={`card scroll-mt-28 transition ${
+        done ? "border-gold-300 dark:border-gold-600" : ""
+      } ${isActive ? "ring-2 ring-gold-400 dark:ring-gold-500" : ""}`}
+      data-adhkar-id={item.id}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="font-semibold text-heading" dir={translationLang === "ur" ? "rtl" : "ltr"}>
+            {title}
+          </h3>
+          <p className="mt-0.5 text-xs text-accent">{item.source}</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <IconButton
+            icon={bookmarked ? Icons.bookmarkFilled : Icons.bookmark}
+            label={bookmarked ? t(lang, "dhikrBookmarked") : t(lang, "dhikrBookmark")}
+            active={bookmarked}
+            onClick={onToggleBookmark}
+            tipSide="top"
+          />
+          <ShareButton
+            lang={lang}
+            getPayload={() => ({
+              title,
+              text: `${title}\n\n${item.arabic}\n\n${translation}\n\n— ${item.source}\n${
+                typeof window !== "undefined" ? window.location.origin + "/adhkar" : ""
+              }`,
+            })}
+            tipSide="top"
+          />
+        </div>
+      </div>
+
+      <p className="font-arabic mt-3 text-right text-xl leading-loose" dir="rtl">
+        {item.arabic}
+      </p>
+      <p className="mt-2 text-sm italic text-faint">{item.transliteration}</p>
+      <p className="mt-3 text-sm leading-relaxed text-body" dir={translationLang === "ur" ? "rtl" : "ltr"}>
+        {translation}
+      </p>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-subtle pt-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onPlayRecitation}
+            disabled={!canRecite || (audioBusy && !isPlayingRecitation)}
+            title={canRecite ? t(lang, "dhikrPlayRecitation") : t(lang, "dhikrRecitationUnavailable")}
+            className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition active:scale-95 disabled:opacity-40 ${
+              isPlayingRecitation && playing?.kind === "recitation"
+                ? "bg-gold-500 text-white dark:bg-gold-400 dark:text-noor-950"
+                : "border border-noor-200 text-noor-800 hover:bg-noor-50 dark:border-noor-600 dark:text-noor-100 dark:hover:bg-noor-800"
+            }`}
+          >
+            <span className="inline-flex h-4 w-4 items-center justify-center" aria-hidden>
+              {isPlayingRecitation && playing?.kind === "recitation" ? Icons.pause : Icons.play}
+            </span>
+            {t(lang, "dhikrPlayRecitation")}
+          </button>
+          <button
+            type="button"
+            onClick={onPlayTranslation}
+            disabled={audioBusy && !isPlayingTranslation}
+            title={t(lang, "dhikrPlayTranslation")}
+            className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition active:scale-95 disabled:opacity-40 ${
+              isPlayingTranslation
+                ? "bg-gold-500 text-white dark:bg-gold-400 dark:text-noor-950"
+                : "border border-noor-200 text-noor-800 hover:bg-noor-50 dark:border-noor-600 dark:text-noor-100 dark:hover:bg-noor-800"
+            }`}
+          >
+            <span className="inline-flex h-4 w-4 items-center justify-center" aria-hidden>
+              {isPlayingTranslation ? Icons.pause : Icons.audioOpts}
+            </span>
+            {t(lang, "dhikrPlayTranslation")}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {count > 0 && (
+            <button
+              type="button"
+              onClick={onReset}
+              aria-label={t(lang, "dhikrReset")}
+              title={t(lang, "dhikrReset")}
+              className="touch-target flex h-9 w-9 items-center justify-center rounded-full text-base text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+            >
+              ↺
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onIncrement}
+            title={t(lang, "dhikrTapToCount")}
+            className={`inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold shadow-sm transition-transform active:scale-95 sm:min-h-9 ${
+              done
+                ? "bg-gold-500 text-white dark:bg-gold-400 dark:text-noor-950"
+                : "bg-noor-700 text-white hover:bg-noor-800 dark:bg-noor-600 dark:hover:bg-noor-500"
+            }`}
+          >
+            <span className="tabular-nums">
+              {count}/{item.repeat_count}
+            </span>
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+export default function AdhkarPage() {
+  const { lang } = useLang();
+  const [items, setItems] = useState<Adhkar[]>([]);
+  const [status, setStatus] = useState<"idle" | "loading" | "error" | "done">("idle");
+  const [category, setCategory] = useState<Category>("morning");
+  const [query, setQuery] = useState("");
+  const [showBookmarksOnly, setShowBookmarksOnly] = useState(false);
+  const [translationLang, setTranslationLang] = useState<Lang>(lang);
+  const [includeTranslation, setIncludeTranslation] = useState(true);
+
+  const [progress, setProgress] = useState<DhikrProgress>({ date: "", counts: {} });
+  const [bookmarks, setBookmarks] = useState<string[]>([]);
+
+  const [playing, setPlaying] = useState<PlayState>(null);
+  const [audioBusy, setAudioBusy] = useState(false);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const surahCacheRef = useRef<Map<number, Map<number, string>>>(new Map());
+  const playTokenRef = useRef(0);
+  const objectUrlsRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    setTranslationLang(lang);
+  }, [lang]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("noor-adhkar-include-translation");
+    if (saved !== null) setIncludeTranslation(saved === "1");
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("noor-adhkar-include-translation", includeTranslation ? "1" : "0");
+  }, [includeTranslation]);
+
+  useEffect(() => {
+    setProgress(loadDhikrProgress());
+    setBookmarks(loadDhikrBookmarks());
+    setStatus("loading");
+    apiStatic<{ adhkar: Adhkar[] }>("/api/adhkar/")
+      .then((d) => {
+        setItems(d.adhkar);
+        setStatus("done");
+      })
+      .catch(() => setStatus("error"));
+
+    const el = new Audio();
+    audioElRef.current = el;
+    return () => {
+      stopAudioEl(el);
+      audioElRef.current = null;
+      for (const u of objectUrlsRef.current) URL.revokeObjectURL(u);
+      objectUrlsRef.current = [];
+    };
+  }, []);
+
+  const visibleItems = useMemo(() => {
+    let list = items.filter((i) => i.category === category);
+    if (showBookmarksOnly) list = list.filter((i) => bookmarks.includes(i.id));
+    const q = query.trim().toLowerCase();
+    if (q) {
+      list = list.filter((i) =>
+        [i.title_en, i.title_ur, i.title_hi, i.transliteration, i.translation_en, i.arabic].some((f) =>
+          f.toLowerCase().includes(q),
+        ),
+      );
+    }
+    return list;
+  }, [items, category, query, showBookmarksOnly, bookmarks]);
+
+  const categoryItems = useMemo(
+    () => items.filter((i) => i.category === category).sort((a, b) => a.order_index - b.order_index),
+    [items, category],
+  );
+  const completedCount = categoryItems.filter((i) => (progress.counts[i.id] ?? 0) >= i.repeat_count).length;
+  const allDone = categoryItems.length > 0 && completedCount === categoryItems.length;
+  const isPlayingAll = playing?.kind === "all";
+
+  const handleIncrement = useCallback((item: Adhkar) => {
+    setProgress(incrementDhikrCount(item.id, item.repeat_count));
+  }, []);
+
+  const handleReset = useCallback((item: Adhkar) => {
+    setProgress(resetDhikrCount(item.id));
+  }, []);
+
+  const handleToggleBookmark = useCallback((item: Adhkar) => {
+    setBookmarks(toggleDhikrBookmark(item.id));
+  }, []);
+
+  const revokeObjectUrls = useCallback(() => {
+    for (const u of objectUrlsRef.current) URL.revokeObjectURL(u);
+    objectUrlsRef.current = [];
+  }, []);
+
+  const stopPlayback = useCallback(() => {
+    playTokenRef.current += 1;
+    if (audioElRef.current) stopAudioEl(audioElRef.current);
+    setPlaying(null);
+    setAudioBusy(false);
+    revokeObjectUrls();
+  }, [revokeObjectUrls]);
+
+  const scrollToItem = useCallback((itemId: string) => {
+    const el = document.querySelector(`[data-adhkar-id="${itemId}"]`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
+
+  const playSegments = useCallback(
+    (segments: AudioSegment[], token: number, kind: PlayKind) => {
+      const el = audioElRef.current;
+      if (!el || !segments.length) {
+        setPlaying(null);
+        setAudioBusy(false);
+        return;
+      }
+      let idx = 0;
+      const playNext = () => {
+        if (token !== playTokenRef.current) return;
+        if (idx >= segments.length) {
+          setPlaying(null);
+          setAudioBusy(false);
+          return;
+        }
+        const seg = segments[idx];
+        idx += 1;
+        setPlaying({ id: seg.itemId, kind });
+        scrollToItem(seg.itemId);
+        el.src = seg.url;
+        void el.play().catch(() => {
+          if (token === playTokenRef.current) {
+            setPlaying(null);
+            setAudioBusy(false);
+          }
+        });
+      };
+      el.onended = playNext;
+      el.onerror = () => {
+        // Skip a broken clip and continue the queue (e.g. one TTS failure).
+        playNext();
+      };
+      setAudioBusy(false);
+      playNext();
+    },
+    [scrollToItem],
+  );
+
+  const resolveVerseUrls = useCallback(async (verseKeys: string): Promise<string[]> => {
+    const keys = verseKeys.split(",").map((k) => k.trim()).filter(Boolean);
+    const urls: string[] = [];
+    for (const key of keys) {
+      const [surahStr, ayahStr] = key.split(":");
+      const surah = Number(surahStr);
+      const ayah = Number(ayahStr);
+      let surahMap = surahCacheRef.current.get(surah);
+      if (!surahMap) {
+        const d = await apiStatic<{ ayahs: SurahAyahAudio[] }>(
+          `/api/quran/audio/surahs/${surah}?reciter=ar.alafasy`,
+        );
+        surahMap = new Map(d.ayahs.map((a) => [a.ayah_number, a.audio ?? ""]));
+        surahCacheRef.current.set(surah, surahMap);
+      }
+      const url = surahMap.get(ayah);
+      if (url) urls.push(url);
+    }
+    return urls;
+  }, []);
+
+  const buildItemSegments = useCallback(
+    async (
+      item: Adhkar,
+      opts: { arabic: boolean; translation: boolean; translationLang: Lang },
+    ): Promise<AudioSegment[]> => {
+      const segs: AudioSegment[] = [];
+      if (opts.arabic && item.verse_keys) {
+        const urls = await resolveVerseUrls(item.verse_keys);
+        for (const url of urls) segs.push({ itemId: item.id, url });
+      }
+      // Non-Quran duas have no Qari audio — speak the translation (or Arabic via
+      // the translation TTS path using transliteration when translation is off).
+      if (opts.arabic && !item.verse_keys && !opts.translation) {
+        const url = await fetchTtsUrl(
+          localized(item, opts.translationLang, "translation") || item.transliteration,
+          opts.translationLang,
+        );
+        if (url) {
+          objectUrlsRef.current.push(url);
+          segs.push({ itemId: item.id, url });
+        }
+      }
+      if (opts.translation) {
+        const text = localized(item, opts.translationLang, "translation");
+        const url = await fetchTtsUrl(text, opts.translationLang);
+        if (url) {
+          objectUrlsRef.current.push(url);
+          segs.push({ itemId: item.id, url });
+        }
+      }
+      return segs;
+    },
+    [resolveVerseUrls],
+  );
+
+  const handlePlayRecitation = useCallback(
+    async (item: Adhkar) => {
+      if (playing?.id === item.id && playing.kind === "recitation") {
+        stopPlayback();
+        return;
+      }
+      if (!item.verse_keys) return;
+      stopPlayback();
+      const token = ++playTokenRef.current;
+      setAudioBusy(true);
+      setPlaying({ id: item.id, kind: "recitation" });
+      try {
+        const segs = await buildItemSegments(item, {
+          arabic: true,
+          translation: includeTranslation,
+          translationLang,
+        });
+        if (token !== playTokenRef.current) return;
+        playSegments(segs, token, "recitation");
+      } catch {
+        if (token === playTokenRef.current) {
+          setAudioBusy(false);
+          setPlaying(null);
+        }
+      }
+    },
+    [playing, stopPlayback, buildItemSegments, includeTranslation, translationLang, playSegments],
+  );
+
+  const handlePlayTranslation = useCallback(
+    async (item: Adhkar) => {
+      if (playing?.id === item.id && playing.kind === "translation") {
+        stopPlayback();
+        return;
+      }
+      stopPlayback();
+      const token = ++playTokenRef.current;
+      setAudioBusy(true);
+      setPlaying({ id: item.id, kind: "translation" });
+      try {
+        const segs = await buildItemSegments(item, {
+          arabic: false,
+          translation: true,
+          translationLang,
+        });
+        if (token !== playTokenRef.current) return;
+        playSegments(segs, token, "translation");
+      } catch {
+        if (token === playTokenRef.current) {
+          setAudioBusy(false);
+          setPlaying(null);
+        }
+      }
+    },
+    [playing, stopPlayback, buildItemSegments, translationLang, playSegments],
+  );
+
+  const handlePlayAll = useCallback(async () => {
+    if (isPlayingAll) {
+      stopPlayback();
+      return;
+    }
+    if (!categoryItems.length) return;
+    stopPlayback();
+    const token = ++playTokenRef.current;
+    setAudioBusy(true);
+    setPlaying({ id: categoryItems[0].id, kind: "all" });
+    try {
+      const segs: AudioSegment[] = [];
+      for (const item of categoryItems) {
+        if (token !== playTokenRef.current) return;
+        const part = await buildItemSegments(item, {
+          arabic: true,
+          translation: includeTranslation,
+          translationLang,
+        });
+        segs.push(...part);
+      }
+      if (token !== playTokenRef.current) return;
+      if (!segs.length) {
+        setAudioBusy(false);
+        setPlaying(null);
+        return;
+      }
+      playSegments(segs, token, "all");
+    } catch {
+      if (token === playTokenRef.current) {
+        setAudioBusy(false);
+        setPlaying(null);
+      }
+    }
+  }, [
+    isPlayingAll,
+    stopPlayback,
+    categoryItems,
+    buildItemSegments,
+    includeTranslation,
+    translationLang,
+    playSegments,
+  ]);
+
+  // Changing category / filters while a full playlist is running would desync — stop.
+  useEffect(() => {
+    if (playing?.kind === "all") stopPlayback();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on category change
+  }, [category]);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-heading">{t(lang, "dhikr")}</h1>
+        <p className="text-sm text-muted">{t(lang, "dhikrSubtitle")}</p>
+      </div>
+
+      <Link
+        href="/recite"
+        className="card flex items-center gap-3 hover:border-noor-300 dark:hover:border-noor-500"
+      >
+        <span
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gold-300 bg-gold-50 text-noor-800 dark:border-gold-600 dark:bg-noor-800 dark:text-gold-400"
+          aria-hidden
+        >
+          {Icons.mic}
+        </span>
+        <div className="min-w-0">
+          <p className="font-medium text-heading">{t(lang, "recite")}</p>
+          <p className="text-xs text-faint">{t(lang, "reciteCardDesc")}</p>
+        </div>
+      </Link>
+
+      <div className="card space-y-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="shrink-0 text-xs text-faint">{t(lang, "translation")}</span>
+          {(["en", "ur", "hi"] as Lang[]).map((tr) => (
+            <button
+              key={tr}
+              type="button"
+              onClick={() => {
+                if (playing) stopPlayback();
+                setTranslationLang(tr);
+              }}
+              className={`shrink-0 rounded-md px-2.5 py-1 text-xs font-medium uppercase ${
+                translationLang === tr
+                  ? "bg-noor-700 text-white dark:bg-noor-600"
+                  : "border border-noor-200 text-muted dark:border-noor-600"
+              }`}
+            >
+              {tr}
+            </button>
+          ))}
+        </div>
+        <label className="flex items-center gap-2 text-xs text-body">
+          <input
+            type="checkbox"
+            checked={includeTranslation}
+            onChange={(e) => {
+              if (playing) stopPlayback();
+              setIncludeTranslation(e.target.checked);
+            }}
+            disabled={!!playing}
+          />
+          {t(lang, "includeTranslation")}
+        </label>
+        <div className="flex flex-wrap items-center gap-2 border-t border-subtle pt-3">
+          <button
+            type="button"
+            onClick={() => void handlePlayAll()}
+            disabled={audioBusy && !isPlayingAll}
+            className={`inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold transition active:scale-95 disabled:opacity-40 ${
+              isPlayingAll
+                ? "bg-gold-500 text-white dark:bg-gold-400 dark:text-noor-950"
+                : "bg-noor-700 text-white hover:bg-noor-800 dark:bg-noor-600"
+            }`}
+          >
+            <span className="inline-flex h-4 w-4 items-center justify-center" aria-hidden>
+              {isPlayingAll ? Icons.pause : Icons.play}
+            </span>
+            {isPlayingAll
+              ? t(lang, "dhikrStopAudio")
+              : `${t(lang, "dhikrPlayAll")} — ${t(lang, CATEGORIES.find((c) => c.id === category)!.labelKey)}`}
+          </button>
+          {audioBusy && <span className="text-xs text-faint">{t(lang, "loading")}…</span>}
+        </div>
+        <p className="text-[11px] text-muted">{t(lang, "dhikrPlayAllHint")}</p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {CATEGORIES.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => {
+              if (playing) stopPlayback();
+              setCategory(c.id);
+            }}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+              category === c.id
+                ? "bg-gold-500 text-white dark:bg-gold-400 dark:text-noor-950"
+                : "border border-subtle text-muted"
+            }`}
+          >
+            {t(lang, c.labelKey)}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => setShowBookmarksOnly((v) => !v)}
+          className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+            showBookmarksOnly
+              ? "bg-gold-500 text-white dark:bg-gold-400 dark:text-noor-950"
+              : "border border-subtle text-muted"
+          }`}
+        >
+          {t(lang, "dhikrBookmarksOnly")}
+          {bookmarks.length ? ` (${bookmarks.length})` : ""}
+        </button>
+      </div>
+
+      <input
+        className="input w-full"
+        placeholder={t(lang, "search")}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+
+      {!showBookmarksOnly && categoryItems.length > 0 && (
+        <div className="rounded-xl border border-subtle bg-noor-50/50 px-4 py-2.5 text-sm dark:bg-noor-900/30">
+          {allDone ? (
+            <span className="font-medium text-gold-600 dark:text-gold-400">{t(lang, "dhikrAllDone")}</span>
+          ) : (
+            <span className="text-muted">
+              {t(lang, "dhikrProgressToday")}: {completedCount}/{categoryItems.length}{" "}
+              {t(lang, "dhikrCompletedToday")}
+            </span>
+          )}
+        </div>
+      )}
+
+      {status === "loading" && <p className="text-sm text-faint">…</p>}
+      {status === "error" && <p className="text-sm text-faint">{t(lang, "chatError")}</p>}
+
+      {status === "done" && visibleItems.length === 0 && (
+        <p className="text-sm text-faint">
+          {showBookmarksOnly ? t(lang, "dhikrNoBookmarks") : t(lang, "noResults")}
+        </p>
+      )}
+
+      <div className="space-y-4">
+        {visibleItems.map((item) => (
+          <DhikrCard
+            key={item.id}
+            item={item}
+            lang={lang}
+            translationLang={translationLang}
+            count={progress.counts[item.id] ?? 0}
+            bookmarked={bookmarks.includes(item.id)}
+            playing={playing}
+            audioBusy={audioBusy}
+            onIncrement={() => handleIncrement(item)}
+            onReset={() => handleReset(item)}
+            onToggleBookmark={() => handleToggleBookmark(item)}
+            onPlayRecitation={() => void handlePlayRecitation(item)}
+            onPlayTranslation={() => void handlePlayTranslation(item)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}

@@ -6,6 +6,9 @@ const nextConfig = {
   // Acknowledge Turbopack (Next.js 16 default); no custom rules needed since
   // serverExternalPackages already excludes the package from bundling.
   turbopack: {},
+  async redirects() {
+    return [{ source: "/dhikr", destination: "/adhkar", permanent: true }];
+  },
   async headers() {
     return [
       {

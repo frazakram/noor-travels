@@ -156,4 +156,10 @@ export const Icons = {
       <path d="M12 18v3M9 21h6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </>,
   ),
+  bookmark: svgIcon(
+    <path d="M7 3.5h10a1 1 0 0 1 1 1V20l-6-3.6-6 3.6V4.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />,
+  ),
+  bookmarkFilled: svgIcon(
+    <path d="M7 3.5h10a1 1 0 0 1 1 1V20l-6-3.6-6 3.6V4.5a1 1 0 0 1 1-1Z" />,
+  ),
 } as const;

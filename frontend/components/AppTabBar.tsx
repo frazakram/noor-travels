@@ -18,7 +18,8 @@ type IconName =
   | "recite"
   | "settings"
   | "account"
-  | "about";
+  | "about"
+  | "dhikr";
 
 const primary = [
   { href: "/", key: "home" as const, icon: "home" as const },
@@ -30,6 +31,7 @@ const primary = [
 const moreLinks = [
   { href: "/library", key: "questionLibrary" as const, icon: "library" as const },
   { href: "/khutba", key: "khutba" as const, icon: "khutba" as const },
+  { href: "/adhkar", key: "dhikr" as const, icon: "dhikr" as const },
   { href: "/recite", key: "recite" as const, icon: "recite" as const },
   { href: "/about", key: "about" as const, icon: "about" as const },
   { href: "/settings", key: "settings" as const, icon: "settings" as const },
@@ -87,6 +89,8 @@ function NavIcon({ name, className = "h-5 w-5" }: { name: IconName; className?: 
       return <svg {...common}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" /></svg>;
     case "account":
       return <svg {...common}><circle cx="12" cy="8" r="3.5" /><path d="M5 20c1.2-3.4 3.8-5.2 7-5.2s5.8 1.8 7 5.2" /></svg>;
+    case "dhikr":
+      return <svg {...common}><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none" /><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3" /></svg>;
   }
 }
 

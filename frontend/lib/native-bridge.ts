@@ -139,7 +139,7 @@ export function nativeSavePdf(filename: string, base64: string): boolean {
   }
 }
 
-/** Native Android share sheet (image card via FileProvider — reaches WhatsApp/Instagram Stories,
+/** Native Android share sheet (image card via FileProvider + Instagram Stories intent,
  * unlike the WebView's missing Web Share API). Returns false when the bridge isn't available. */
 export function nativeShare(title: string, text: string): boolean {
   try {

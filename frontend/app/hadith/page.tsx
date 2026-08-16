@@ -350,6 +350,12 @@ export default function HadithPage() {
             {t(lang, "duas")}
           </button>
           <Link
+            href="/adhkar"
+            className="rounded-full border border-subtle px-3 py-1.5 text-xs font-medium text-muted hover:border-noor-300"
+          >
+            {t(lang, "dhikr")}
+          </Link>
+          <Link
             href="/hadith-of-day"
             className="rounded-full border border-subtle px-3 py-1.5 text-xs font-medium text-muted hover:border-noor-300"
           >
