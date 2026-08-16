@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { AppLogo } from "@/components/AppLogo";
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { APK_QR_SRC, APK_URL, fetchAppVersion, isAndroidBrowser, isInsideApp } from "@/lib/apk";
@@ -37,7 +38,7 @@ export function GetTheAppCard() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-3">
           <div className="flex items-center gap-3">
-            <Image src="/logo-sm.png" alt="" width={44} height={44} className="h-11 w-11 shrink-0 rounded-xl" />
+            <AppLogo size={44} className="h-11 w-11" />
             <div className="min-w-0">
               <h2 className="text-sm font-semibold text-heading">{t(lang, "downloadTitle")}</h2>
               <p className="text-xs text-muted">

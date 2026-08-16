@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { AppLogo } from "@/components/AppLogo";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
@@ -61,17 +61,17 @@ export function InstallAppPrompt() {
       // width — a full-width bar here would sit under the FAB and clip its own
       // dismiss button behind it. Left-aligned, capped narrower than the FAB's
       // reserved corner at every breakpoint.
-      className="fixed inset-x-3 z-40 flex justify-start pb-[env(safe-area-inset-bottom,0px)] md:pb-3"
+      //
+      // pointer-events-none on this wrapper is load-bearing: it spans the full
+      // viewport width as an invisible fixed band, and without it every click
+      // in that band — including the home page's settings-panel buttons that
+      // scroll under it — was silently swallowed. Only the visible card
+      // re-enables pointer events.
+      className="pointer-events-none fixed inset-x-3 z-40 flex justify-start pb-[env(safe-area-inset-bottom,0px)] md:pb-3"
       style={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))" }}
     >
-      <div className="flex w-full max-w-[15.5rem] items-center gap-3 rounded-2xl border border-teal-200/70 bg-white/97 p-3 shadow-xl shadow-noor-950/20 md:backdrop-blur animate-fade-in-up sm:max-w-sm dark:border-teal-700/60 dark:bg-noor-900/97">
-        <Image
-          src="/logo-sm.png"
-          alt=""
-          width={40}
-          height={40}
-          className="h-10 w-10 shrink-0 rounded-xl"
-        />
+      <div className="pointer-events-auto flex w-full max-w-[15.5rem] items-center gap-3 rounded-2xl border border-teal-200/70 bg-white/97 p-3 shadow-xl shadow-noor-950/20 md:backdrop-blur animate-fade-in-up sm:max-w-sm dark:border-teal-700/60 dark:bg-noor-900/97">
+        <AppLogo size={40} className="h-10 w-10" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-heading">{t(lang, "installApp")}</p>
           <p className="text-xs leading-snug text-muted">{t(lang, "installAppHint")}</p>

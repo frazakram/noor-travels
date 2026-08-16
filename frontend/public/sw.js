@@ -1,4 +1,4 @@
-const CACHE = "noor-safar-v6";
+const CACHE = "noor-safar-v7";
 
 /** Audio must never enter Cache Storage: every TTS clip and recitation ayah
  *  was being written to disk on the fetch path (a multi-MB cache.put per
@@ -38,6 +38,16 @@ self.addEventListener("fetch", (event) => {
         }
         return res;
       })
-      .catch(() => caches.match(req).then((cached) => cached || caches.match("/"))),
+      .catch(() =>
+        caches.match(req).then((cached) => {
+          if (cached) return cached;
+          // Only page navigations fall back to the cached app shell. Serving
+          // the HTML of "/" for a failed image/script/data request paints
+          // broken images (an <img> receiving HTML) instead of letting the
+          // browser handle the miss — seen live on a slow mobile connection.
+          if (req.mode === "navigate") return caches.match("/");
+          return Response.error();
+        }),
+      ),
   );
 });

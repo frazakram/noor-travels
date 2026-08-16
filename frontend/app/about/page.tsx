@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { AppLogo } from "@/components/AppLogo";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useLang } from "@/components/LangProvider";
@@ -188,13 +188,7 @@ export default function AboutPage() {
     <div className="space-y-10 pb-12">
       <TimeOfDayHero phase="night">
         <div className="flex flex-col items-center gap-4 px-2 py-6 text-center sm:py-10">
-          <Image
-            src="/logo.png"
-            alt=""
-            width={72}
-            height={72}
-            className="h-16 w-16 animate-fade-in-up rounded-2xl shadow-lg shadow-black/30 sm:h-[72px] sm:w-[72px]"
-          />
+          <AppLogo size={72} className="h-16 w-16 animate-fade-in-up shadow-lg shadow-black/30 sm:h-[72px] sm:w-[72px]" />
           <h1
             className="animate-fade-in-up text-3xl font-bold text-white drop-shadow-sm sm:text-4xl"
             style={{ animationDelay: "60ms" }}

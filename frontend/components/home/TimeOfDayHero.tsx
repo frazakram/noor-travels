@@ -21,11 +21,15 @@ type PhaseTheme = {
 
 const PHASES: Record<TimePhase, PhaseTheme> = {
   fajr: {
-    sky: "from-[#0c1631] via-[#10353c] to-[#7c4a23]",
-    horizon: "rgba(240,169,110,0.45)",
+    // Deliberately distinct from maghrib even though real dawn and dusk skies
+    // are close cousins: fajr reads as a BRIGHTENING blue (day arriving) with
+    // a soft rose horizon and fading stars; maghrib keeps the dying violet
+    // with a fiery orange horizon and thickening stars.
+    sky: "from-[#10254a] via-[#356a83] to-[#c99a97]",
+    horizon: "rgba(246,183,171,0.48)",
     celestial: "crescent",
     celestialPos: { right: "14%", top: "16%" },
-    stars: 14,
+    stars: 8,
     shooting: false,
     clouds: false,
     birds: true,
