@@ -138,6 +138,18 @@ export default function HomePage() {
         </div>
 
         <p className="text-center text-sm text-muted">
+          <Link href="/about" className="font-medium text-accent hover:underline">
+            {t(lang, "about")}
+          </Link>
+          <span className="mx-2 text-faint" aria-hidden>
+            ·
+          </span>
+          <Link href="/support" className="font-medium text-accent hover:underline">
+            {t(lang, "supportUs")}
+          </Link>
+          <span className="mx-2 text-faint" aria-hidden>
+            ·
+          </span>
           <Link href="/settings" className="font-medium text-accent hover:underline">
             {t(lang, "settings")} →
           </Link>
