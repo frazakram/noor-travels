@@ -22,7 +22,9 @@ def list_adhkar():
             """
         )
         data = cur.fetchall()
-    return JSONResponse({"adhkar": data}, headers={"Cache-Control": _CACHE_1H})
+    # Don't let an empty cold response stick in the CDN for an hour after a fresh seed.
+    cache = _CACHE_1H if data else "public, max-age=60, stale-while-revalidate=60"
+    return JSONResponse({"adhkar": data}, headers={"Cache-Control": cache})
 
 
 @router.get("/{category}")
@@ -40,4 +42,5 @@ def list_adhkar_by_category(category: str):
             (category,),
         )
         data = cur.fetchall()
-    return JSONResponse({"adhkar": data}, headers={"Cache-Control": _CACHE_1H})
+    cache = _CACHE_1H if data else "public, max-age=60, stale-while-revalidate=60"
+    return JSONResponse({"adhkar": data}, headers={"Cache-Control": cache})
