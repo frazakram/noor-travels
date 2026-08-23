@@ -48,14 +48,19 @@ export default function FindFromScreenshotPage() {
   const [text, setText] = useState("");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [error, setError] = useState("");
+  const [fileCount, setFileCount] = useState(0);
+  const [currentFile, setCurrentFile] = useState(1);
 
   async function handleFiles(files: File[]) {
     setError("");
+    setFileCount(files.length);
+    setCurrentFile(1);
     setStage("reading");
     setProgress(0);
     try {
       const extracted: string[] = [];
       for (let i = 0; i < files.length; i += 1) {
+        setCurrentFile(i + 1);
         const perFileProgress = (pct: number) =>
           setProgress(Math.round(((i + pct / 100) / files.length) * 100));
         const result = await runOcr(files[i], perFileProgress);
@@ -138,7 +143,11 @@ export default function FindFromScreenshotPage() {
       {stage === "reading" && (
         <div className="card flex flex-col items-center gap-3 py-12 text-center">
           <LoadingGlass size="lg" />
-          <p className="text-sm text-muted">{t(lang, "extractingText")}</p>
+          <p className="text-sm text-muted">
+            {fileCount > 1
+              ? `${t(lang, "extractingText")} (${currentFile}/${fileCount})`
+              : t(lang, "extractingText")}
+          </p>
           <p className="text-xs text-faint">{progress}%</p>
         </div>
       )}
