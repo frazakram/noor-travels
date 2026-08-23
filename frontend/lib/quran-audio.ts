@@ -14,6 +14,47 @@ function isStale(gen: number): boolean {
   return gen !== playbackGeneration;
 }
 
+// HTMLMediaElement.play()'s returned promise only resolves once enough data has
+// buffered — if the network request stalls (no error, just no data), it can sit
+// pending for the browser's own internal stall-detection window, which on some
+// Chromium builds is close to a minute. Race it against a short timeout instead
+// of trusting that.
+const STALL_TIMEOUT_MS = 8000;
+
+function waitForPlayable(el: HTMLAudioElement, timeoutMs: number): Promise<void> {
+  if (el.readyState >= 3) return Promise.resolve(); // HAVE_FUTURE_DATA or better already
+  return new Promise((resolve, reject) => {
+    let done = false;
+    const cleanup = () => {
+      el.removeEventListener("canplay", onReady);
+      el.removeEventListener("loadeddata", onReady);
+      el.removeEventListener("error", onError);
+      window.clearTimeout(timer);
+    };
+    const onReady = () => {
+      if (done) return;
+      done = true;
+      cleanup();
+      resolve();
+    };
+    const onError = () => {
+      if (done) return;
+      done = true;
+      cleanup();
+      reject(new Error("Audio failed to load"));
+    };
+    const timer = window.setTimeout(() => {
+      if (done) return;
+      done = true;
+      cleanup();
+      reject(new Error("Audio load stalled"));
+    }, timeoutMs);
+    el.addEventListener("canplay", onReady, { once: true });
+    el.addEventListener("loadeddata", onReady, { once: true });
+    el.addEventListener("error", onError, { once: true });
+  });
+}
+
 function loadVoices(): Promise<SpeechSynthesisVoice[]> {
   if (typeof window === "undefined" || !window.speechSynthesis) {
     return Promise.resolve([]);
@@ -401,9 +442,11 @@ async function playPrefetched(
   applyRate(slot.el);
   await seekForContentFraction(slot.el, startAtFraction, contentOffsetSec);
   try {
+    await waitForPlayable(slot.el, STALL_TIMEOUT_MS);
     await slot.el.play();
   } catch {
-    // Fallback: load on primary normally
+    // Stalled or otherwise failed — fall back to a fresh load on primary,
+    // which retries with its own stall watchdog.
     return playOnPrimary(
       url,
       gen,
@@ -438,8 +481,17 @@ async function playOnPrimary(
   el.muted = false;
   applyRate(el);
 
-  if (!sameAudioUrl(el.src, url)) {
+  const isNewSrc = !sameAudioUrl(el.src, url);
+  const assignSrc = () => {
+    // Hard reset (not a bare `.src =` reassignment) — a wedged prior load state
+    // on some mobile WebViews can otherwise silently carry into the new source.
+    el.pause();
+    el.removeAttribute("src");
+    el.load();
     el.src = url;
+  };
+  if (isNewSrc) {
+    assignSrc();
   } else if (startAtFraction == null) {
     try {
       el.currentTime = 0;
@@ -448,8 +500,20 @@ async function playOnPrimary(
     }
   }
 
+  const MAX_STALL_RETRIES = 2;
   try {
     await seekForContentFraction(el, startAtFraction, contentOffsetSec);
+    if (isNewSrc) {
+      for (let attempt = 0; ; attempt += 1) {
+        try {
+          await waitForPlayable(el, STALL_TIMEOUT_MS);
+          break;
+        } catch (err) {
+          if (attempt >= MAX_STALL_RETRIES) throw err;
+          assignSrc();
+        }
+      }
+    }
     await el.play();
     applyRate(el);
   } catch (err) {

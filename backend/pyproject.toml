@@ -15,6 +15,9 @@ dependencies = [
     "python-multipart==0.0.20",
     "indic-transliteration==2.3.82",
     "edge-tts==7.2.8",
+    # Screenshot verse-finder fuzzy matching (quran_identify.py) — pure-Python
+    # fallback wheel available, no numpy-style heavy-import risk.
+    "rapidfuzz==3.14.5",
     # Khutba PDF export. uharfbuzz shapes Arabic/Urdu for fpdf2; without it the
     # script renders as disconnected glyphs in reverse order.
     "fpdf2==2.8.8",

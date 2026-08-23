@@ -42,6 +42,9 @@ export default function SurahClient() {
   const [ayahs, setAyahs] = useState<Ayah[]>([]);
   const [surahName, setSurahName] = useState("");
   const [translation, setTranslation] = useState<TranslationLang>("en");
+  // Independent from `translation` (the displayed text language) — lets someone
+  // read English while hearing the Urdu human-recited translation audio, etc.
+  const [audioLang, setAudioLang] = useState<TranslationLang>("en");
   const [showRoman, setShowRoman] = useState(true);
   const [showHiRoman, setShowHiRoman] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, { ibn_kathir_en?: string; maududi_ur?: string }>>({});
@@ -114,7 +117,7 @@ export default function SurahClient() {
   const audio = useSurahAudio({
     surahNumber,
     surahName: surahName || `Surah ${surahNumber}`,
-    translation,
+    translation: audioLang,
     textAyahs: ayahs,
     reciter,
     includeTranslation,
@@ -199,6 +202,14 @@ export default function SurahClient() {
   useEffect(() => {
     const saved = localStorage.getItem("noor-quran-translation") as TranslationLang | null;
     if (saved && ["en", "ur", "hi"].includes(saved)) setTranslation(saved);
+    const savedAudioLang = localStorage.getItem("noor-quran-audio-lang") as TranslationLang | null;
+    if (savedAudioLang && ["en", "ur", "hi"].includes(savedAudioLang)) {
+      setAudioLang(savedAudioLang);
+    } else if (saved && ["en", "ur", "hi"].includes(saved)) {
+      // First run after this feature shipped — default the spoken language to
+      // whatever text language was already saved, matching prior behavior.
+      setAudioLang(saved);
+    }
     const savedStudy = localStorage.getItem("noor-quran-study-mode");
     if (savedStudy === "1") setStudyMode(true);
     const savedTafsir = localStorage.getItem("noor-quran-tafsir-pref");
@@ -248,6 +259,7 @@ export default function SurahClient() {
   useEffect(() => {
     if (!prefsHydrated) return;
     localStorage.setItem("noor-quran-translation", translation);
+    localStorage.setItem("noor-quran-audio-lang", audioLang);
     localStorage.setItem("noor-quran-study-mode", studyMode ? "1" : "0");
     localStorage.setItem("noor-quran-tafsir-pref", tafsirPref);
     localStorage.setItem("noor-reciter", reciter);
@@ -262,6 +274,7 @@ export default function SurahClient() {
   }, [
     prefsHydrated,
     translation,
+    audioLang,
     studyMode,
     tafsirPref,
     reciter,
@@ -662,6 +675,28 @@ export default function SurahClient() {
               />
               {t(lang, "includeTranslation")}
             </label>
+            {includeTranslation && (
+              <div className="flex flex-wrap items-center gap-2 pl-6">
+                <span className="text-xs text-muted">{t(lang, "spokenLanguage")}</span>
+                {(["en", "ur", "hi"] as TranslationLang[]).map((tr) => (
+                  <button
+                    key={tr}
+                    type="button"
+                    onClick={() => {
+                      if (audio.playing) audio.pause();
+                      setAudioLang(tr);
+                    }}
+                    className={`shrink-0 rounded-md px-2.5 py-1 text-xs font-medium uppercase ${
+                      audioLang === tr
+                        ? "bg-noor-700 text-white dark:bg-noor-600"
+                        : "border border-noor-200 text-muted dark:border-noor-600"
+                    }`}
+                  >
+                    {tr}
+                  </button>
+                ))}
+              </div>
+            )}
             <label className="flex items-center gap-2 text-xs">
               <input
                 type="checkbox"

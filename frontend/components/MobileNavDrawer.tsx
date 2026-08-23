@@ -64,6 +64,7 @@ function MobileNavDrawerInner({ open, mounted, pathname, lang, setLang, onClose 
             <Link
               key={l.href}
               href={l.href}
+              prefetch={false}
               onClick={onClose}
               className={`relative z-[1] block min-h-12 rounded-2xl px-4 py-3.5 text-base font-semibold transition active:scale-[0.98] ${
                 pathname === l.href

@@ -513,6 +513,7 @@ export function useSurahAudio({
       (window as unknown as { noorOnAyahIndex?: (i: number) => void }).noorOnAyahIndex = (i: number) => {
         if (!nativeModeRef.current) return;
         setPlayIndex(i);
+        setActiveWordIndex(-1);
         onPlayIndexRef.current?.(i);
         const vk = textAyahsRef.current[i]?.verse_key ?? "";
         setStatus(vk);
@@ -529,6 +530,27 @@ export function useSurahAudio({
         // before this fires) — treat it as a natural finish.
         onPlaybackFinishedRef.current?.();
       };
+      // Native (ExoPlayer) playback has no web <audio> element for ontimeupdate
+      // to fire on, so the word-highlight glow would otherwise never move
+      // during native playback — see QuranPlaybackService.kt's notifyWordPosition.
+      (
+        window as unknown as {
+          noorOnWordPosition?: (ayahIndex: number, positionMs: number, durationMs: number, kind: string) => void;
+        }
+      ).noorOnWordPosition = (ayahIndex, positionMs, durationMs, kind) => {
+        if (!nativeModeRef.current || kind !== "arabic") return;
+        const verseKey = textAyahsRef.current[ayahIndex]?.verse_key;
+        if (!verseKey) return;
+        const count = wordCountsRef.current[verseKey] ?? 0;
+        if (count <= 0) return;
+        const segs =
+          wordTimingsRef.current[verseKey]?.segments?.length
+            ? wordTimingsRef.current[verseKey].segments
+            : referenceTimingsRef.current[verseKey]?.segments;
+        setActiveWordIndex(
+          wordIndexFromTime(positionMs / 1000, durationMs >= 0 ? durationMs / 1000 : NaN, count, segs)
+        );
+      };
     }
 
     return () => {
@@ -537,6 +559,7 @@ export function useSurahAudio({
       releaseNativePlayback();
       delete (window as unknown as { noorOnAyahIndex?: unknown }).noorOnAyahIndex;
       delete (window as unknown as { noorOnPlaybackEnded?: unknown }).noorOnPlaybackEnded;
+      delete (window as unknown as { noorOnWordPosition?: unknown }).noorOnWordPosition;
     };
   }, [pause, releaseNativePlayback, surahName, surahNumber]);
 

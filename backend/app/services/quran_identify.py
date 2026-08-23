@@ -26,10 +26,11 @@ from __future__ import annotations
 
 import json
 import re
-from difflib import SequenceMatcher
 from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from rapidfuzz import fuzz
 
 if TYPE_CHECKING:
     import numpy as np
@@ -46,19 +47,9 @@ ARABIC_RATIO_FLOOR = 0.45
 ARABIC_RATIO_HIGH = 0.80
 ARABIC_RATIO_MEDIUM = 0.60
 
-# Candidates kept after the cheap quick_ratio() prefilter, before the real (slower) ratio() pass.
+# Candidates kept after the cheap trigram-overlap prefilter, before the real
+# (slower) rapidfuzz pass.
 ARABIC_QUICK_PREFILTER_N = 40
-
-# Matching blocks shorter than this are single/double-letter coincidences, not real
-# quoted text — Arabic's letter inventory is small enough that any unrelated ayah
-# will contain a handful of these by chance. Dropped before scoring.
-ARABIC_MIN_BLOCK_CHARS = 3
-
-# The largest surviving block must carry at least this fraction of the matched
-# total. A real quote (even a noisy OCR read) produces one dominant contiguous
-# run; a coincidental match is several similar-sized fragments scattered across
-# an unrelated ayah with no single run dominating.
-ARABIC_BLOCK_DOMINANCE_MIN = 0.5
 
 ENGLISH_SIMILARITY_HIGH = 0.75
 ENGLISH_SIMILARITY_MEDIUM = 0.60
@@ -195,23 +186,18 @@ def match_arabic(query_text: str, top_k: int = 5) -> list[dict]:
     prelim.sort(key=lambda pair: pair[0], reverse=True)
     shortlist = [row for _, row in prelim[:ARABIC_QUICK_PREFILTER_N]]
 
-    # Pass 2: real matching-block coverage on the shortlist — how much of the QUERY
-    # is found (in order) within the ayah, not a symmetric whole-string ratio. This is
-    # what makes a clean partial quote of a long ayah still score near 1.0.
+    # Pass 2: rapidfuzz's partial_ratio on the shortlist — the best-aligned edit
+    # distance between the query and *any substring* of the ayah, which is what
+    # makes a clean partial quote of a long ayah still score near 1.0.
     #
-    # Tiny blocks are dropped and the surviving blocks must have one dominant run
-    # (see constants above) — otherwise a shared opening formula ("ولا تقربوا...")
-    # plus a handful of common-letter coincidences elsewhere in an unrelated ayah
-    # can sum to the same 1.0 as a genuine full-string match.
-    scored = []
-    for row in shortlist:
-        sm = SequenceMatcher(None, q_norm, row["arabic_norm"], autojunk=False)
-        blocks = [b.size for b in sm.get_matching_blocks() if b.size >= ARABIC_MIN_BLOCK_CHARS]
-        matched = sum(blocks)
-        if not blocks or max(blocks) / matched < ARABIC_BLOCK_DOMINANCE_MIN:
-            continue
-        score = min(matched / len(q_norm), 1.0)
-        scored.append((score, row))
+    # An earlier version of this summed difflib's raw matching-block sizes with
+    # no cost for gaps between them, so a shared opening formula ("ولا تقربوا...")
+    # plus a handful of unrelated single-letter coincidences elsewhere in a long
+    # ayah could sum to the same 1.0 as a genuine full-string match. partial_ratio
+    # is a real edit-distance alignment (Indel), so scattered coincidental letters
+    # cost real edits instead of being free "coverage" — while still tolerating
+    # the odd OCR misread the way a hard contiguous-block requirement would not.
+    scored = [(fuzz.partial_ratio(q_norm, row["arabic_norm"]) / 100.0, row) for row in shortlist]
     scored.sort(key=lambda pair: pair[0], reverse=True)
 
     return [
@@ -327,12 +313,15 @@ def _match_english_exact(query_text: str, top_k: int = 5) -> list[dict]:
     prelim.sort(key=lambda pair: pair[0], reverse=True)
     shortlist = [row for _, row in prelim[:ENGLISH_EXACT_PREFILTER_N]]
 
-    scored = []
-    for row in shortlist:
-        sm = SequenceMatcher(None, q_words, row["en_words"], autojunk=False)
-        matched = sum(block.size for block in sm.get_matching_blocks())
-        score = min(matched / len(q_words), 1.0)
-        scored.append((score, row))
+    # rapidfuzz's partial_ratio (real edit-distance alignment, not raw block-summing —
+    # see match_arabic for why that distinction matters) on the space-joined word
+    # tokens, so a genuine contiguous phrase still scores near 1.0 while scattered
+    # shared words elsewhere in an unrelated ayah cost real edits instead of being
+    # free "coverage".
+    q_joined = " ".join(q_words)
+    scored = [
+        (fuzz.partial_ratio(q_joined, " ".join(row["en_words"])) / 100.0, row) for row in shortlist
+    ]
     scored.sort(key=lambda pair: pair[0], reverse=True)
 
     return [
