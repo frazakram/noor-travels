@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLang } from "@/components/LangProvider";
+import { LoadingGlass } from "@/components/LoadingGlass";
 import { NoticeCard } from "@/components/NoticeCard";
 import { SavedToast } from "@/components/SavedToast";
 import { api } from "@/lib/api";
@@ -261,13 +262,26 @@ export default function KhutbaPage() {
     }
   }
 
-  function queueChunk(blob: Blob, session: number) {
+  function queueChunk(blob: Blob, session: number, attempt = 0) {
     // Segments must be transcribed in order so the accumulated text stays coherent.
     uploadQueueRef.current = uploadQueueRef.current
       .then(() => sendChunk(blob, session))
-      .catch(() => {
+      .catch((err) => {
+        // Transient network/API hiccups (Deepgram/Groq briefly erroring, a
+        // dropped connection) are common on a 10s cadence — one silent retry
+        // clears most of them before we bother the user with an error state.
+        if (attempt < 1 && sessionRef.current === session) {
+          queueChunk(blob, session, attempt + 1);
+          return;
+        }
         coverageRef.current.failed += 1;
-        if (activeRef.current) setStatus(t(lang, "khutbaChunkError"));
+        // api()'s _fetch already turns network/HTTP failures into a safe,
+        // user-facing message (or a generic fallback) — pass it through
+        // instead of masking every failure with the same generic string.
+        if (activeRef.current) {
+          const message = err instanceof Error ? err.message : "";
+          setStatus(message || t(lang, "khutbaChunkError"));
+        }
       });
   }
 
@@ -311,7 +325,7 @@ export default function KhutbaPage() {
       setActive(true);
       setStatus(t(lang, "khutbaListening"));
     } catch {
-      setStatus("Microphone access is needed for live khutba translation. Please allow microphone permission and try again.");
+      setStatus(t(lang, "khutbaMicError"));
     }
   }
 
@@ -366,7 +380,7 @@ export default function KhutbaPage() {
             onAction={() => void start()}
           />
         )}
-        {status && active && <p className="text-sm text-faint">{status}</p>}
+        {status && active && <LoadingGlass size="sm" label={status} />}
         {matchNotice && (
           <div className="card border-gold-400 bg-gold-50 dark:border-gold-500 dark:bg-noor-900/80">
             <p className="font-medium text-heading">{matchNotice}</p>

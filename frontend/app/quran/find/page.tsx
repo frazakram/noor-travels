@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { NoticeCard } from "@/components/NoticeCard";
 import { IconButton, Icons } from "@/components/IconButton";
+import { LoadingGlass } from "@/components/LoadingGlass";
 import { emitPageLoading } from "@/components/NavigationProgress";
 import { api } from "@/lib/api";
 import { t } from "@/lib/i18n";
@@ -130,7 +131,7 @@ export default function FindFromScreenshotPage() {
 
       {stage === "reading" && (
         <div className="card flex flex-col items-center gap-3 py-12 text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-noor-200 border-t-noor-600 dark:border-noor-700 dark:border-t-noor-300" />
+          <LoadingGlass size="lg" />
           <p className="text-sm text-muted">{t(lang, "extractingText")}</p>
           <p className="text-xs text-faint">{progress}%</p>
         </div>

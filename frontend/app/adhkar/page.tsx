@@ -15,8 +15,14 @@ import {
   type DhikrProgress,
 } from "@/lib/dhikr-library";
 import { t, type Lang } from "@/lib/i18n";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "";
+import { LoadingGlass } from "@/components/LoadingGlass";
+import {
+  acquireWakeLock,
+  clearMediaSession,
+  releaseWakeLock,
+  setupMediaSession,
+  updateMediaSession,
+} from "@/lib/media-session";
 
 type Adhkar = {
   id: string;
@@ -43,10 +49,15 @@ const CATEGORIES: { id: Category; labelKey: "dhikrCategoryMorning" | "dhikrCateg
   { id: "night", labelKey: "dhikrCategoryNight" },
 ];
 
-type SurahAyahAudio = { ayah_number: number; audio: string | null };
+// Human-recited audio only (Al Quran Cloud CDN) — no TTS. Only items whose
+// arabic text is an actual Quran verse (item.verse_keys) have this available;
+// translation is Urdu-only because that's the only language with a real
+// human-recited verse-by-verse translation reciter (ur.khan / EveryAyah).
+type SurahAyahAudio = { ayah_number: number; audio: string | null; translation_audio: string | null };
 type PlayKind = "recitation" | "translation" | "all";
 type PlayState = { id: string; kind: PlayKind } | null;
 type AudioSegment = { itemId: string; url: string };
+const TRANSLATION_LANG: Lang = "ur";
 
 function localized(item: Adhkar, lang: Lang, field: "title" | "translation"): string {
   const suffix = lang === "ur" ? "ur" : lang === "hi" ? "hi" : "en";
@@ -60,19 +71,6 @@ function stopAudioEl(el: HTMLAudioElement) {
   } catch {
     /* ignore */
   }
-}
-
-async function fetchTtsUrl(text: string, lang: Lang): Promise<string | null> {
-  const trimmed = text.trim().slice(0, 2000);
-  if (!trimmed) return null;
-  const res = await fetch(`${API}/api/tts/speak`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: trimmed, lang }),
-  });
-  if (!res.ok) return null;
-  const blob = await res.blob();
-  return URL.createObjectURL(blob);
 }
 
 function DhikrCard({
@@ -174,8 +172,8 @@ function DhikrCard({
           <button
             type="button"
             onClick={onPlayTranslation}
-            disabled={audioBusy && !isPlayingTranslation}
-            title={t(lang, "dhikrPlayTranslation")}
+            disabled={!canRecite || (audioBusy && !isPlayingTranslation)}
+            title={canRecite ? t(lang, "dhikrPlayTranslation") : t(lang, "dhikrRecitationUnavailable")}
             className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition active:scale-95 disabled:opacity-40 ${
               isPlayingTranslation
                 ? "bg-gold-500 text-white dark:bg-gold-400 dark:text-noor-950"
@@ -228,7 +226,6 @@ export default function AdhkarPage() {
   const [category, setCategory] = useState<Category>("morning");
   const [query, setQuery] = useState("");
   const [showBookmarksOnly, setShowBookmarksOnly] = useState(false);
-  const [translationLang, setTranslationLang] = useState<Lang>(lang);
   const [includeTranslation, setIncludeTranslation] = useState(true);
 
   const [progress, setProgress] = useState<DhikrProgress>({ date: "", counts: {} });
@@ -237,13 +234,8 @@ export default function AdhkarPage() {
   const [playing, setPlaying] = useState<PlayState>(null);
   const [audioBusy, setAudioBusy] = useState(false);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
-  const surahCacheRef = useRef<Map<number, Map<number, string>>>(new Map());
+  const surahCacheRef = useRef<Map<number, Map<number, SurahAyahAudio>>>(new Map());
   const playTokenRef = useRef(0);
-  const objectUrlsRef = useRef<string[]>([]);
-
-  useEffect(() => {
-    setTranslationLang(lang);
-  }, [lang]);
 
   useEffect(() => {
     const saved = localStorage.getItem("noor-adhkar-include-translation");
@@ -273,8 +265,8 @@ export default function AdhkarPage() {
     return () => {
       stopAudioEl(el);
       audioElRef.current = null;
-      for (const u of objectUrlsRef.current) URL.revokeObjectURL(u);
-      objectUrlsRef.current = [];
+      clearMediaSession();
+      void releaseWakeLock();
     };
   }, []);
 
@@ -296,6 +288,7 @@ export default function AdhkarPage() {
     () => items.filter((i) => i.category === category).sort((a, b) => a.order_index - b.order_index),
     [items, category],
   );
+  const itemsById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   const completedCount = categoryItems.filter((i) => (progress.counts[i.id] ?? 0) >= i.repeat_count).length;
   const allDone = categoryItems.length > 0 && completedCount === categoryItems.length;
   const isPlayingAll = playing?.kind === "all";
@@ -312,18 +305,14 @@ export default function AdhkarPage() {
     setBookmarks(toggleDhikrBookmark(item.id));
   }, []);
 
-  const revokeObjectUrls = useCallback(() => {
-    for (const u of objectUrlsRef.current) URL.revokeObjectURL(u);
-    objectUrlsRef.current = [];
-  }, []);
-
   const stopPlayback = useCallback(() => {
     playTokenRef.current += 1;
     if (audioElRef.current) stopAudioEl(audioElRef.current);
     setPlaying(null);
     setAudioBusy(false);
-    revokeObjectUrls();
-  }, [revokeObjectUrls]);
+    clearMediaSession();
+    void releaseWakeLock();
+  }, []);
 
   const scrollToItem = useCallback((itemId: string) => {
     const el = document.querySelector(`[data-adhkar-id="${itemId}"]`);
@@ -339,90 +328,112 @@ export default function AdhkarPage() {
         return;
       }
       let idx = 0;
-      const playNext = () => {
+      let retries = 0;
+      // Transient CDN hiccups (a slow mobile network, a momentary 5xx from
+      // the third-party audio host) must not read as "audio stopped working" —
+      // retry the same clip a couple of times before giving up on it.
+      const MAX_RETRIES = 2;
+
+      const playCurrent = () => {
         if (token !== playTokenRef.current) return;
         if (idx >= segments.length) {
           setPlaying(null);
           setAudioBusy(false);
+          clearMediaSession();
+          void releaseWakeLock();
           return;
         }
         const seg = segments[idx];
-        idx += 1;
         setPlaying({ id: seg.itemId, kind });
         scrollToItem(seg.itemId);
-        el.src = seg.url;
-        void el.play().catch(() => {
-          if (token === playTokenRef.current) {
-            setPlaying(null);
-            setAudioBusy(false);
-          }
+        const item = itemsById.get(seg.itemId);
+        updateMediaSession({
+          title: item ? localized(item, lang, "title") : t(lang, "dhikr"),
+          artist: t(lang, "dhikr"),
+          album: t(lang, CATEGORIES.find((c) => c.id === category)!.labelKey),
+          playing: true,
         });
+        void acquireWakeLock();
+        // Hard-reset the element before assigning a new source — reusing the
+        // same <audio> across items without this can leave a prior source's
+        // decode/network state wedged on some mobile browsers, especially
+        // after the element was paused (e.g. screen lock) and resumed.
+        el.pause();
+        el.removeAttribute("src");
+        el.load();
+        el.src = seg.url;
+        void el.play().catch(() => retryOrAdvance());
       };
-      el.onended = playNext;
-      el.onerror = () => {
-        // Skip a broken clip and continue the queue (e.g. one TTS failure).
-        playNext();
+
+      const retryOrAdvance = () => {
+        if (token !== playTokenRef.current) return;
+        if (retries < MAX_RETRIES) {
+          retries += 1;
+          window.setTimeout(playCurrent, 500 * retries);
+        } else {
+          idx += 1;
+          retries = 0;
+          playCurrent();
+        }
       };
+
+      el.onended = () => {
+        idx += 1;
+        retries = 0;
+        playCurrent();
+      };
+      el.onerror = () => retryOrAdvance();
       setAudioBusy(false);
-      playNext();
+      playCurrent();
     },
-    [scrollToItem],
+    [scrollToItem, itemsById, lang, category],
   );
 
-  const resolveVerseUrls = useCallback(async (verseKeys: string): Promise<string[]> => {
-    const keys = verseKeys.split(",").map((k) => k.trim()).filter(Boolean);
-    const urls: string[] = [];
-    for (const key of keys) {
-      const [surahStr, ayahStr] = key.split(":");
-      const surah = Number(surahStr);
-      const ayah = Number(ayahStr);
-      let surahMap = surahCacheRef.current.get(surah);
-      if (!surahMap) {
-        const d = await apiStatic<{ ayahs: SurahAyahAudio[] }>(
-          `/api/quran/audio/surahs/${surah}?reciter=ar.alafasy`,
-        );
-        surahMap = new Map(d.ayahs.map((a) => [a.ayah_number, a.audio ?? ""]));
-        surahCacheRef.current.set(surah, surahMap);
+  // Fetches (and caches per surah) both the Arabic recitation and the
+  // human-recited Urdu translation audio in one call — same CDN the Quran
+  // reader uses, so no TTS round-trip is ever needed here.
+  const resolveVerseAudio = useCallback(
+    async (verseKeys: string, kind: "arabic" | "translation"): Promise<string[]> => {
+      const keys = verseKeys.split(",").map((k) => k.trim()).filter(Boolean);
+      const urls: string[] = [];
+      for (const key of keys) {
+        const [surahStr, ayahStr] = key.split(":");
+        const surah = Number(surahStr);
+        const ayah = Number(ayahStr);
+        let surahMap = surahCacheRef.current.get(surah);
+        if (!surahMap) {
+          const d = await apiStatic<{ ayahs: SurahAyahAudio[] }>(
+            `/api/quran/audio/surahs/${surah}?reciter=ar.alafasy&translation_lang=ur`,
+          );
+          surahMap = new Map(d.ayahs.map((a) => [a.ayah_number, a]));
+          surahCacheRef.current.set(surah, surahMap);
+        }
+        const entry = surahMap.get(ayah);
+        const url = kind === "arabic" ? entry?.audio : entry?.translation_audio;
+        if (url) urls.push(url);
       }
-      const url = surahMap.get(ayah);
-      if (url) urls.push(url);
-    }
-    return urls;
-  }, []);
+      return urls;
+    },
+    [],
+  );
 
   const buildItemSegments = useCallback(
-    async (
-      item: Adhkar,
-      opts: { arabic: boolean; translation: boolean; translationLang: Lang },
-    ): Promise<AudioSegment[]> => {
+    async (item: Adhkar, opts: { arabic: boolean; translation: boolean }): Promise<AudioSegment[]> => {
+      // Human-recited audio only exists for actual Quran verses. Non-Quran
+      // duas have no Qari/translation reciter to fall back to (no TTS here).
+      if (!item.verse_keys) return [];
       const segs: AudioSegment[] = [];
-      if (opts.arabic && item.verse_keys) {
-        const urls = await resolveVerseUrls(item.verse_keys);
+      if (opts.arabic) {
+        const urls = await resolveVerseAudio(item.verse_keys, "arabic");
         for (const url of urls) segs.push({ itemId: item.id, url });
       }
-      // Non-Quran duas have no Qari audio — speak the translation (or Arabic via
-      // the translation TTS path using transliteration when translation is off).
-      if (opts.arabic && !item.verse_keys && !opts.translation) {
-        const url = await fetchTtsUrl(
-          localized(item, opts.translationLang, "translation") || item.transliteration,
-          opts.translationLang,
-        );
-        if (url) {
-          objectUrlsRef.current.push(url);
-          segs.push({ itemId: item.id, url });
-        }
-      }
       if (opts.translation) {
-        const text = localized(item, opts.translationLang, "translation");
-        const url = await fetchTtsUrl(text, opts.translationLang);
-        if (url) {
-          objectUrlsRef.current.push(url);
-          segs.push({ itemId: item.id, url });
-        }
+        const urls = await resolveVerseAudio(item.verse_keys, "translation");
+        for (const url of urls) segs.push({ itemId: item.id, url });
       }
       return segs;
     },
-    [resolveVerseUrls],
+    [resolveVerseAudio],
   );
 
   const handlePlayRecitation = useCallback(
@@ -440,7 +451,6 @@ export default function AdhkarPage() {
         const segs = await buildItemSegments(item, {
           arabic: true,
           translation: includeTranslation,
-          translationLang,
         });
         if (token !== playTokenRef.current) return;
         playSegments(segs, token, "recitation");
@@ -451,7 +461,7 @@ export default function AdhkarPage() {
         }
       }
     },
-    [playing, stopPlayback, buildItemSegments, includeTranslation, translationLang, playSegments],
+    [playing, stopPlayback, buildItemSegments, includeTranslation, playSegments],
   );
 
   const handlePlayTranslation = useCallback(
@@ -468,7 +478,6 @@ export default function AdhkarPage() {
         const segs = await buildItemSegments(item, {
           arabic: false,
           translation: true,
-          translationLang,
         });
         if (token !== playTokenRef.current) return;
         playSegments(segs, token, "translation");
@@ -479,7 +488,7 @@ export default function AdhkarPage() {
         }
       }
     },
-    [playing, stopPlayback, buildItemSegments, translationLang, playSegments],
+    [playing, stopPlayback, buildItemSegments, playSegments],
   );
 
   const handlePlayAll = useCallback(async () => {
@@ -499,7 +508,6 @@ export default function AdhkarPage() {
         const part = await buildItemSegments(item, {
           arabic: true,
           translation: includeTranslation,
-          translationLang,
         });
         segs.push(...part);
       }
@@ -516,21 +524,37 @@ export default function AdhkarPage() {
         setPlaying(null);
       }
     }
-  }, [
-    isPlayingAll,
-    stopPlayback,
-    categoryItems,
-    buildItemSegments,
-    includeTranslation,
-    translationLang,
-    playSegments,
-  ]);
+  }, [isPlayingAll, stopPlayback, categoryItems, buildItemSegments, includeTranslation, playSegments]);
 
   // Changing category / filters while a full playlist is running would desync — stop.
   useEffect(() => {
     if (playing?.kind === "all") stopPlayback();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only on category change
   }, [category]);
+
+  // Lock-screen / notification media controls (mirrors the Quran reader).
+  useEffect(() => {
+    setupMediaSession({
+      onPlay: () => void audioElRef.current?.play(),
+      onPause: () => audioElRef.current?.pause(),
+      onStop: () => stopPlayback(),
+    });
+  }, [stopPlayback]);
+
+  // Screen Wake Lock is auto-released by the browser whenever the document
+  // goes hidden (screen lock, backgrounding) — that alone can leave the
+  // <audio> element paused with nothing re-requesting the lock or resuming
+  // playback once the screen comes back on. Recover on the way back in.
+  useEffect(() => {
+    function onVisibility() {
+      if (document.visibilityState !== "visible" || !playing) return;
+      void acquireWakeLock();
+      const el = audioElRef.current;
+      if (el && el.paused && el.src) void el.play().catch(() => undefined);
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [playing]);
 
   return (
     <div className="space-y-6">
@@ -558,23 +582,9 @@ export default function AdhkarPage() {
       <div className="card space-y-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span className="shrink-0 text-xs text-faint">{t(lang, "translation")}</span>
-          {(["en", "ur", "hi"] as Lang[]).map((tr) => (
-            <button
-              key={tr}
-              type="button"
-              onClick={() => {
-                if (playing) stopPlayback();
-                setTranslationLang(tr);
-              }}
-              className={`shrink-0 rounded-md px-2.5 py-1 text-xs font-medium uppercase ${
-                translationLang === tr
-                  ? "bg-noor-700 text-white dark:bg-noor-600"
-                  : "border border-noor-200 text-muted dark:border-noor-600"
-              }`}
-            >
-              {tr}
-            </button>
-          ))}
+          <span className="shrink-0 rounded-md bg-noor-700 px-2.5 py-1 text-xs font-medium text-white dark:bg-noor-600">
+            {t(lang, "urdu")}
+          </span>
         </div>
         <label className="flex items-center gap-2 text-xs text-body">
           <input
@@ -606,7 +616,7 @@ export default function AdhkarPage() {
               ? t(lang, "dhikrStopAudio")
               : `${t(lang, "dhikrPlayAll")} — ${t(lang, CATEGORIES.find((c) => c.id === category)!.labelKey)}`}
           </button>
-          {audioBusy && <span className="text-xs text-faint">{t(lang, "loading")}…</span>}
+          {audioBusy && <LoadingGlass size="sm" label={t(lang, "loading")} />}
         </div>
         <p className="text-[11px] text-muted">{t(lang, "dhikrPlayAllHint")}</p>
       </div>
@@ -663,7 +673,7 @@ export default function AdhkarPage() {
         </div>
       )}
 
-      {status === "loading" && <p className="text-sm text-faint">…</p>}
+      {status === "loading" && <LoadingGlass size="lg" label={t(lang, "loading")} />}
       {status === "error" && <p className="text-sm text-faint">{t(lang, "chatError")}</p>}
 
       {status === "done" && visibleItems.length === 0 && (
@@ -678,7 +688,7 @@ export default function AdhkarPage() {
             key={item.id}
             item={item}
             lang={lang}
-            translationLang={translationLang}
+            translationLang={TRANSLATION_LANG}
             count={progress.counts[item.id] ?? 0}
             bookmarked={bookmarks.includes(item.id)}
             playing={playing}

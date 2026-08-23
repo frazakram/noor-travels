@@ -46,6 +46,7 @@ function AccountButton() {
     return (
       <Link
         href="/account"
+        prefetch={false}
         aria-label={t(lang, "account")}
         className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:scale-105"
       >
@@ -59,6 +60,7 @@ function AccountButton() {
   return (
     <Link
       href="/account"
+      prefetch={false}
       aria-label={t(lang, "authLoginSignup")}
       className="group inline-flex shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-r from-teal-600 via-noor-600 to-teal-700 px-3 py-1.5 text-[11px] font-semibold tracking-wide text-white shadow-sm shadow-teal-900/25 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-teal-900/30 active:scale-95 sm:px-3.5 sm:text-xs"
     >
@@ -118,7 +120,7 @@ export function Nav() {
           </Link>
           <nav className="hidden gap-1 md:flex">
             {links.map((l) => (
-              <Link key={l.href} href={l.href} className={linkClass(l.href)}>
+              <Link key={l.href} href={l.href} prefetch={false} className={linkClass(l.href)}>
                 <span className="inline-flex items-center gap-1.5">
                   {t(lang, l.key)}
                   {l.key === "khutba" && (

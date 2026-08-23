@@ -185,10 +185,11 @@ export function AppTabBar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={false}
                   className={`app-more-item relative flex min-h-20 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl border px-2 py-3 text-center transition active:scale-95 ${
                     active
                       ? "border-gold-300 bg-gold-50 text-noor-800 shadow-sm dark:border-gold-500/60 dark:bg-gold-500/15 dark:text-gold-200"
-                      : "border-noor-100 bg-noor-50 text-noor-800 hover:-translate-y-0.5 hover:bg-white dark:border-noor-700 dark:bg-noor-800 dark:text-noor-100 dark:hover:bg-noor-700"
+                      : "border-slate-100 bg-slate-50 text-noor-800 hover:-translate-y-0.5 hover:bg-white dark:border-noor-700 dark:bg-noor-800 dark:text-noor-100 dark:hover:bg-noor-700"
                   }`}
                   style={{ animationDelay: `${index * 35}ms` }}
                 >
@@ -270,6 +271,7 @@ function TabLink({
   return (
     <Link
       href={item.href}
+      prefetch={false}
       aria-current={active ? "page" : undefined}
       className={`app-tab-link group flex min-w-0 flex-col items-center justify-end gap-0.5 px-1 py-1 transition-all active:scale-90 ${
         active

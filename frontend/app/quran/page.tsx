@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { NoticeCard } from "@/components/NoticeCard";
 import { Icons } from "@/components/IconButton";
+import { LoadingGlass } from "@/components/LoadingGlass";
 import { emitPageLoading } from "@/components/NavigationProgress";
 import { api, apiStatic } from "@/lib/api";
 import { t } from "@/lib/i18n";
@@ -240,6 +241,7 @@ export default function QuranPage() {
             <Link
               key={r.verse_key}
               href={`/quran/${r.surah_number}?ayah=${r.ayah_number}`}
+              prefetch={false}
               className="card block hover:border-noor-300 dark:hover:border-noor-500"
             >
               <p className="text-xs text-accent">{r.verse_key}</p>
@@ -269,6 +271,7 @@ export default function QuranPage() {
           <Link
             key={s.number}
             href={`/quran/${s.number}`}
+            prefetch={false}
             onClick={() => setActiveSurah(s.number)}
             className={`card flex items-center justify-between transition hover:border-noor-300 dark:hover:border-noor-500 ${
               activeSurah === s.number
@@ -289,7 +292,7 @@ export default function QuranPage() {
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {activeSurah === s.number ? (
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-noor-200 border-t-noor-600 dark:border-noor-700 dark:border-t-noor-300" />
+                <LoadingGlass size="sm" />
               ) : (
                 <p className="font-arabic text-body" dir="rtl">
                   {s.name_ar}

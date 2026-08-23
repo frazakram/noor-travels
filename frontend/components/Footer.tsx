@@ -23,9 +23,9 @@ export function Footer() {
       <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p>For learning and remembrance. Not a source of fatwa. Verify with qualified scholars.</p>
         <div className="flex items-center gap-4">
-          <Link href="/about" className="hover:text-heading">About</Link>
-          <Link href="/support" className="hover:text-heading">Support Us</Link>
-          <Link href="/" className="hover:text-heading">Privacy</Link>
+          <Link href="/about" prefetch={false} className="hover:text-heading">About</Link>
+          <Link href="/support" prefetch={false} className="hover:text-heading">Support Us</Link>
+          <Link href="/" prefetch={false} className="hover:text-heading">Privacy</Link>
           <span className="rounded-full bg-noor-50 px-2 py-1 text-[10px] font-medium dark:bg-noor-900">
             {version}
           </span>

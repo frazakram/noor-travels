@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLang } from "@/components/LangProvider";
+import { LoadingGlass } from "@/components/LoadingGlass";
 import { startRouteProgress } from "@/components/NavigationProgress";
 import { api } from "@/lib/api";
 import {
@@ -356,7 +357,7 @@ export function QuranAudiobookPlayer({ surahNumber, surahName, startAyah = 1 }: 
         : "";
 
   if (loading) {
-    return <p className="text-noor-600">{t(lang, "loading")}</p>;
+    return <LoadingGlass size="md" label={t(lang, "loading")} />;
   }
 
   const current = textAyahs[currentIndex];
