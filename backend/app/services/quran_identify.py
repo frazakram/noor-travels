@@ -49,6 +49,17 @@ ARABIC_RATIO_MEDIUM = 0.60
 # Candidates kept after the cheap quick_ratio() prefilter, before the real (slower) ratio() pass.
 ARABIC_QUICK_PREFILTER_N = 40
 
+# Matching blocks shorter than this are single/double-letter coincidences, not real
+# quoted text — Arabic's letter inventory is small enough that any unrelated ayah
+# will contain a handful of these by chance. Dropped before scoring.
+ARABIC_MIN_BLOCK_CHARS = 3
+
+# The largest surviving block must carry at least this fraction of the matched
+# total. A real quote (even a noisy OCR read) produces one dominant contiguous
+# run; a coincidental match is several similar-sized fragments scattered across
+# an unrelated ayah with no single run dominating.
+ARABIC_BLOCK_DOMINANCE_MIN = 0.5
+
 ENGLISH_SIMILARITY_HIGH = 0.75
 ENGLISH_SIMILARITY_MEDIUM = 0.60
 
@@ -187,10 +198,18 @@ def match_arabic(query_text: str, top_k: int = 5) -> list[dict]:
     # Pass 2: real matching-block coverage on the shortlist — how much of the QUERY
     # is found (in order) within the ayah, not a symmetric whole-string ratio. This is
     # what makes a clean partial quote of a long ayah still score near 1.0.
+    #
+    # Tiny blocks are dropped and the surviving blocks must have one dominant run
+    # (see constants above) — otherwise a shared opening formula ("ولا تقربوا...")
+    # plus a handful of common-letter coincidences elsewhere in an unrelated ayah
+    # can sum to the same 1.0 as a genuine full-string match.
     scored = []
     for row in shortlist:
         sm = SequenceMatcher(None, q_norm, row["arabic_norm"], autojunk=False)
-        matched = sum(block.size for block in sm.get_matching_blocks())
+        blocks = [b.size for b in sm.get_matching_blocks() if b.size >= ARABIC_MIN_BLOCK_CHARS]
+        matched = sum(blocks)
+        if not blocks or max(blocks) / matched < ARABIC_BLOCK_DOMINANCE_MIN:
+            continue
         score = min(matched / len(q_norm), 1.0)
         scored.append((score, row))
     scored.sort(key=lambda pair: pair[0], reverse=True)

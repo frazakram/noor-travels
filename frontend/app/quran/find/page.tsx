@@ -49,13 +49,19 @@ export default function FindFromScreenshotPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [error, setError] = useState("");
 
-  async function handleFile(file: File) {
+  async function handleFiles(files: File[]) {
     setError("");
     setStage("reading");
     setProgress(0);
     try {
-      const extracted = await runOcr(file, setProgress);
-      setText(extracted);
+      const extracted: string[] = [];
+      for (let i = 0; i < files.length; i += 1) {
+        const perFileProgress = (pct: number) =>
+          setProgress(Math.round(((i + pct / 100) / files.length) * 100));
+        const result = await runOcr(files[i], perFileProgress);
+        if (result.trim()) extracted.push(result.trim());
+      }
+      setText(extracted.join("\n\n"));
       setStage("edit");
     } catch {
       setError(t(lang, "ocrFailed"));
@@ -119,11 +125,11 @@ export default function FindFromScreenshotPage() {
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            capture="environment"
+            multiple
             className="hidden"
             onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void handleFile(file);
+              const files = Array.from(e.target.files ?? []);
+              if (files.length) void handleFiles(files);
             }}
           />
         </label>

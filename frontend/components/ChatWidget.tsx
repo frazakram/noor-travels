@@ -161,6 +161,14 @@ export function ChatWidget() {
     }
   }
 
+  function handleNewChat() {
+    if (loading) return;
+    setMessages([]);
+    setInput("");
+    setError("");
+    setRetranslatePending(false);
+  }
+
   async function handleOutputLangChange(next: Lang) {
     if (next === outputLang || loading) return;
     setOutputLang(next);
@@ -218,15 +226,31 @@ export function ChatWidget() {
             <h2 className="font-semibold text-heading">{t(lang, "chat")}</h2>
             <p className="text-[10px] text-faint">{t(lang, "chatSubtitle")}</p>
           </div>
-          <button
-            onClick={closeChat}
-            className="rounded-lg p-1.5 text-faint hover:bg-noor-50 dark:hover:bg-noor-800"
-            aria-label="Close"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-1">
+            {messages.length > 0 && (
+              <button
+                type="button"
+                onClick={handleNewChat}
+                disabled={loading}
+                title={t(lang, "clearChat")}
+                aria-label={t(lang, "clearChat")}
+                className="rounded-lg p-1.5 text-faint hover:bg-noor-50 disabled:opacity-40 dark:hover:bg-noor-800"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            )}
+            <button
+              onClick={closeChat}
+              className="rounded-lg p-1.5 text-faint hover:bg-noor-50 dark:hover:bg-noor-800"
+              aria-label="Close"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 border-b border-subtle bg-surface-muted px-3 py-2">
