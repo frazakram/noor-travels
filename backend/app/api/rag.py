@@ -1,6 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
+from app.core.limiter import limiter
 from app.services.rag_service import ask, chat
 
 router = APIRouter()
@@ -25,12 +26,14 @@ class ChatRequest(BaseModel):
 
 
 @router.post("/ask")
-def rag_ask(body: AskRequest):
+@limiter.limit("15/minute")
+def rag_ask(request: Request, body: AskRequest):
     return ask(body.question, body.lang)
 
 
 @router.post("/chat")
-def rag_chat(body: ChatRequest):
+@limiter.limit("15/minute")
+def rag_chat(request: Request, body: ChatRequest):
     history = [{"role": m.role, "content": m.content} for m in body.history]
     return chat(
         body.message,

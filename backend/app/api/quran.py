@@ -4,10 +4,11 @@ from functools import lru_cache
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from app.core.limiter import limiter
 from app.db import get_cursor
 
 router = APIRouter()
@@ -186,7 +187,8 @@ class IdentifyRequest(BaseModel):
 
 
 @router.post("/identify")
-def identify_verse(body: IdentifyRequest):
+@limiter.limit("20/minute")
+def identify_verse(request: Request, body: IdentifyRequest):
     """Match OCR'd screenshot text to its source surah:ayah. No LLM anywhere in this
     path — Arabic uses fuzzy text matching, English uses embeddings, both grounded
     in the actual Quran tables (see app/services/quran_identify.py).

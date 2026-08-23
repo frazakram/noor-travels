@@ -3,11 +3,12 @@ import json
 import re
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query, Response, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, Query, Request, Response, WebSocket, WebSocketDisconnect
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
+from app.core.limiter import limiter
 from app.db import get_cursor
 from app.services.khutbah_match import match_transcript
 
@@ -107,7 +108,8 @@ class LiveChunkRequest(BaseModel):
 
 
 @router.post("/live-chunk")
-async def khutba_live_chunk(body: LiveChunkRequest):
+@limiter.limit("20/minute")
+async def khutba_live_chunk(request: Request, body: LiveChunkRequest):
     """One ~10s recording segment → Arabic transcript + English/Urdu translation.
 
     Vercel's serverless runtime drops WebSocket data frames, so the live page

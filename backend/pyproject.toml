@@ -18,6 +18,8 @@ dependencies = [
     # Screenshot verse-finder fuzzy matching (quran_identify.py) — pure-Python
     # fallback wheel available, no numpy-style heavy-import risk.
     "rapidfuzz==3.14.5",
+    # Per-IP rate limiting on endpoints that call a paid external API.
+    "slowapi==0.1.10",
     # Khutba PDF export. uharfbuzz shapes Arabic/Urdu for fpdf2; without it the
     # script renders as disconnected glyphs in reverse order.
     "fpdf2==2.8.8",

@@ -10,11 +10,12 @@ import re
 from difflib import SequenceMatcher
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.api.khutba import _transcribe_arabic
 from app.core.config import get_settings
+from app.core.limiter import limiter
 from app.db import get_cursor
 from app.services.text_normalize import normalize_arabic
 
@@ -60,7 +61,8 @@ class ScoreRequest(BaseModel):
 
 
 @router.post("/score")
-async def score_recitation(body: ScoreRequest):
+@limiter.limit("15/minute")
+async def score_recitation(request: Request, body: ScoreRequest):
     settings = get_settings()
     if not re.sub(r"[^\x21-\x7E]", "", settings.deepgram_api_key):
         raise HTTPException(503, "Transcription unavailable: DEEPGRAM_API_KEY is not set on the server")
