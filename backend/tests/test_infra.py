@@ -73,5 +73,34 @@ class Way2QuranTest(unittest.TestCase):
             self.assertEqual(quran_audio._way2quran_available_surahs("slug", "hafs"), frozenset({2}))
 
 
+
+class PrayerTimesCacheTest(unittest.TestCase):
+    def setUp(self):
+        from app.api import salah
+
+        self.salah = salah
+        salah._timings_cache.clear()
+
+    def test_repeat_requests_are_served_from_memory(self):
+        ok = mock.MagicMock(status_code=200)
+        ok.json.return_value = {"data": {"timings": {}}}
+        with mock.patch.object(self.salah._http, "get", return_value=ok) as get:
+            self.salah._fetch_aladhan("26-09-2026", {"latitude": 1, "longitude": 2})
+            self.salah._fetch_aladhan("26-09-2026", {"longitude": 2, "latitude": 1})
+        self.assertEqual(get.call_count, 1)
+
+    def test_failures_are_not_cached(self):
+        from fastapi import HTTPException
+
+        bad = mock.MagicMock(status_code=500)
+        ok = mock.MagicMock(status_code=200)
+        ok.json.return_value = {"data": {"timings": {}}}
+        with mock.patch.object(self.salah._http, "get", side_effect=[bad, ok]) as get:
+            with self.assertRaises(HTTPException):
+                self.salah._fetch_aladhan("26-09-2026", {"latitude": 1})
+            self.salah._fetch_aladhan("26-09-2026", {"latitude": 1})
+        self.assertEqual(get.call_count, 2)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -2,12 +2,44 @@
 
 from __future__ import annotations
 
+from collections import OrderedDict
 from datetime import datetime, timezone
+from threading import Lock
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 
 router = APIRouter()
+
+# One pooled client per instance: AlAdhan is far from our region, and a fresh TLS
+# handshake per request was most of this endpoint's latency.
+_http = httpx.Client(timeout=15.0, limits=httpx.Limits(max_keepalive_connections=10))
+_USER_AGENT = "NoorSafar/1.0 (+https://noor-travels-chi.vercel.app)"
+
+# Results for an explicit date + coordinates never change, so browsers and the CDN may reuse them.
+_CACHE_DATED = "public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400"
+_CACHE_PLACE = "public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800"
+
+_timings_cache: OrderedDict[tuple, dict] = OrderedDict()
+_timings_lock = Lock()
+_TIMINGS_CACHE_MAX = 512
+
+
+def _fetch_aladhan(day: str, params: dict) -> dict:
+    key = (day, *sorted(params.items()))
+    with _timings_lock:
+        if key in _timings_cache:
+            _timings_cache.move_to_end(key)
+            return _timings_cache[key]
+    resp = _http.get(f"https://api.aladhan.com/v1/timings/{day}", params=params)
+    if resp.status_code != 200:
+        raise HTTPException(502, "Could not fetch prayer times")
+    payload = resp.json()
+    with _timings_lock:
+        _timings_cache[key] = payload
+        if len(_timings_cache) > _TIMINGS_CACHE_MAX:
+            _timings_cache.popitem(last=False)
+    return payload
 
 # 1 = University of Islamic Sciences, Karachi (common in South Asia)
 DEFAULT_METHOD = 1
@@ -38,7 +70,8 @@ def _shift_time(hhmm: str, minutes: int) -> str:
 
 
 @router.get("/times")
-async def prayer_times(
+def prayer_times(
+    response: Response,
     lat: float = Query(..., ge=-90, le=90),
     lng: float = Query(..., ge=-180, le=180),
     method: int = Query(default=DEFAULT_METHOD, ge=1, le=23),
@@ -58,7 +91,6 @@ async def prayer_times(
     ),
 ):
     day = date or _today_aladhan_date(timezone)
-    url = f"https://api.aladhan.com/v1/timings/{day}"
     params: dict = {
         "latitude": lat,
         "longitude": lng,
@@ -68,11 +100,10 @@ async def prayer_times(
     if latitude_adjustment > 0:
         params["latitudeAdjustmentMethod"] = latitude_adjustment
 
-    async with httpx.AsyncClient(timeout=20.0) as client:
-        resp = await client.get(url, params=params)
-        if resp.status_code != 200:
-            raise HTTPException(502, "Could not fetch prayer times")
-        payload = resp.json()
+    try:
+        payload = _fetch_aladhan(day, params)
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, "Could not fetch prayer times") from exc
 
     try:
         data = payload["data"]
@@ -109,6 +140,9 @@ async def prayer_times(
     greg_date = greg.get("date", day) if isinstance(greg, dict) else day
     hijri = data.get("date", {}).get("hijri", {})
 
+    # Without an explicit date the answer depends on "now", so only dated requests are cacheable.
+    if date:
+        response.headers["Cache-Control"] = _CACHE_DATED
     return {
         "date": greg_date,
         "hijri": hijri if isinstance(hijri, dict) else {},
@@ -132,7 +166,8 @@ async def prayer_times(
 
 
 @router.get("/location")
-async def reverse_geocode(
+def reverse_geocode(
+    response: Response,
     lat: float = Query(..., ge=-90, le=90),
     lng: float = Query(..., ge=-180, le=180),
 ):
@@ -144,13 +179,13 @@ async def reverse_geocode(
         "addressdetails": 1,
         "zoom": 14,
     }
-    headers = {"User-Agent": "NoorSafar/1.0 (Islamic prayer app; contact@noorsafar.app)"}
-
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        resp = await client.get(url, params=params, headers=headers)
-        if resp.status_code != 200:
-            raise HTTPException(502, "Could not resolve location")
-        data = resp.json()
+    try:
+        resp = _http.get(url, params=params, headers={"User-Agent": _USER_AGENT})
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, "Could not resolve location") from exc
+    if resp.status_code != 200:
+        raise HTTPException(502, "Could not resolve location")
+    data = resp.json()
 
     addr = data.get("address", {})
     locality = (
@@ -169,6 +204,7 @@ async def reverse_geocode(
     parts = [p for p in [locality, region, country] if p]
     label = ", ".join(dict.fromkeys(parts)) if parts else data.get("display_name", "Your location")
 
+    response.headers["Cache-Control"] = _CACHE_PLACE
     return {
         "label": label,
         "locality": locality,
@@ -181,7 +217,7 @@ async def reverse_geocode(
 
 
 @router.get("/geocode")
-async def geocode_city(q: str = Query(min_length=2)):
+def geocode_city(q: str = Query(min_length=2, max_length=120)):
     url = "https://nominatim.openstreetmap.org/search"
     params = {
         "q": q,
@@ -189,13 +225,13 @@ async def geocode_city(q: str = Query(min_length=2)):
         "addressdetails": 1,
         "limit": 5,
     }
-    headers = {"User-Agent": "NoorSafar/1.0 (Islamic prayer app; contact@noorsafar.app)"}
-
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        resp = await client.get(url, params=params, headers=headers)
-        if resp.status_code != 200:
-            raise HTTPException(502, "Could not search location")
-        rows = resp.json()
+    try:
+        resp = _http.get(url, params=params, headers={"User-Agent": _USER_AGENT})
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, "Could not search location") from exc
+    if resp.status_code != 200:
+        raise HTTPException(502, "Could not search location")
+    rows = resp.json()
 
     results = []
     for row in rows:
