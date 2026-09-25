@@ -35,7 +35,9 @@ class Settings(BaseSettings):
     rag_retrieval_k: int = 20
     rag_final_k: int = 5
     rag_cache_ttl_hours: int = 168
-    groq_chat_model: str = "llama-3.1-8b-instant"
+    # llama-3.1-8b-instant was decommissioned by Groq; gpt-oss-20b is the
+    # current fast/cheap tier that still supports response_format=json_object.
+    groq_chat_model: str = "openai/gpt-oss-20b"
 
     @property
     def embed_url(self) -> str:
