@@ -6,9 +6,12 @@ from functools import lru_cache
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 
 logger = logging.getLogger(__name__)
+
+# Audio metadata only changes when a reciter source changes; let the CDN serve it.
+_CACHE_AUDIO = "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800"
 
 ALQURAN = "https://api.alquran.cloud/v1"
 
@@ -384,13 +387,15 @@ def _fetch_surah_edition(client: httpx.Client, surah_number: int, edition: str) 
 
 
 @router.get("/editions")
-def list_audio_editions():
+def list_audio_editions(response: Response):
+    response.headers["Cache-Control"] = _CACHE_AUDIO
     editions = _fetch_audio_editions()
     return {"reciters": editions, "default": "ar.alafasy"}
 
 
 @router.get("/translation-editions")
-def list_translation_audio_editions():
+def list_translation_audio_editions(response: Response):
+    response.headers["Cache-Control"] = _CACHE_AUDIO
     """Human translation audio available per language (not TTS)."""
     items = []
     for lang, meta in TRANSLATION_AUDIO_EDITIONS.items():
@@ -415,10 +420,19 @@ def list_translation_audio_editions():
 
 @router.get("/surahs/{surah_number}")
 def get_surah_audio(
+    response: Response,
     surah_number: int,
     reciter: str = Query("ar.alafasy", min_length=3, max_length=64),
     translation_lang: str | None = Query(None, pattern="^(en|ur|hi)$"),
 ):
+    payload = _surah_audio_payload(surah_number, reciter, translation_lang)
+    # A scraped reciter reported as unavailable may be a transient scrape failure — don't pin it in the CDN.
+    if payload.get("surah_audio_available", True):
+        response.headers["Cache-Control"] = _CACHE_AUDIO
+    return payload
+
+
+def _surah_audio_payload(surah_number: int, reciter: str, translation_lang: str | None) -> dict:
     if not 1 <= surah_number <= 114:
         raise HTTPException(400, "Surah number must be 1–114")
 

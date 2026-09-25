@@ -4,7 +4,7 @@ from functools import lru_cache
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -106,7 +106,7 @@ def get_surah(
 
 
 @router.get("/ayahs/{verse_key}")
-def get_ayah(verse_key: str, translation: str = Query("en", pattern="^(en|ur|hi)$")):
+def get_ayah(response: Response, verse_key: str, translation: str = Query("en", pattern="^(en|ur|hi)$")):
     field = TRANSLATION_FIELDS.get(translation, "translation_en")
     with get_cursor() as cur:
         cur.execute(
@@ -120,11 +120,13 @@ def get_ayah(verse_key: str, translation: str = Query("en", pattern="^(en|ur|hi)
         row = cur.fetchone()
         if not row:
             raise HTTPException(404, "Ayah not found")
+    response.headers["Cache-Control"] = _CACHE_WORDS
     return row
 
 
 @router.get("/ayahs/{verse_key}/tafsir")
 def get_tafsir(
+    response: Response,
     verse_key: str,
     source: str = Query(
         "ibn_kathir_en",
@@ -138,6 +140,7 @@ def get_tafsir(
         )
         row = cur.fetchone()
         if row:
+            response.headers["Cache-Control"] = _CACHE_WORDS
             return row
 
     # Fallback: Ibn Kathir ingested into document_chunks (production path)
@@ -155,6 +158,7 @@ def get_tafsir(
             text = unescape(re.sub(r"<[^>]+>", " ", text))
             text = re.sub(r"\s{2,}", " ", text).strip()
             if text:
+                response.headers["Cache-Control"] = _CACHE_WORDS
                 return {"verse_key": verse_key, "source": source, "text": text}
 
     raise HTTPException(404, "Tafsir not found for this ayah")
