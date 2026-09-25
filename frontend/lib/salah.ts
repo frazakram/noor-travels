@@ -108,6 +108,11 @@ export function minutesInTz(date: Date, tz: string): number {
   return h * 60 + m;
 }
 
+/** Seconds since midnight in the zone; IANA offsets are whole minutes, so seconds are zone-independent. */
+function secondsInTz(date: Date, tz: string): number {
+  return minutesInTz(date, tz) * 60 + date.getUTCSeconds();
+}
+
 export function parseMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number);
   return h * 60 + m;
@@ -130,11 +135,9 @@ export function formatPrayerClock(time: string): string {
 
 /** Ms until target HH:mm today or tomorrow in timezone. */
 export function msUntilTime(time: string, tz: string, now = new Date()): number {
-  const nowMin = minutesInTz(now, tz);
-  const targetMin = parseMinutes(time);
-  let diffMin = targetMin - nowMin;
-  if (diffMin <= 0) diffMin += 24 * 60;
-  return diffMin * 60_000;
+  let diffSec = parseMinutes(time) * 60 - secondsInTz(now, tz);
+  if (diffSec <= 0) diffSec += 24 * 60 * 60;
+  return diffSec * 1000;
 }
 
 export function formatCountdown(ms: number): string {
@@ -197,7 +200,7 @@ export function getNextPrayer(prayers: PrayerSlot[], tz: string, now = new Date(
   for (const s of slots) {
     if (nowMin < s.startMin) {
       next = s.id;
-      countdownMs = (s.startMin - nowMin) * 60_000;
+      countdownMs = (s.startMin * 60 - secondsInTz(now, tz)) * 1000;
       break;
     }
   }
@@ -237,104 +240,6 @@ export function getTimePhase(prayers: PrayerSlot[] | null, tz: string, now = new
   if (hour >= 18 && hour < 20) return "maghrib";
   if (hour >= 20 && hour < 22) return "isha";
   return "night";
-}
-
-export const MOTIVATIONS: Record<string, Record<TimePhase, string[]>> = {
-  en: {
-    fajr: [
-      "The two rak'ahs before Fajr are better than the world and all it contains.",
-      "Angels witness the congregation at Fajr — begin your day with light.",
-    ],
-    morning: [
-      "Remember Allah in the morning — blessings follow a grateful heart.",
-      "Walk to the masjid with hope; every step can erase a sin.",
-    ],
-    dhuhr: [
-      "Pause from the world at Dhuhr — your soul needs this rest.",
-      "The believer is never alone; prayer is direct conversation with Allah.",
-    ],
-    asr: [
-      "Guard the middle prayer — those who preserve Asr are among the successful.",
-      "As the day cools, renew your focus on the Hereafter.",
-    ],
-    maghrib: [
-      "Break your fast with dates and water; break your heedlessness with gratitude.",
-      "Maghrib is a door of mercy — do not miss it.",
-    ],
-    isha: [
-      "End your day in prostration — sleep with a light heart.",
-      "The night prayer is the honor of the believer.",
-    ],
-    night: [
-      "Tahajjud is for those who seek closeness — even a few rak'ahs matter.",
-      "The last third of the night is when duas are answered.",
-    ],
-  },
-  ur: {
-    fajr: [
-      "فجر سے پہلے دو رکعت دنیا و مافیا سے بہتر ہیں۔",
-      "فجر کی جماعت پر فرشتے گواہی دیتے ہیں — دن نور سے شروع کریں۔",
-    ],
-    morning: [
-      "صبح اللہ کا ذکر کریں — شکر گزار دل پر برکتیں نازل ہوتی ہیں۔",
-      "مسجد کی طرف قدم بڑھائیں — ہر قدم گناہ مٹا سکتا ہے۔",
-    ],
-    dhuhr: [
-      "ظہر پر دنیا سے وقفہ لیں — روح کو آرام چاہیے۔",
-      "نماز اللہ سے براہِ راست بات ہے۔",
-    ],
-    asr: [
-      "وسطی نماز (عصر) کی حفاظت کرو — کامیاب وہی ہیں۔",
-      "جب دن ڈھلتا ہے، آخرت کی یاد تازہ کرو۔",
-    ],
-    maghrib: [
-      "مغرب کے وقت شکر ادا کرو — رحمت کا دروازہ ہے۔",
-      "مغرب کی نماز نہ چھوڑیں۔",
-    ],
-    isha: [
-      "دن سجدے میں ختم کرو — دل ہلکا ہو کر سوئیں۔",
-      "عشاء مومن کی عزت ہے۔",
-    ],
-    night: [
-      "تہجد قربت چاہنے والوں کے لیے ہے۔",
-      "رات کا آخری حصہ دعاؤں کے قبول کا وقت ہے۔",
-    ],
-  },
-  hi: {
-    fajr: [
-      "फज्र से पहले दो रकअत दुनिया व माफ़ीहा से बेहतर हैं।",
-      "फज्र की जमाअत पर फ़रिश्ते गवाही देते हैं।",
-    ],
-    morning: [
-      "सुबह अल्लाह का ज़िक्र करें — शुक्रगुज़ार दिल पर बरकतें।",
-      "मस्जिद की तरफ़ कदम बढ़ाएँ — हर कदम गुनाह मिटा सकता है।",
-    ],
-    dhuhr: [
-      "ज़ुहर पर दुनिया से विराम लें — रूह को आराम चाहिए।",
-      "नमाज़ अल्लाह से सीधी बातचीत है।",
-    ],
-    asr: [
-      "असर की नमाज़ की हिफ़ाज़त करो — कामयाब वही हैं।",
-      "जब दिन ढलता है, आख़िरत की याद ताज़ा करो।",
-    ],
-    maghrib: [
-      "मग़रिब के वक़्त शुक्र अदा करो — रहमत का दरवाज़ा है।",
-      "मग़रिब की नमाज़ न छोड़ें।",
-    ],
-    isha: [
-      "दिन सजदे में खत्म करो — दिल हल्का होकर सोएँ।",
-      "इशा मोमिन की इज़्ज़त है।",
-    ],
-    night: [
-      "तहज्जुद क़ुर्बत चाहने वालों के लिए है।",
-      "रात का आख़िरी हिस्सा दुआओं के क़बूल का वक़्त है।",
-    ],
-  },
-};
-
-export function pickMotivation(lang: string, phase: TimePhase, seed: number): string {
-  const pool = MOTIVATIONS[lang]?.[phase] ?? MOTIVATIONS.en[phase];
-  return pool[seed % pool.length];
 }
 
 export function qiblaBearing(lat: number, lng: number): number {
