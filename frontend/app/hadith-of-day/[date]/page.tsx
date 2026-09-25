@@ -111,7 +111,7 @@ export default async function HadithOfDayDatePage({ params }: Props) {
       </nav>
 
       <header>
-        <p className="text-xs font-semibold uppercase tracking-widest text-amber-600 dark:text-amber-400">
+        <p className="text-xs font-semibold uppercase tracking-widest text-gold-700 dark:text-gold-300">
           {formatDate(date)}
         </p>
         {hadith.chapter_en && <h1 className="mt-1 text-xl font-bold text-heading">{hadith.chapter_en}</h1>}
@@ -135,7 +135,7 @@ export default async function HadithOfDayDatePage({ params }: Props) {
           {hadith.arabic}
         </p>
         <p className="whitespace-pre-line text-sm leading-relaxed text-body">{hadith.english}</p>
-        <p className="text-xs font-medium text-amber-600 dark:text-amber-400">{hadith.reference}</p>
+        <p className="text-xs font-medium text-gold-700 dark:text-gold-300">{hadith.reference}</p>
       </section>
 
       <nav aria-label="More days" className="flex flex-wrap items-center justify-between gap-3 text-sm">

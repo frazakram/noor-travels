@@ -1,14 +1,13 @@
 "use client";
 
+import { Icon } from "@/components/Icon";
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
-import { HijriCalendarModal } from "@/components/home/HijriCalendarModal";
-import { qiblaBearing, upcomingHijriEvent, type SalahTimesResponse } from "@/lib/salah";
+import { qiblaBearing } from "@/lib/salah";
 import { t } from "@/lib/i18n";
 
 type Props = {
   coords: { lat: number; lng: number } | null;
-  times: SalahTimesResponse | null;
 };
 
 function readCompassHeading(e: DeviceOrientationEvent): number | null {
@@ -25,14 +24,12 @@ function readCompassHeading(e: DeviceOrientationEvent): number | null {
   return null;
 }
 
-export function QiblaHijriWidget({ coords, times }: Props) {
+export function QiblaCompass({ coords }: Props) {
   const { lang } = useLang();
   const [heading, setHeading] = useState<number | null>(null);
   const [compassLive, setCompassLive] = useState(false);
-  const [calendarOpen, setCalendarOpen] = useState(false);
   const bearing = coords ? qiblaBearing(coords.lat, coords.lng) : 0;
   const needleRotation = heading !== null ? bearing - heading : bearing;
-  const hijri = times?.hijri;
   const distanceKm = coords ? Math.round(distanceToMecca(coords.lat, coords.lng)) : null;
   const cardinal = cardinalDirection(bearing);
   const aligned = heading !== null && Math.abs(((bearing - heading + 540) % 360) - 180) < 12;
@@ -70,8 +67,7 @@ export function QiblaHijriWidget({ coords, times }: Props) {
   }, []);
 
   return (
-    <section className="grid gap-3 md:grid-cols-2">
-      <article className="rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:p-5">
+    <div>
         <div className="flex items-center gap-4">
           <div className="relative mx-auto h-20 w-20 shrink-0 sm:mx-0">
             <svg viewBox="0 0 64 64" className="absolute inset-0 h-full w-full text-slate-400 dark:text-slate-500">
@@ -83,7 +79,7 @@ export function QiblaHijriWidget({ coords, times }: Props) {
             {/* Qibla marker — fixed direction from your location */}
             {coords && (
               <span
-                className="animate-qibla-glow absolute left-1/2 top-1/2 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-600 text-[8px] font-bold leading-none text-white shadow dark:bg-emerald-500"
+                className="animate-qibla-glow absolute left-1/2 top-1/2 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-noor-700 text-[8px] font-bold leading-none text-white shadow dark:bg-gold-400 dark:text-noor-950"
                 style={{
                   transform: `translate(-50%, -50%) rotate(${bearing}deg) translateY(-1.35rem)`,
                 }}
@@ -93,19 +89,18 @@ export function QiblaHijriWidget({ coords, times }: Props) {
               </span>
             )}
             {/* Your location at center */}
-            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs" aria-hidden>
-              📍
+            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-noor-700 dark:text-gold-300" aria-hidden>
+              <Icon name="pin" className="h-3.5 w-3.5" />
             </span>
             {/* Phone heading arrow */}
             <div
-              className={`absolute left-1/2 top-3 h-10 w-1 -translate-x-1/2 origin-bottom rounded-full shadow-lg transition-transform duration-300 ${
-                aligned ? "bg-emerald-500" : "bg-teal-600"
+              className={`absolute left-1/2 top-3 h-10 w-1 -translate-x-1/2 origin-bottom rounded-full transition-transform duration-300 ${
+                aligned ? "bg-emerald-500" : "bg-noor-600"
               }`}
               style={{ transform: `translateX(-50%) rotate(${needleRotation}deg)` }}
             />
           </div>
           <div className="min-w-0 flex-1 space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">{t(lang, "qiblaCompass")}</p>
             <p className="text-xl font-bold text-slate-800 dark:text-white sm:text-2xl">
               {coords ? `${Math.round(bearing)}° ${cardinal}` : "—"}
             </p>
@@ -114,11 +109,11 @@ export function QiblaHijriWidget({ coords, times }: Props) {
             </p>
             {coords && (
               <p className="text-xs text-slate-500">
-                <span className="font-medium text-slate-600 dark:text-slate-300">📍 {t(lang, "qiblaYourQibla")}:</span> {Math.round(bearing)}°
+                <span className="font-medium text-slate-600 dark:text-slate-300">{t(lang, "qiblaYourQibla")}:</span> {Math.round(bearing)}°
                 {heading !== null && (
                   <>
                     {" · "}
-                    <span className="font-medium text-slate-600 dark:text-slate-300">🧭 {t(lang, "qiblaPhoneHeading")}:</span> {Math.round(heading)}°
+                    <span className="font-medium text-slate-600 dark:text-slate-300">{t(lang, "qiblaPhoneHeading")}:</span> {Math.round(heading)}°
                   </>
                 )}
               </p>
@@ -132,36 +127,7 @@ export function QiblaHijriWidget({ coords, times }: Props) {
             </p>
           </div>
         </div>
-      </article>
-      <article className="rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:p-5">
-        <h2 className="font-semibold text-heading">{t(lang, "hijriCalendar")}</h2>
-        {hijri ? (
-          <>
-            <p className="mt-2 text-xl font-bold text-heading sm:text-2xl">
-              {hijri.day} {hijri.month?.en} {hijri.year}
-            </p>
-            <p className="mt-1 text-sm text-muted">{upcomingHijriEvent(hijri)}</p>
-            {hijri.holidays && hijri.holidays.length > 0 && (
-              <p className="mt-2 text-xs text-accent">{hijri.holidays.join(", ")}</p>
-            )}
-          </>
-        ) : (
-          <p className="mt-2 text-sm text-muted">{t(lang, "loadingHijri")}</p>
-        )}
-        <button
-          type="button"
-          onClick={() => setCalendarOpen(true)}
-          className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-noor-200 px-3 py-1.5 text-xs font-medium text-accent hover:bg-noor-50 dark:border-noor-600 dark:hover:bg-noor-800"
-        >
-          📅 {t(lang, "openHijriCalendar")}
-        </button>
-      </article>
-      <HijriCalendarModal
-        open={calendarOpen}
-        onClose={() => setCalendarOpen(false)}
-        hijri={hijri}
-      />
-    </section>
+    </div>
   );
 }
 

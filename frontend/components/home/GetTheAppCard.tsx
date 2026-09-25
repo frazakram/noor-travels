@@ -5,7 +5,6 @@ import { AppLogo } from "@/components/AppLogo";
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { APK_QR_SRC, APK_URL, fetchAppVersion, isAndroidBrowser, isInsideApp } from "@/lib/apk";
-import { GET_APP_ANCHOR } from "@/components/home/InstallAppPrompt";
 import { t } from "@/lib/i18n";
 
 /**
@@ -34,7 +33,7 @@ export function GetTheAppCard() {
   const steps = [t(lang, "downloadStep1"), t(lang, "downloadStep2"), t(lang, "downloadStep3")];
 
   return (
-    <section id={GET_APP_ANCHOR} className="card scroll-mt-24 space-y-4">
+    <section id="get-the-app" className="card scroll-mt-24 space-y-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-3">
           <div className="flex items-center gap-3">
@@ -91,7 +90,7 @@ export function GetTheAppCard() {
           <ol className="space-y-2">
             {steps.map((step, i) => (
               <li key={i} className="flex gap-2.5 text-sm text-body">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-700 text-[11px] font-semibold text-white dark:bg-teal-600">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-noor-700 text-[11px] font-semibold text-white dark:bg-noor-600">
                   {i + 1}
                 </span>
                 <span>{step}</span>

@@ -9,7 +9,7 @@ type Props = {
 };
 
 const toneClass: Record<NoticeTone, string> = {
-  info: "border-teal-200 bg-teal-50 text-teal-900 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-50",
+  info: "border-noor-200 bg-noor-50 text-noor-900 dark:border-noor-800 dark:bg-noor-950/40 dark:text-noor-50",
   warning: "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-50",
   error: "border-red-200 bg-red-50 text-red-950 dark:border-red-800 dark:bg-red-950/40 dark:text-red-50",
   success: "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-50",

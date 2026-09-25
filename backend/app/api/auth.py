@@ -134,6 +134,10 @@ class PreferencesRequest(BaseModel):
     prefs: dict
 
 
+class DeleteAccountRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=128)
+
+
 def _ensure_preferences_table(cur) -> None:
     """Lazy-create so Vercel cold starts work before migrate.py is re-run."""
     if use_sqlite():
@@ -284,6 +288,24 @@ def put_preferences(body: PreferencesRequest, authorization: str | None = Header
                 (user_id, raw),
             )
     return {"ok": True}
+
+
+@router.post("/delete-account")
+def delete_account(body: DeleteAccountRequest, authorization: str | None = Header(default=None)):
+    user_id = current_user_id(authorization)
+    with get_cursor() as cur:
+        cur.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(401, "Account no longer exists")
+        if not verify_password(body.password, row["password_hash"]):
+            raise HTTPException(403, "Password is incorrect")
+        # SQLite doesn't enforce ON DELETE CASCADE without PRAGMA foreign_keys, so remove child rows explicitly.
+        _ensure_preferences_table(cur)
+        cur.execute("DELETE FROM user_preferences WHERE user_id = %s", (user_id,))
+        cur.execute("DELETE FROM user_learn_progress WHERE user_id = %s", (user_id,))
+        cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+    return {"deleted": True}
 
 
 def _now() -> str:

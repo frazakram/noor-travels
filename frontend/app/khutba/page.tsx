@@ -444,7 +444,7 @@ export default function KhutbaPage() {
               </h2>
               <p className="mt-1 text-xs text-muted">
                 {formatKhutbaDate(openSaved.savedAt, lang)}
-                {openSaved.location ? ` · 📍 ${openSaved.location}` : ""}
+                {openSaved.location ? ` · ${openSaved.location}` : ""}
               </p>
               <p className="mt-1 text-xs text-faint">
                 {t(lang, "khutbaCoverage")}:{" "}
@@ -513,7 +513,7 @@ export default function KhutbaPage() {
                     </h3>
                     <p className="mt-0.5 text-xs text-muted">
                       {formatKhutbaDate(k.savedAt, lang)}
-                      {k.location ? ` · 📍 ${k.location}` : ""}
+                      {k.location ? ` · ${k.location}` : ""}
                     </p>
                   </button>
                   <button

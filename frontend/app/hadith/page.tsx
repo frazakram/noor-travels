@@ -313,7 +313,7 @@ export default function HadithPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-heading">{t(lang, "hadith")}</h1>
+          <h1 className="text-2xl font-bold text-heading">{t(lang, "navHadithDuas")}</h1>
           <p className="text-sm text-muted">{t(lang, "hadithSubtitle")}</p>
           <Link href="/library?category=hadith" className="text-xs text-accent hover:underline">
             {t(lang, "hadithLibraryCrossLink")} →
@@ -491,21 +491,23 @@ export default function HadithPage() {
       {showBrowse && !activeTopic && (
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-heading">{t(lang, "hadithBrowseTopics")}</h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
             {HADITH_TOPICS.map((topic) => (
               <button
                 key={topic.id}
                 type="button"
                 onClick={() => selectTopic(topic)}
-                className="card text-left transition hover:border-noor-300 hover:shadow-md dark:hover:border-noor-500"
+                className="flex min-w-0 items-center gap-3 rounded-2xl border border-noor-100 bg-white px-3 py-3 text-start transition-colors hover:border-noor-300 dark:border-noor-800 dark:bg-noor-900 dark:hover:border-noor-500"
               >
-                <span className="text-2xl" aria-hidden>
+                <span className="text-xl leading-none" aria-hidden>
                   {topic.icon}
                 </span>
-                <h3 className="mt-2 font-semibold text-heading">{topicLabel(lang, topic.id)}</h3>
-                <p className="mt-1 text-xs text-muted">
-                  {topic.chapters.length} {topic.chapters.length === 1 ? "chapter" : "chapters"}
-                </p>
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium leading-snug text-heading">{topicLabel(lang, topic.id)}</span>
+                  <span className="block text-[11px] text-muted">
+                    {topic.chapters.length} {topic.chapters.length === 1 ? "chapter" : "chapters"}
+                  </span>
+                </span>
               </button>
             ))}
           </div>

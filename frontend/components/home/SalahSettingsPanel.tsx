@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@/components/Icon";
 import { useEffect, useMemo, useState } from "react";
 import { SavedToast } from "@/components/SavedToast";
 import { useLang } from "@/components/LangProvider";
@@ -98,8 +99,8 @@ export function SalahSettingsPanel({ settings, times, onSettings, onManualLocati
     <section className="card p-4 sm:p-5">
       <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between gap-3 text-left">
         <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-noor-700 to-teal-600 text-lg text-white shadow-lg shadow-teal-900/15">
-            🕌
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-noor-50 text-lg text-noor-700 dark:bg-noor-800 dark:text-gold-300">
+            <Icon name="mosque" className="h-5 w-5" />
           </span>
           <div>
             <h2 className="font-semibold text-heading">{t(lang, "prayerSettings")}</h2>
@@ -231,9 +232,9 @@ export function SalahSettingsPanel({ settings, times, onSettings, onManualLocati
                           {base ? formatPrayerClock(base) : "—"}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between gap-2 rounded-xl border border-teal-200/70 bg-teal-50/80 px-2.5 py-1.5 dark:border-teal-700/50 dark:bg-teal-900/30">
-                        <span className="font-medium text-teal-800 dark:text-teal-200">{t(lang, "masjidTime")}</span>
-                        <span className="font-mono text-sm font-bold text-teal-900 dark:text-gold-300">
+                      <div className="flex items-center justify-between gap-2 rounded-xl border border-noor-200/70 bg-noor-50/80 px-2.5 py-1.5 dark:border-noor-700/50 dark:bg-noor-900/30">
+                        <span className="font-medium text-noor-800 dark:text-noor-200">{t(lang, "masjidTime")}</span>
+                        <span className="font-mono text-sm font-bold text-noor-900 dark:text-gold-300">
                           {preview ? formatPrayerClock(preview) : "—"}
                         </span>
                       </div>

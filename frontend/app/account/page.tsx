@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import {
+  deleteAccount,
   getUser,
   login,
   logout,
@@ -26,6 +27,8 @@ export default function AccountPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [stats, setStats] = useState({ points: 0, lessons: 0 });
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     setUser(getUser());
@@ -68,12 +71,28 @@ export default function AccountPage() {
     }
   }
 
+  async function confirmDelete(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy || !deletePassword) return;
+    setBusy(true);
+    setDeleteError("");
+    try {
+      await deleteAccount(deletePassword);
+      setUser(null);
+      setDeletePassword("");
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (user) {
     return (
       <div className="mx-auto max-w-md space-y-5">
         <h1 className="text-2xl font-bold text-heading">{t(lang, "account")}</h1>
         <div className="card space-y-1 text-center">
-          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-emerald-600 text-xl font-bold text-white">
+          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-noor-700 text-xl font-semibold text-white">
             {(user.name || user.email)[0]?.toUpperCase()}
           </span>
           {user.name && <p className="pt-2 font-semibold text-heading">{user.name}</p>}
@@ -81,7 +100,7 @@ export default function AccountPage() {
         </div>
         <div className="card flex items-center justify-around text-center">
           <div>
-            <p className="text-xl font-bold text-heading">⭐ {stats.points}</p>
+            <p className="text-xl font-bold text-heading">{stats.points}</p>
             <p className="text-xs text-muted">{t(lang, "learnQuranPoints")}</p>
           </div>
           <div>
@@ -89,8 +108,8 @@ export default function AccountPage() {
             <p className="text-xs text-muted">{t(lang, "learnQuranLessonsDone")}</p>
           </div>
         </div>
-        <p className="rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3 text-xs leading-relaxed text-body dark:border-emerald-900 dark:bg-emerald-950/20">
-          ✅ {t(lang, "authSyncNote")}
+        <p className="rounded-xl bg-noor-50/70 px-4 py-3 text-xs leading-relaxed text-body dark:bg-noor-800/50">
+          {t(lang, "authSyncNote")}
         </p>
         <div className="flex gap-2">
           <Link href="/learn-quran" className="btn-primary text-sm">
@@ -107,6 +126,30 @@ export default function AccountPage() {
             {t(lang, "authLogout")}
           </button>
         </div>
+        <details className="card group">
+          <summary className="cursor-pointer text-sm font-medium text-red-700 dark:text-red-400">
+            {t(lang, "deleteAccount")}
+          </summary>
+          <form onSubmit={confirmDelete} className="mt-3 space-y-3">
+            <p className="text-xs leading-relaxed text-muted">{t(lang, "deleteAccountWarn")}</p>
+            <input
+              className="input"
+              type="password"
+              autoComplete="current-password"
+              placeholder={t(lang, "deleteAccountPassword")}
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+            />
+            {deleteError && <p className="text-xs text-red-700 dark:text-red-400">{deleteError}</p>}
+            <button
+              type="submit"
+              disabled={busy || !deletePassword}
+              className="w-full rounded-xl bg-red-700 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-800 disabled:opacity-40"
+            >
+              {t(lang, "deleteAccountConfirm")}
+            </button>
+          </form>
+        </details>
       </div>
     );
   }

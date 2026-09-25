@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
+import { GratitudeJournal } from "@/components/home/GratitudeJournal";
 import { NotificationSettings } from "@/components/home/NotificationSettings";
 import { SalahSettingsPanel } from "@/components/home/SalahSettingsPanel";
+import { TravelModeWidget } from "@/components/home/TravelModeWidget";
 import { SavedToast } from "@/components/SavedToast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useTheme } from "@/components/ThemeProvider";
@@ -50,9 +52,20 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 pb-10">
       <div>
-        <h1 className="text-2xl font-bold text-heading">{t(lang, "settings")}</h1>
-        <p className="mt-1 text-sm text-muted">{t(lang, "settingsDesc")}</p>
+        <h1 className="text-2xl font-bold text-heading">{t(lang, "navYou")}</h1>
+        <p className="mt-1 text-sm text-muted">{t(lang, "youDesc")}</p>
       </div>
+
+      <Link
+        href="/account"
+        prefetch={false}
+        className="card flex items-center justify-between gap-3 hover:border-noor-300 dark:hover:border-noor-500"
+      >
+        <span className="text-sm font-semibold text-heading">{t(lang, "account")}</span>
+        <span className="text-muted" aria-hidden>→</span>
+      </Link>
+
+      <GratitudeJournal times={salah.times} />
 
       <section className="card space-y-3">
         <h2 className="text-sm font-semibold text-heading">{t(lang, "language")}</h2>
@@ -64,7 +77,7 @@ export default function SettingsPage() {
               onClick={() => setDraftLang(l)}
               className={`rounded-full px-3 py-1.5 text-sm font-medium uppercase ${
                 draftLang === l
-                  ? "bg-teal-700 text-white dark:bg-teal-600"
+                  ? "bg-noor-700 text-white dark:bg-noor-600"
                   : "border border-subtle text-muted"
               }`}
             >
@@ -146,28 +159,36 @@ export default function SettingsPage() {
 
       <NotificationSettings times={salah.times} />
 
-      <section className="card space-y-2">
-        <h2 className="text-sm font-semibold text-heading">{t(lang, "quickLinks")}</h2>
-        <Link href="/quran" className="block text-sm text-accent hover:underline">
-          {t(lang, "continueReading")} / {t(lang, "bookmarks")}
-        </Link>
-        <Link href="/hadith" className="block text-sm text-accent hover:underline">
-          {t(lang, "hadithFavorites")}
-        </Link>
-        <Link href="/hadith-of-day" className="block text-sm text-accent hover:underline">
-          {t(lang, "hadithArchive")}
-        </Link>
-        <Link href="/account" className="block text-sm text-accent hover:underline">
-          {t(lang, "account")}
-        </Link>
-        {appVersion && (
-          // Only inside the APK — on the web the bridge is absent and the
-          // version of a web build is not a thing the reader can act on.
-          <p className="pt-2 text-xs text-faint">
-            {t(lang, "appVersion")}: {appVersion}
-          </p>
-        )}
-      </section>
+      <TravelModeWidget coords={salah.coords} />
+
+      <nav className="card divide-y divide-noor-100 overflow-hidden p-0 dark:divide-noor-800">
+        {(
+          [
+            ["/hadith-of-day", "hadithArchive"],
+            ["/about", "about"],
+            ["/support", "supportUs"],
+            ["/privacy", "privacy"],
+          ] as const
+        ).map(([href, key]) => (
+          <Link
+            key={href}
+            href={href}
+            prefetch={false}
+            className="flex items-center justify-between px-4 py-3 text-sm text-heading hover:bg-noor-50/60 dark:hover:bg-noor-900"
+          >
+            {t(lang, key)}
+            <span className="text-faint" aria-hidden>→</span>
+          </Link>
+        ))}
+      </nav>
+
+      {appVersion && (
+        // Only inside the APK — on the web the bridge is absent and the
+        // version of a web build is not a thing the reader can act on.
+        <p className="text-center text-xs text-faint">
+          {t(lang, "appVersion")}: {appVersion}
+        </p>
+      )}
 
       <SavedToast
         open={showSaved}

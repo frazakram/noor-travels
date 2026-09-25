@@ -94,7 +94,7 @@ export function LearnTrail({
                     {allDone && <span className="lq-shine" aria-hidden />}
                   </span>
                 </div>
-                <span className="absolute left-1/2 top-full mt-0.5 w-[80px] -translate-x-1/2 truncate text-center text-[9px] font-medium text-muted">
+                <span className="absolute left-1/2 top-full mt-0.5 w-[80px] -translate-x-1/2 truncate text-center text-[10px] font-medium text-muted">
                   {moduleTitle(mod, lang)}
                 </span>
               </div>
@@ -131,7 +131,7 @@ export function LearnTrail({
                           title={id}
                           className={`group relative flex h-7 w-7 items-center justify-center rounded-full transition-transform hover:scale-125 ${
                             lessonDone
-                              ? "bg-gradient-to-br from-emerald-400 to-teal-600 shadow-sm shadow-emerald-500/40"
+                              ? "bg-gradient-to-br from-emerald-400 to-noor-600 shadow-sm shadow-emerald-500/40"
                               : "border-2 border-dashed border-slate-300 bg-white/60 dark:border-slate-600 dark:bg-slate-800/60"
                           }`}
                         >
@@ -153,7 +153,7 @@ export function LearnTrail({
                         </Link>
                       )}
                       {isCurrent && (
-                        <span className="lq-herechip absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-500 px-1.5 py-px text-[8px] font-bold text-white shadow">
+                        <span className="lq-herechip absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-500 px-1.5 py-px text-[10px] font-semibold text-white shadow">
                           {t(lang as "en", "learnQuranYouAreHere")}
                         </span>
                       )}

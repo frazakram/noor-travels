@@ -1,5 +1,6 @@
 "use client";
 
+import { PageLoading } from "@/components/PageLoading";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -124,7 +125,7 @@ export default function LearnLessonPage() {
   }
 
   if (!lesson) {
-    return <p className="text-sm text-faint">{t(lang, "loading")}</p>;
+    return <PageLoading />;
   }
 
   return (
@@ -153,14 +154,14 @@ export default function LearnLessonPage() {
           <button
             type="button"
             onClick={() => setTab("learn")}
-            className={`rounded-full px-4 py-1.5 text-sm ${tab === "learn" ? "bg-teal-700 text-white" : "border border-subtle text-body"}`}
+            className={`rounded-full px-4 py-1.5 text-sm ${tab === "learn" ? "bg-noor-700 text-white" : "border border-subtle text-body"}`}
           >
             {t(lang, "learnQuranStudy")}
           </button>
           <button
             type="button"
             onClick={() => setTab("quiz")}
-            className={`rounded-full px-4 py-1.5 text-sm ${tab === "quiz" ? "bg-teal-700 text-white" : "border border-subtle text-body"}`}
+            className={`rounded-full px-4 py-1.5 text-sm ${tab === "quiz" ? "bg-noor-700 text-white" : "border border-subtle text-body"}`}
           >
             {t(lang, "learnQuranQuiz")}
           </button>
@@ -217,7 +218,7 @@ export default function LearnLessonPage() {
                 {quizItems[quizIdx].options.map((opt, i) => {
                   const isSel = selected === i;
                   const isCorrect = quizItems[quizIdx].answer === i;
-                  let cls = "border-subtle hover:border-teal-400";
+                  let cls = "border-subtle hover:border-noor-400";
                   if (isSel) cls = isCorrect ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30" : "border-red-400 bg-red-50 dark:bg-red-950/30";
                   return (
                     <button
@@ -310,7 +311,7 @@ function VocabCards({
       <button
         type="button"
         onClick={onFlip}
-        className="card mx-auto flex min-h-[220px] w-full max-w-md flex-col items-center justify-center border-2 border-emerald-200 bg-gradient-to-b from-white to-emerald-50/40 p-6 text-center dark:border-emerald-800 dark:from-slate-900 dark:to-emerald-950/20"
+        className="card mx-auto flex min-h-[220px] w-full max-w-md flex-col items-center justify-center p-6 text-center"
       >
         {!flipped ? (
           <>

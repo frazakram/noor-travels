@@ -1,8 +1,11 @@
 "use client";
 
+import { NoticeCard } from "@/components/NoticeCard";
+import { PageLoading } from "@/components/PageLoading";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useChat } from "@/components/ChatProvider";
 import { useLang } from "@/components/LangProvider";
 import { emitPageLoading } from "@/components/NavigationProgress";
 import { t, type Lang } from "@/lib/i18n";
@@ -47,7 +50,7 @@ function AnswerPanel({
 }) {
   if (loading && !answer) {
     return (
-      <div className="rounded-xl border border-teal-200 bg-teal-50/50 p-4 dark:border-teal-800 dark:bg-teal-950/20">
+      <div className="rounded-xl border border-noor-200 bg-noor-50/50 p-4 dark:border-noor-800 dark:bg-noor-950/20">
         <p className="text-sm text-faint">{t(lang, "libraryLoadingAnswer")}</p>
       </div>
     );
@@ -56,7 +59,7 @@ function AnswerPanel({
   if (!answer) return null;
 
   return (
-    <div className="rounded-xl border border-teal-200 bg-teal-50/50 p-4 dark:border-teal-800 dark:bg-teal-950/20">
+    <div className="rounded-xl border border-noor-200 bg-noor-50/50 p-4 dark:border-noor-800 dark:bg-noor-950/20">
       <h2 className="text-sm font-semibold text-heading">{t(lang, "libraryAnswerTitle")}</h2>
       <p className="mt-1 text-sm text-muted">{question}</p>
       <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-body">{answer.answer}</p>
@@ -95,6 +98,7 @@ export default function QuestionLibraryPage() {
 
 function QuestionLibraryPageInner() {
   const { lang } = useLang();
+  const { openChat } = useChat();
   const [index, setIndex] = useState<LibraryIndex | null>(null);
   const [answers, setAnswers] = useState<Record<string, LibraryAnswer> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -144,12 +148,23 @@ function QuestionLibraryPageInner() {
     if (!index) return [];
     const q = search.trim().toLowerCase();
     return index.items.filter((item) => {
-      if (category !== "all" && item.category !== category) return false;
+      // Some source categories (e.g. "dua" / "dua_ext") share one display label — filter by label.
+      if (category !== "all" && categoryLabel(lang, item.category) !== categoryLabel(lang, category)) return false;
       if (!q) return true;
       const hay = `${item.question} ${item.category} ${(item.tags || []).join(" ")}`.toLowerCase();
       return hay.includes(q);
     });
-  }, [index, search, category]);
+  }, [index, search, category, lang]);
+
+  const categoryChips = useMemo(() => {
+    if (!index) return [];
+    const seen = new Map<string, string>();
+    for (const cat of index.categories) {
+      const label = categoryLabel(lang, cat);
+      if (!seen.has(label)) seen.set(label, cat);
+    }
+    return [...seen].map(([label, cat]) => ({ label, cat }));
+  }, [index, lang]);
 
   useEffect(() => {
     setPage(0);
@@ -184,26 +199,48 @@ function QuestionLibraryPageInner() {
   }
 
   if (loading) {
-    return <p className="text-center text-muted py-12">{t(lang, "loading")}</p>;
+    return <PageLoading />;
   }
 
   if (error || !index) {
     return (
-      <div className="card mx-auto max-w-lg text-center">
-        <p className="text-muted">{t(lang, "libraryLoadError")}</p>
+      <div className="mx-auto max-w-lg">
+        <NoticeCard
+          tone="error"
+          title={t(lang, "genericErrorTitle")}
+          message={t(lang, "genericErrorBody")}
+          actionLabel={t(lang, "tryAgain")}
+          onAction={() => window.location.reload()}
+        />
       </div>
     );
   }
 
   return (
     <div className="mx-auto max-w-5xl space-y-4 pb-8">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-bold text-heading">{t(lang, "questionLibrary")}</h1>
-        <p className="text-sm text-muted">{t(lang, "questionLibraryHint")}</p>
-        <p className="text-xs text-faint">
+      <header className="space-y-3">
+        <div>
+          <h1 className="text-2xl font-bold text-heading">{t(lang, "ask")}</h1>
+          <p className="mt-1 text-sm text-muted">{t(lang, "chatSubtitle")}</p>
+        </div>
+        <button
+          type="button"
+          onClick={openChat}
+          className="flex w-full items-center gap-3 rounded-2xl border border-subtle bg-white px-4 py-3.5 text-start text-sm text-muted transition-colors hover:border-noor-300 dark:bg-noor-900"
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-noor-700 dark:text-gold-300" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+            <path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.2A8 8 0 1 1 20 12Z" />
+          </svg>
+          <span className="min-w-0 flex-1 truncate">{t(lang, "askInputCta")}</span>
+        </button>
+      </header>
+
+      <div className="pt-2">
+        <h2 className="text-sm font-semibold text-heading">{t(lang, "askBrowseTitle")}</h2>
+        <p className="mt-0.5 text-xs text-faint">
           {index.total.toLocaleString()} {t(lang, "libraryQuestionsCount")} · {t(lang, "libraryPreloaded")}
         </p>
-      </header>
+      </div>
 
       <div className="card space-y-3">
         <input
@@ -218,21 +255,21 @@ function QuestionLibraryPageInner() {
             type="button"
             onClick={() => setCategory("all")}
             className={`rounded-full px-3 py-1 text-xs font-medium ${
-              category === "all" ? "bg-teal-700 text-white dark:bg-teal-600" : "border border-subtle text-muted"
+              category === "all" ? "bg-noor-700 text-white dark:bg-noor-600" : "border border-subtle text-muted"
             }`}
           >
             {t(lang, "libraryAllCategories")}
           </button>
-          {index.categories.map((cat) => (
+          {categoryChips.map(({ label, cat }) => (
             <button
               key={cat}
               type="button"
               onClick={() => setCategory(cat)}
               className={`rounded-full px-3 py-1 text-xs font-medium ${
-                category === cat ? "bg-teal-700 text-white dark:bg-teal-600" : "border border-subtle text-muted"
+                category !== "all" && categoryLabel(lang, category) === label ? "bg-noor-700 text-white dark:bg-noor-600" : "border border-subtle text-muted"
               }`}
             >
-              {categoryLabel(lang, cat)}
+              {label}
             </button>
           ))}
         </div>
@@ -255,13 +292,13 @@ function QuestionLibraryPageInner() {
                     aria-expanded={isOpen}
                     className={`w-full rounded-xl border px-4 py-3 text-left transition ${
                       isOpen
-                        ? "border-teal-500 bg-teal-50/80 dark:bg-teal-950/30"
-                        : "border-subtle bg-surface-muted/40 hover:border-teal-300 dark:hover:border-teal-700"
+                        ? "border-noor-500 bg-noor-50/80 dark:bg-noor-950/30"
+                        : "border-subtle bg-surface-muted/40 hover:border-noor-300 dark:hover:border-noor-700"
                     }`}
                   >
                     <div className="flex items-start gap-2">
                       <span
-                        className={`mt-0.5 shrink-0 text-xs transition-transform ${isOpen ? "rotate-90 text-teal-600" : "text-faint"}`}
+                        className={`mt-0.5 shrink-0 text-xs transition-transform ${isOpen ? "rotate-90 text-noor-600" : "text-faint"}`}
                         aria-hidden
                       >
                         ▶

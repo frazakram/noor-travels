@@ -111,8 +111,8 @@
 
 @layer components {
   .card {
-    @apply rounded-2xl border border-noor-100 bg-white p-5 shadow-sm transition-all duration-200
-      dark:border-noor-700 dark:bg-noor-900 dark:shadow-black/20;
+    @apply rounded-2xl border border-noor-100 bg-white p-5 transition-colors duration-200
+      dark:border-noor-800 dark:bg-noor-900;
   }
 
   /* Clickable cards (Link / button wrappers) get press feedback */
@@ -150,8 +150,8 @@
   }
 
   .btn-primary {
-    @apply rounded-xl bg-noor-700 px-5 py-2.5 text-sm font-medium text-white transition-all duration-150
-      hover:bg-noor-800 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100
+    @apply rounded-xl bg-noor-700 px-5 py-2.5 text-sm font-medium text-white transition-colors duration-150
+      hover:bg-noor-800 active:bg-noor-900 disabled:opacity-50
       dark:bg-noor-600 dark:hover:bg-noor-500;
   }
 
@@ -266,35 +266,6 @@
     pointer-events: none;
   }
 
-  /* Suppresses the browser's own default tap flash on cards wired to useCardSheen — without
-     this, a real device shows its native gray tap-highlight for a frame before our sweep
-     starts, which reads as a separate "fast flash" ahead of the intended animation. */
-  .card-touch {
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-  }
-
-  /* One-shot gold sweep, fired on tap/click via useCardSheen — not a continuous loop.
-     Duration here must stay in sync with SHEEN_DURATION_MS in hooks/useCardSheen.ts. */
-  .card-sheen-pulse {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(100deg, transparent 30%, rgba(212, 168, 83, 0.32) 50%, transparent 70%);
-    background-size: 250% 100%;
-    animation: card-sheen-once 4s cubic-bezier(0.22, 1, 0.36, 1) both;
-    pointer-events: none;
-  }
-
-  /* Same one-shot sweep, tuned for dark/translucent cards (e.g. the Salah countdown panel). */
-  .card-sheen-pulse-dark {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.18) 50%, transparent 70%);
-    background-size: 250% 100%;
-    animation: card-sheen-once 4s cubic-bezier(0.22, 1, 0.36, 1) both;
-    pointer-events: none;
-  }
-
   .hero-sun {
     position: absolute;
     z-index: 2;
@@ -317,149 +288,12 @@
     animation: celestial-float 10s ease-in-out infinite;
   }
 
-  .hero-cloud {
-    position: absolute;
-    fill: rgba(255, 255, 255, 0.1);
-  }
-
-  .hero-cloud-1 {
-    top: 12%;
-    left: -25%;
-    width: 7.5rem;
-    animation: cloud-drift 64s linear infinite;
-  }
-
-  .hero-cloud-2 {
-    top: 34%;
-    left: -25%;
-    width: 5rem;
-    fill: rgba(255, 255, 255, 0.07);
-    animation: cloud-drift 88s linear infinite;
-    animation-delay: -36s;
-  }
-
-  .hero-cloud-3 {
-    top: 5%;
-    left: -25%;
-    width: 4rem;
-    fill: rgba(255, 255, 255, 0.06);
-    animation: cloud-drift 110s linear infinite;
-    animation-delay: -76s;
-  }
-
   .hero-star {
     position: absolute;
     border-radius: 9999px;
     background: rgba(255, 255, 255, 0.85);
     box-shadow: 0 0 6px rgba(255, 255, 255, 0.7);
     animation: twinkle 3.6s ease-in-out infinite;
-  }
-
-  .hero-particle {
-    position: absolute;
-    bottom: -4%;
-    width: 3px;
-    height: 3px;
-    border-radius: 9999px;
-    background: rgba(255, 217, 138, 0.55);
-    box-shadow: 0 0 6px rgba(255, 217, 138, 0.6);
-    animation: particle-rise 11s ease-in-out infinite;
-  }
-
-  .hero-window {
-    position: absolute;
-    bottom: 0.5rem;
-    height: 0.3rem;
-    width: 0.3rem;
-    border-radius: 9999px;
-    background: #ffd98a;
-    box-shadow: 0 0 8px rgba(255, 217, 138, 0.85);
-    animation: window-glow 4s ease-in-out infinite;
-  }
-
-  .bird-flock {
-    @apply pointer-events-none absolute left-[-4rem] top-[16%] z-[2] h-10 w-16 opacity-80;
-    animation: birds-cross 26s linear infinite;
-  }
-
-  .bird-flock span {
-    position: absolute;
-    height: 2px;
-    width: 2px;
-    animation: bird-bob 3.2s ease-in-out infinite;
-  }
-
-  .bird-flock span::before,
-  .bird-flock span::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    height: 2px;
-    width: 8px;
-    border-radius: 9999px;
-    background: rgba(255, 255, 255, 0.6);
-  }
-
-  .bird-flock span::before {
-    right: 0;
-    transform-origin: right bottom;
-    animation: wing-flap 0.55s ease-in-out infinite alternate;
-  }
-
-  .bird-flock span::after {
-    left: 0;
-    transform-origin: left bottom;
-    animation: wing-flap-mirror 0.55s ease-in-out infinite alternate;
-  }
-
-  .bird-flock span:nth-child(1) {
-    left: 0;
-    top: 16px;
-  }
-
-  .bird-flock span:nth-child(2) {
-    left: 26px;
-    top: 2px;
-    --bird-scale: 0.8;
-    animation-delay: -1.1s;
-  }
-
-  .bird-flock span:nth-child(2)::before,
-  .bird-flock span:nth-child(2)::after {
-    animation-delay: -0.2s;
-  }
-
-  .bird-flock span:nth-child(3) {
-    left: 48px;
-    top: 24px;
-    --bird-scale: 0.65;
-    animation-delay: -2.2s;
-  }
-
-  .bird-flock span:nth-child(3)::before,
-  .bird-flock span:nth-child(3)::after {
-    animation-delay: -0.35s;
-  }
-
-  .shooting-star {
-    @apply absolute h-px w-24 rounded-full;
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 246, 214, 0.9), rgba(255, 255, 255, 0));
-    box-shadow: 0 0 16px rgba(255, 246, 214, 0.9);
-    opacity: 0;
-    transform: rotate(-24deg);
-    animation: shooting-star 7s ease-in-out infinite;
-  }
-
-  .shooting-star-one {
-    left: 72%;
-    top: 14%;
-  }
-
-  .shooting-star-two {
-    left: 44%;
-    top: 28%;
-    animation-delay: -3.8s;
-    animation-duration: 9s;
   }
 
 }
@@ -618,54 +452,7 @@
   }
 }
 
-@keyframes card-sheen-once {
-  from {
-    background-position: 200% 0;
-  }
-  to {
-    background-position: -50% 0;
-  }
-}
-
-@keyframes app-tab-pop {
-  0% {
-    transform: translateY(4px) scale(0.88);
-  }
-  65% {
-    transform: translateY(-2px) scale(1.08);
-  }
-  100% {
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes app-plus-breathe {
-  0%,
-  100% {
-    box-shadow:
-      0 8px 20px rgba(24, 83, 70, 0.4),
-      0 0 0 0 rgba(212, 168, 83, 0.2);
-  }
-  50% {
-    box-shadow:
-      0 10px 24px rgba(24, 83, 70, 0.46),
-      0 0 0 7px rgba(212, 168, 83, 0);
-  }
-}
-
-@keyframes app-more-enter {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.94);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.liquid-glass,
-.liquid-glass-panel {
+.liquid-glass {
   --glass-x: 50%;
   --glass-y: 20%;
   --glass-intensity: 0;
@@ -680,8 +467,7 @@
     0 5px 16px rgba(13, 34, 31, 0.08);
 }
 
-.liquid-glass::before,
-.liquid-glass-panel::before {
+.liquid-glass::before {
   content: "";
   position: absolute;
   inset: -35%;
@@ -712,8 +498,7 @@
   mix-blend-mode: screen;
 }
 
-.liquid-glass::after,
-.liquid-glass-panel::after {
+.liquid-glass::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -726,8 +511,7 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.26);
 }
 
-.liquid-glass > *,
-.liquid-glass-panel > * {
+.liquid-glass > * {
   position: relative;
   z-index: 1;
 }
@@ -743,23 +527,14 @@
   transform: scale(1.12);
 }
 
-.liquid-glass-plus {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    inset 0 -8px 15px rgba(6, 48, 40, 0.24),
-    0 8px 20px rgba(24, 83, 70, 0.4);
-}
-
-html.dark .liquid-glass,
-html.dark .liquid-glass-panel {
+html.dark .liquid-glass {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.2),
     inset 0 -1px 0 rgba(0, 0, 0, 0.3),
     0 7px 20px rgba(0, 0, 0, 0.24);
 }
 
-html.dark .liquid-glass::before,
-html.dark .liquid-glass-panel::before {
+html.dark .liquid-glass::before {
   background:
     radial-gradient(
       circle at var(--glass-x) var(--glass-y),
@@ -777,46 +552,19 @@ html.dark .liquid-glass-panel::before {
     );
 }
 
-.app-tab-icon-active {
-  animation: app-tab-pop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
-  filter: drop-shadow(0 0 6px rgba(212, 168, 83, 0.55));
-}
-
-html.dark .app-tab-icon-active {
-  filter: drop-shadow(0 0 8px rgba(212, 168, 83, 0.45));
-}
-
-.app-plus-button {
-  animation: app-plus-breathe 2.4s ease-in-out infinite;
-}
-
-.app-more-item {
-  animation: app-more-enter 0.28s ease-out both;
-}
-
-html.high-contrast .liquid-glass,
-html.high-contrast .liquid-glass-panel {
+html.high-contrast .liquid-glass {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
   box-shadow: none;
 }
 
 html.high-contrast .liquid-glass::before,
-html.high-contrast .liquid-glass::after,
-html.high-contrast .liquid-glass-panel::before,
-html.high-contrast .liquid-glass-panel::after {
+html.high-contrast .liquid-glass::after {
   display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-tab-icon-active,
-  .app-plus-button,
-  .app-more-item {
-    animation: none;
-  }
-
-  .liquid-glass::before,
-  .liquid-glass-panel::before {
+  .liquid-glass::before {
     transition: none;
     transform: none;
   }
@@ -920,100 +668,6 @@ html.dark.high-contrast .ayah-word-active {
   }
 }
 
-@keyframes window-glow {
-  0%,
-  100% {
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-@keyframes cloud-drift {
-  from {
-    left: -25%;
-  }
-  to {
-    left: 108%;
-  }
-}
-
-@keyframes birds-cross {
-  from {
-    transform: translateX(0) translateY(0);
-  }
-  30% {
-    transform: translateX(28rem) translateY(-14px);
-  }
-  65% {
-    transform: translateX(56rem) translateY(10px);
-  }
-  to {
-    transform: translateX(88rem) translateY(-6px);
-  }
-}
-
-@keyframes bird-bob {
-  0%,
-  100% {
-    transform: translateY(0) scale(var(--bird-scale, 1));
-  }
-  50% {
-    transform: translateY(-6px) scale(var(--bird-scale, 1));
-  }
-}
-
-@keyframes wing-flap {
-  from {
-    transform: rotate(-34deg);
-  }
-  to {
-    transform: rotate(16deg);
-  }
-}
-
-@keyframes wing-flap-mirror {
-  from {
-    transform: rotate(34deg);
-  }
-  to {
-    transform: rotate(-16deg);
-  }
-}
-
-@keyframes particle-rise {
-  0% {
-    transform: translateY(0) translateX(0);
-    opacity: 0;
-  }
-  12% {
-    opacity: 0.85;
-  }
-  88% {
-    opacity: 0.35;
-  }
-  100% {
-    transform: translateY(-135%) translateX(8px);
-    opacity: 0;
-  }
-}
-
-@keyframes shooting-star {
-  0%,
-  72% {
-    opacity: 0;
-    transform: translate3d(0, 0, 0) rotate(-24deg);
-  }
-  78% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translate3d(-220px, 112px, 0) rotate(-24deg);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in-up,
   .animate-ayah-glow,
@@ -1021,13 +675,6 @@ html.dark.high-contrast .ayah-word-active {
   .hero-sun,
   .hero-moon-wrap,
   .hero-star,
-  .hero-window,
-  .hero-cloud,
-  .bird-flock,
-  .bird-flock span,
-  .bird-flock span::before,
-  .bird-flock span::after,
-  .shooting-star,
   .animate-confetti,
   .animate-countdown-glow,
   .animate-icon-breathe,
@@ -1035,14 +682,8 @@ html.dark.high-contrast .ayah-word-active {
   .animate-adhan-flash,
   .animate-tile-bounce,
   .animate-qibla-glow,
-  .animate-tile-shimmer::after,
-  .hero-particle {
+  .animate-tile-shimmer::after {
     animation: none !important;
-  }
-
-  .card-sheen-pulse,
-  .card-sheen-pulse-dark {
-    display: none;
   }
 
   .liquid-glass-spinner::before,

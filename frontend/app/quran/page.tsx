@@ -1,10 +1,10 @@
 "use client";
 
+import { PageLoading } from "@/components/PageLoading";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { NoticeCard } from "@/components/NoticeCard";
-import { Icons } from "@/components/IconButton";
 import { LoadingGlass } from "@/components/LoadingGlass";
 import { emitPageLoading } from "@/components/NavigationProgress";
 import { api, apiStatic } from "@/lib/api";
@@ -31,6 +31,13 @@ type SearchResult = {
   translation_ur: string;
   translation_hi?: string;
 };
+
+const QURAN_TOOLS = [
+  { href: "/quran/listen", key: "audiobook" as const, icon: <><path d="M4 14v-2a8 8 0 0 1 16 0v2" /><rect x="3" y="14" width="4" height="6" rx="1.5" /><rect x="17" y="14" width="4" height="6" rx="1.5" /></> },
+  { href: "/learn-quran", key: "learnQuran" as const, icon: <><path d="m3 8 9-4 9 4-9 4-9-4Z" /><path d="M7 10v5c2.8 2 7.2 2 10 0v-5" /></> },
+  { href: "/recite", key: "recite" as const, icon: <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" /></> },
+  { href: "/quran/find", key: "findFromScreenshot" as const, icon: <><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" /><circle cx="12" cy="12" r="3" /></> },
+];
 
 export default function QuranPage() {
   const { lang } = useLang();
@@ -82,7 +89,7 @@ export default function QuranPage() {
     }
   }
 
-  if (loading) return <p className="text-muted">{t(lang, "loading")}</p>;
+  if (loading) return <PageLoading />;
 
   const normalizedQuery = query.trim().toLowerCase();
   const filteredSurahs =
@@ -108,7 +115,7 @@ export default function QuranPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-heading">{t(lang, "quran")}</h1>
-        <p className="mt-1 text-sm text-muted">{t(lang, "audiobookDesc")}</p>
+        <p className="mt-1 text-sm text-muted">{t(lang, "quranPageDesc")}</p>
       </div>
 
       {lastRead && (
@@ -167,54 +174,21 @@ export default function QuranPage() {
         </button>
       </form>
 
-      <Link
-        href="/quran/find"
-        className="card flex items-center gap-3 hover:border-noor-300 dark:hover:border-noor-500"
-      >
-        <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gold-300 bg-gold-50 text-noor-800 dark:border-gold-600 dark:bg-noor-800 dark:text-gold-400"
-          aria-hidden
-        >
-          {Icons.camera}
-        </span>
-        <div className="min-w-0">
-          <p className="font-medium text-heading">{t(lang, "findFromScreenshot")}</p>
-          <p className="text-xs text-faint">{t(lang, "findFromScreenshotDesc")}</p>
-        </div>
-      </Link>
-
-      <div className="grid gap-2 sm:grid-cols-2">
-        <Link
-          href="/recite"
-          className="card flex items-center gap-3 hover:border-noor-300 dark:hover:border-noor-500"
-        >
-          <span
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gold-300 bg-gold-50 text-noor-800 dark:border-gold-600 dark:bg-noor-800 dark:text-gold-400"
-            aria-hidden
+      <nav className="grid grid-cols-4 gap-2">
+        {QURAN_TOOLS.map((tool) => (
+          <Link
+            key={tool.href}
+            href={tool.href}
+            prefetch={false}
+            className="flex flex-col items-center gap-2 rounded-2xl border border-subtle bg-white px-1 py-3 text-center transition-colors hover:border-noor-300 dark:bg-noor-900 dark:hover:border-noor-500"
           >
-            {Icons.mic}
-          </span>
-          <div className="min-w-0">
-            <p className="font-medium text-heading">{t(lang, "recite")}</p>
-            <p className="text-xs text-faint">{t(lang, "reciteCardDesc")}</p>
-          </div>
-        </Link>
-        <Link
-          href="/learn-quran"
-          className="card flex items-center gap-3 hover:border-noor-300 dark:hover:border-noor-500"
-        >
-          <span
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gold-300 bg-gold-50 text-noor-800 dark:border-gold-600 dark:bg-noor-800 dark:text-gold-400"
-            aria-hidden
-          >
-            {Icons.book}
-          </span>
-          <div className="min-w-0">
-            <p className="font-medium text-heading">{t(lang, "learnQuran")}</p>
-            <p className="text-xs text-faint">{t(lang, "learnQuranDesc")}</p>
-          </div>
-        </Link>
-      </div>
+            <svg viewBox="0 0 24 24" className="h-6 w-6 text-noor-700 dark:text-gold-300" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              {tool.icon}
+            </svg>
+            <span className="text-[11px] font-medium leading-tight text-heading sm:text-xs">{t(lang, tool.key)}</span>
+          </Link>
+        ))}
+      </nav>
 
       {loadError && (
         <NoticeCard

@@ -109,7 +109,7 @@ export default function HadithOfDayPage() {
     <div className="mx-auto max-w-3xl space-y-4 pb-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-amber-600 dark:text-amber-400">
+          <p className="text-xs font-semibold uppercase tracking-widest text-gold-700 dark:text-gold-300">
             {t(lang, "hadithOfTheDay")}
           </p>
           {hadith?.chapter_en && (
@@ -178,7 +178,7 @@ export default function HadithOfDayPage() {
             {hadith.arabic}
           </p>
           <p className="whitespace-pre-line text-sm leading-relaxed text-body">{hadith.english}</p>
-          <p className="text-xs font-medium text-amber-600 dark:text-amber-400">{hadith.reference}</p>
+          <p className="text-xs font-medium text-gold-700 dark:text-gold-300">{hadith.reference}</p>
         </article>
       )}
 

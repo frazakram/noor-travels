@@ -132,7 +132,7 @@ export default async function LibraryQuestionPage({ params }: Props) {
 
       <section
         aria-labelledby="answer-heading"
-        className="rounded-xl border border-teal-200 bg-teal-50/50 p-4 dark:border-teal-800 dark:bg-teal-950/20"
+        className="rounded-xl border border-noor-200 bg-noor-50/50 p-4 dark:border-noor-800 dark:bg-noor-950/20"
       >
         <h2 id="answer-heading" className="sr-only">
           Answer

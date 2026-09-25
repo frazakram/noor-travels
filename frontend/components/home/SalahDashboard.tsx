@@ -1,10 +1,10 @@
 "use client";
 
+import { Icon, type IconName } from "@/components/Icon";
 import { useEffect, useRef, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { NoticeCard } from "@/components/NoticeCard";
 import { ShareButton } from "@/components/ShareButton";
-import { useCardSheen } from "@/hooks/useCardSheen";
 import type { SharePayload } from "@/lib/share";
 import {
   getMonthStats,
@@ -17,10 +17,8 @@ import {
 import {
   countdownParts,
   getNextPrayer,
-  getTimePhase,
   minutesInTz,
   parseMinutes,
-  pickMotivation,
   type PrayerId,
   type SalahTimesResponse,
 } from "@/lib/salah";
@@ -37,12 +35,12 @@ const NEXT_PRAYER_RING_CIRCUMFERENCE = 2 * Math.PI * 19;
 /** Countdown text glows gold in the last 5 minutes before adhan. */
 const FINAL_STRETCH_MS = 5 * 60 * 1000;
 
-const PRAYER_ICONS: Record<PrayerId, string> = {
-  fajr: "🌅",
-  dhuhr: "☀️",
-  asr: "🌤️",
-  maghrib: "🌇",
-  isha: "🌙",
+const PRAYER_ICONS: Record<PrayerId, IconName> = {
+  fajr: "sunrise",
+  dhuhr: "sun",
+  asr: "sunCloud",
+  maghrib: "sunset",
+  isha: "moon",
 };
 
 type DisplaySlot =
@@ -72,7 +70,7 @@ function ConfettiBurst() {
       {[...Array(8)].map((_, i) => (
         <span
           key={i}
-          className="absolute h-1 w-1 animate-confetti rounded-full bg-amber-400"
+          className="absolute h-1 w-1 animate-confetti rounded-full bg-gold-400"
           style={{ "--tw-translate-x": `${(i - 3.5) * 6}px`, animationDelay: `${i * 25}ms` } as React.CSSProperties}
         />
       ))}
@@ -121,7 +119,6 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
   const [showStats, setShowStats] = useState(false);
   const [showAllPrayers, setShowAllPrayers] = useState(false);
   const tz = times?.timezone ?? "UTC";
-  const sheen = useCardSheen();
 
   useEffect(() => {
     setNow(new Date());
@@ -136,8 +133,6 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
     setStreak(loadStreak());
   }, [now]);
 
-  const phase = now ? getTimePhase(times?.prayers ?? null, tz, now) : "night";
-  const motivation = now ? pickMotivation(lang, phase, now.getDate() + now.getHours()) : "";
   const nextInfo = times && now ? getNextPrayer(times.prayers, tz, now) : null;
 
   const prevNextRef = useRef<PrayerId | null>(null);
@@ -218,7 +213,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
     <div className="space-y-3">
       {/* Location row */}
       <div className="flex min-w-0 items-center gap-2 text-sm text-white/90">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/15 text-sm">📍</span>
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/15"><Icon name="pin" className="h-4 w-4" /></span>
         <div>
           <p
             className={`font-medium ${
@@ -229,23 +224,16 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
           >
             {loading ? t(lang, "salahLocating") : locationLabel || t(lang, "salahYourArea")}
           </p>
-          {times && (
-            <p className="text-[10px] text-white/60 sm:text-xs">
-              {times.latitude.toFixed(4)}°, {times.longitude.toFixed(4)}° · {times.timezone}
-            </p>
-          )}
         </div>
       </div>
 
       {/* Next salah countdown */}
       {nextInfo && times && now && (
         <div
-          className={`card-touch relative overflow-hidden rounded-2xl bg-white/10 p-3 md:backdrop-blur-md transition-colors duration-500 sm:p-4 ${
+          className={`relative overflow-hidden rounded-2xl bg-white/10 p-3 md:backdrop-blur-md transition-colors duration-500 sm:p-4 ${
             justAdhan ? "animate-adhan-flash" : ""
           }`}
-          onPointerDown={sheen.trigger}
         >
-          {sheen.active && <span key={sheen.pulseId} className="card-sheen-pulse-dark" aria-hidden />}
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className={`relative h-12 w-12 shrink-0 sm:h-14 sm:w-14 ${justAdhan ? "animate-icon-breathe" : ""}`}>
@@ -264,8 +252,8 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                     className="transition-[stroke-dashoffset] duration-1000 ease-linear"
                   />
                 </svg>
-                <span className="absolute inset-0 flex items-center justify-center text-lg sm:text-xl" aria-hidden>
-                  {PRAYER_ICONS[nextInfo.next]}
+                <span className="absolute inset-0 flex items-center justify-center text-gold-300" aria-hidden>
+                  <Icon name={PRAYER_ICONS[nextInfo.next]} className="h-6 w-6" />
                 </span>
               </div>
               <div>
@@ -299,23 +287,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
               variant="hero"
             />
           </div>
-          <div
-            className="mt-3 h-1 overflow-hidden rounded-full bg-white/20"
-            title={`${Math.round(nextInfo.progress * 100)}% through ${nextInfo.current ? prayerLabel(nextInfo.current) : "current"} window`}
-          >
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-gold-400 to-amber-300 transition-all duration-1000 ease-linear"
-              style={{ width: `${nextInfo.progress * 100}%` }}
-            />
-          </div>
         </div>
-      )}
-
-      {/* Motivation */}
-      {motivation && (
-        <blockquote className="animate-fade-in border-l-2 border-amber-400 pl-3 text-xs italic leading-relaxed text-white/85 sm:text-sm">
-          {motivation}
-        </blockquote>
       )}
 
       {error && (
@@ -352,9 +324,9 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
               return (
                 <div
                   key={p.id}
-                  className="flex items-center gap-2.5 rounded-xl border border-amber-200/30 bg-amber-200/10 px-3 py-1.5"
+                  className="flex items-center gap-2.5 rounded-xl border border-gold-300/30 bg-gold-300/10 px-3 py-1.5"
                 >
-                  <span className="text-sm">🌄</span>
+                  <Icon name="sun" className="h-4 w-4 text-gold-300" />
                   <span className="min-w-0 flex-1 truncate text-xs text-white/70">
                     {t(lang, "sunrise")} · {t(lang, "fajrWindowEnds")}
                   </span>
@@ -380,14 +352,14 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                 } ${canMark ? "" : "opacity-60"}`}
               >
                 <span
-                  className={`inline-block text-base ${isPast ? "opacity-60 grayscale-[30%]" : ""} ${isCurrent ? "animate-icon-breathe" : ""}`}
+                  className={`inline-flex text-gold-300 ${isPast ? "opacity-50" : ""}`}
                 >
-                  {PRAYER_ICONS[prayerId!]}
+                  <Icon name={PRAYER_ICONS[prayerId!]} className="h-5 w-5" />
                 </span>
                 <span className="flex min-w-0 flex-1 items-center gap-2">
                   <span className="truncate text-sm font-semibold text-white">{prayerLabel(prayerId!)}</span>
                   {isCurrent && (
-                    <span className="shrink-0 rounded-full bg-amber-400 px-1.5 py-px text-[8px] font-bold uppercase tracking-wide text-noor-950">
+                    <span className="shrink-0 rounded-full bg-gold-400 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-noor-950">
                       {t(lang, "salahActive")}
                     </span>
                   )}
@@ -419,7 +391,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                   }`}
                   title={t(lang, "notifyAtAdhan")}
                 >
-                  🔔
+                  <Icon name="bell" className="h-3.5 w-3.5" />
                 </span>
                 <span
                   className={`relative flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] ${
@@ -428,7 +400,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                       : "border-white/25 text-transparent"
                   }`}
                 >
-                  ✓
+                  <Icon name="check" className="h-3 w-3" strokeWidth={3} />
                   {justMarked === prayerId && <ConfettiBurst />}
                 </span>
               </button>
@@ -466,10 +438,10 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                   if (canMark && prayerId) handleToggle(prayerId);
                 }}
                 className={`group relative rounded-xl border p-2.5 text-left transition-all duration-200 hover:-translate-y-0.5 sm:p-3 ${
-                  isCurrent ? "pt-7 overflow-hidden animate-tile-bounce animate-tile-shimmer" : ""
+                  isCurrent ? "pt-7 overflow-hidden animate-tile-shimmer" : ""
                 } ${
                   isSunrise
-                    ? "border-amber-200/40 bg-amber-200/10"
+                    ? "border-gold-300/40 bg-gold-300/10"
                     : isCurrent
                     ? "border-gold-400/70 bg-gold-400/15 shadow-md shadow-gold-500/20"
                     : isNext
@@ -478,15 +450,15 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                 } ${isSunrise || canMark ? "" : "cursor-not-allowed opacity-55"}`}
               >
                 {isCurrent && (
-                  <span className="absolute left-2 top-2 rounded-full bg-amber-400/90 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-noor-950">
+                  <span className="absolute left-2 top-2 rounded-full bg-gold-400 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-noor-950">
                     {t(lang, "salahActive")}
                   </span>
                 )}
                 <div className="flex items-center justify-between">
                   <span
-                    className={`inline-block text-lg ${isPast ? "grayscale-[30%] opacity-60" : ""} ${isCurrent ? "animate-icon-breathe" : ""}`}
+                    className={`inline-flex text-gold-300 ${isPast ? "opacity-50" : ""}`}
                   >
-                    {isSunrise ? "🌄" : PRAYER_ICONS[prayerId!]}
+                    <Icon name={isSunrise ? "sun" : PRAYER_ICONS[prayerId!]} className="h-5 w-5" />
                   </span>
                   <div className="flex items-center gap-1">
                     {prayerId && (
@@ -507,12 +479,12 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                         className={`relative inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] after:absolute after:-inset-2 after:content-[''] ${notifySet[prayerId] ? "bg-gold-400 text-noor-950" : "bg-white/10 text-white/60"}`}
                         title={t(lang, "notifyAtAdhan")}
                       >
-                        🔔
+                        <Icon name="bell" className="h-3 w-3" />
                       </span>
                     )}
                     {done && (
                       <span className="relative flex h-5 w-5 animate-check-pop items-center justify-center rounded-full border border-gold-400 bg-gold-400 text-[10px] text-noor-950">
-                        ✓
+                        <Icon name="check" className="h-3 w-3" strokeWidth={3} />
                         {prayerId && justMarked === prayerId && <ConfettiBurst />}
                       </span>
                     )}

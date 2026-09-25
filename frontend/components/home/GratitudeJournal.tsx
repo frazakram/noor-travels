@@ -1,8 +1,8 @@
 "use client";
 
+import { Icon } from "@/components/Icon";
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
-import { useCardSheen } from "@/hooks/useCardSheen";
 import {
   getTodayEntry,
   loadJournal,
@@ -22,7 +22,6 @@ export function GratitudeJournal({ times }: Props) {
   const [store, setStore] = useState<JournalStore>({ entries: {}, streak: 0 });
   const [text, setText] = useState("");
   const [saved, setSaved] = useState(false);
-  const sheen = useCardSheen();
 
   useEffect(() => {
     const s = loadJournal();
@@ -41,21 +40,17 @@ export function GratitudeJournal({ times }: Props) {
   }
 
   return (
-    <section
-      className="card-touch relative overflow-hidden rounded-2xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50 to-teal-50/60 p-4 dark:border-emerald-500/25 dark:from-emerald-950/25 dark:to-teal-950/15 sm:p-5"
-      onPointerDown={sheen.trigger}
-    >
-      {sheen.active && <span key={sheen.pulseId} className="card-sheen-pulse" aria-hidden />}
+    <section className="card">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+          <p className="text-sm font-semibold text-heading">
             {t(lang, "gratitudeTitle")}
           </p>
           <p className="mt-1 text-sm text-muted">{t(lang, "gratitudeHint")}</p>
         </div>
         {store.streak > 0 && (
-          <span className="rounded-full bg-emerald-600/15 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:text-emerald-200">
-            🔥 {store.streak}
+          <span className="inline-flex items-center gap-1 rounded-full bg-noor-50 px-2.5 py-1 text-xs font-semibold text-noor-800 dark:bg-noor-800 dark:text-gold-200">
+            <Icon name="flame" className="h-3.5 w-3.5 text-gold-500" /> {store.streak}
           </span>
         )}
       </div>

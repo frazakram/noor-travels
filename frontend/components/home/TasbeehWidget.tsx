@@ -96,7 +96,7 @@ function DhikrRow({
 
         <span
           className={`min-w-[2.25rem] text-right font-mono text-xl font-bold tabular-nums sm:min-w-[2.75rem] sm:text-2xl ${
-            celebrated ? "text-orange-600 dark:text-orange-400" : "text-teal-700 dark:text-teal-400"
+            celebrated ? "text-orange-600 dark:text-orange-400" : "text-noor-700 dark:text-gold-300"
           }`}
         >
           {count}
@@ -106,7 +106,7 @@ function DhikrRow({
           type="button"
           onClick={onIncrement}
           aria-label={`${label} +1`}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-600 text-lg text-white shadow-md transition-transform active:scale-95 sm:h-11 sm:w-11 sm:text-xl"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-noor-700 text-lg text-white dark:bg-noor-600 transition-transform active:scale-95 sm:h-11 sm:w-11 sm:text-xl"
         >
           +
         </button>
@@ -170,28 +170,20 @@ export function TasbeehWidget() {
   }
 
   return (
-    <section>
-      <div className="rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:p-5">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-          {t(lang, "tasbeehCounter")}
-        </p>
-
-        <div className="flex flex-col gap-3 sm:gap-3.5">
-          {DHIKR_ROWS.map(({ key, labelKey }, index) => (
-            <div key={key}>
-              {index > 0 && <div className="mb-3 border-t border-slate-100 dark:border-slate-700 sm:mb-3.5" />}
-              <DhikrRow
-                lang={lang}
-                label={t(lang, labelKey)}
-                count={counts[key]}
-                bursting={burstKey === key}
-                onIncrement={() => increment(key)}
-                onReset={() => reset(key)}
-              />
-            </div>
-          ))}
+    <div className="flex flex-col gap-3 sm:gap-3.5">
+      {DHIKR_ROWS.map(({ key, labelKey }, index) => (
+        <div key={key}>
+          {index > 0 && <div className="mb-3 border-t border-slate-100 dark:border-slate-700 sm:mb-3.5" />}
+          <DhikrRow
+            lang={lang}
+            label={t(lang, labelKey)}
+            count={counts[key]}
+            bursting={burstKey === key}
+            onIncrement={() => increment(key)}
+            onReset={() => reset(key)}
+          />
         </div>
-      </div>
-    </section>
+      ))}
+    </div>
   );
 }

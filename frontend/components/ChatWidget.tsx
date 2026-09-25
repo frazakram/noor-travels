@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useChat } from "@/components/ChatProvider";
 import { useLang } from "@/components/LangProvider";
 import { NoticeCard } from "@/components/NoticeCard";
-import { Tooltip } from "@/components/Tooltip";
 import { api } from "@/lib/api";
 import { t, type Lang } from "@/lib/i18n";
 
@@ -75,7 +74,7 @@ function ConfidenceBadge({ confidence, sources, lang }: { confidence: string; so
 
 export function ChatWidget() {
   const { lang } = useLang();
-  const { isOpen, closeChat, toggleChat } = useChat();
+  const { isOpen, closeChat } = useChat();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -190,21 +189,6 @@ export function ChatWidget() {
 
   return (
     <>
-      <div className={`fixed bottom-[calc(6rem+env(safe-area-inset-bottom,0px))] end-5 z-50 transition-opacity duration-300 md:bottom-5 ${isOpen ? "pointer-events-none opacity-0" : "opacity-100"}`}>
-        <Tooltip label={t(lang, "chat")} side="top">
-          <button
-            type="button"
-            onClick={toggleChat}
-            aria-label={t(lang, "chat")}
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-noor-700 text-white shadow-lg transition-transform duration-150 hover:scale-105 hover:bg-noor-800 hover:shadow-xl active:scale-95 dark:bg-noor-600 dark:hover:bg-noor-500"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7">
-              <path fillRule="evenodd" d="M4.848 2.771A49.144 49.144 0 0112 2.25c2.43 0 4.817.178 7.152.52 1.978.292 3.348 2.024 3.348 3.97v6.02c0 1.946-1.37 3.678-3.348 3.97a48.901 48.901 0 01-3.476.383.39.39 0 00-.297.17l-2.755 4.133a.75.75 0 01-1.248 0l-2.755-4.133a.39.39 0 00-.297-.17 48.9 48.9 0 01-3.476-.384c-1.978-.29-3.348-2.024-3.348-3.97V6.741c0-1.946 1.37-3.68 3.348-3.97z" clipRule="evenodd" />
-            </svg>
-          </button>
-        </Tooltip>
-      </div>
-
       {isOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/20 backdrop-blur-[1px] dark:bg-black/50 md:bg-transparent md:backdrop-blur-none md:dark:bg-transparent"

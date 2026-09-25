@@ -19,7 +19,7 @@ export default function NotFound() {
     <section className="mx-auto flex max-w-md flex-col items-center gap-6 py-16 text-center">
       <p className="text-6xl font-bold text-noor-300 dark:text-noor-700">404</p>
       <div>
-        <h1 className="text-2xl font-semibold">Page not found</h1>
+        <h1 className="text-2xl font-bold text-heading">Page not found</h1>
         <p className="mt-2 text-muted">
           The page you are looking for doesn&apos;t exist or has moved.
         </p>

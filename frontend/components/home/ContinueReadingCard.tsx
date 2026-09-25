@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
-import { useCardSheen } from "@/hooks/useCardSheen";
 import { loadLastRead, loadBookmarks, type QuranLastRead, type QuranBookmark } from "@/lib/quran-bookmarks";
 import { t } from "@/lib/i18n";
 
@@ -11,7 +10,6 @@ export function ContinueReadingCard() {
   const { lang } = useLang();
   const [last, setLast] = useState<QuranLastRead | null>(null);
   const [bookmarks, setBookmarks] = useState<QuranBookmark[]>([]);
-  const sheen = useCardSheen();
 
   useEffect(() => {
     setLast(loadLastRead());
@@ -21,19 +19,13 @@ export function ContinueReadingCard() {
   if (!last && bookmarks.length === 0) return null;
 
   return (
-    <section
-      className="card-touch relative overflow-hidden rounded-2xl border border-noor-200/80 bg-gradient-to-br from-noor-50 to-white p-4 dark:border-noor-600/40 dark:from-noor-900/40 dark:to-slate-900/40 sm:p-5"
-      onPointerDown={sheen.trigger}
-    >
-      {sheen.active && <span key={sheen.pulseId} className="card-sheen-pulse" aria-hidden />}
-      <p className="text-xs font-semibold uppercase tracking-widest text-noor-700 dark:text-noor-300">
-        {t(lang, "continueReading")}
-      </p>
+    <section className="card">
+      <h2 className="text-sm font-semibold text-heading">{t(lang, "continueReading")}</h2>
 
       {last && (
         <Link
           href={`/quran/${last.surah}?ayah=${last.ayah}`}
-          className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-white/80 px-3 py-3 transition hover:bg-white dark:bg-slate-900/60 dark:hover:bg-slate-900"
+          className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-noor-50/70 px-3 py-3 transition-colors hover:bg-noor-50 dark:bg-noor-800/60 dark:hover:bg-noor-800"
         >
           <div>
             <p className="font-semibold text-heading">
@@ -54,7 +46,7 @@ export function ContinueReadingCard() {
             <Link
               key={b.verseKey}
               href={`/quran/${b.surah}?ayah=${b.ayah}`}
-              className="block rounded-lg px-2 py-1.5 text-sm text-heading hover:bg-white/70 dark:hover:bg-slate-900/50"
+              className="block rounded-lg px-2 py-1.5 text-sm text-heading hover:bg-noor-50 dark:hover:bg-noor-800"
             >
               {b.verseKey}
               {b.surahName ? ` · ${b.surahName}` : ""}

@@ -83,6 +83,15 @@ export async function login(email: string, password: string): Promise<AuthUser> 
   return data.user;
 }
 
+export async function deleteAccount(password: string): Promise<void> {
+  await api<{ deleted: boolean }>("/api/auth/delete-account", {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ password }),
+  });
+  logout();
+}
+
 // ── Learn-progress cloud sync ───────────────────────────────────────────
 
 export async function pullRemoteProgress(): Promise<LearnProgress | null> {

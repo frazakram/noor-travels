@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useLang } from "@/components/LangProvider";
+import { t } from "@/lib/i18n";
 import { nativeAppVersion } from "@/lib/native-bridge";
 import versionInfo from "@/public/app-version.json";
 
 export function Footer() {
+  const { lang } = useLang();
   // Single source of truth: public/app-version.json — the same file the
   // Android updater polls and the download card reads, so bumping it per the
   // release SOP updates every surface at once. Inside the APK the bridge
@@ -21,11 +24,11 @@ export function Footer() {
   return (
     <footer className="border-t border-subtle bg-white/70 px-4 py-6 pb-safe text-xs text-muted md:backdrop-blur dark:bg-noor-950/70">
       <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p>For learning and remembrance. Not a source of fatwa. Verify with qualified scholars.</p>
+        <p>{t(lang, "forLearningDisclaimer")}</p>
         <div className="flex items-center gap-4">
-          <Link href="/about" prefetch={false} className="hover:text-heading">About</Link>
-          <Link href="/support" prefetch={false} className="hover:text-heading">Support Us</Link>
-          <Link href="/" prefetch={false} className="hover:text-heading">Privacy</Link>
+          <Link href="/about" prefetch={false} className="hover:text-heading">{t(lang, "about")}</Link>
+          <Link href="/support" prefetch={false} className="hover:text-heading">{t(lang, "supportUs")}</Link>
+          <Link href="/privacy" prefetch={false} className="hover:text-heading">{t(lang, "privacy")}</Link>
           <span className="rounded-full bg-noor-50 px-2 py-1 text-[10px] font-medium dark:bg-noor-900">
             {version}
           </span>

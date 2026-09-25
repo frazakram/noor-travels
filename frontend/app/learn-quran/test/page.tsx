@@ -1,5 +1,6 @@
 "use client";
 
+import { PageLoading } from "@/components/PageLoading";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -103,7 +104,7 @@ export default function PlacementTestPage() {
   }
 
   if (!index || !lessons || items.length === 0) {
-    return <p className="text-sm text-faint">{t(lang, "loading")}</p>;
+    return <PageLoading />;
   }
 
   const item = items[idx];
@@ -175,7 +176,7 @@ export default function PlacementTestPage() {
             {item.question.options.map((opt, i) => {
               const isSel = selected === i;
               const isCorrect = item.question.answer === i;
-              let cls = "border-subtle hover:border-teal-400";
+              let cls = "border-subtle hover:border-noor-400";
               if (isSel)
                 cls = isCorrect
                   ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30"

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { ShareButton } from "@/components/ShareButton";
@@ -562,22 +561,6 @@ export default function AdhkarPage() {
         <h1 className="text-2xl font-bold text-heading">{t(lang, "dhikr")}</h1>
         <p className="text-sm text-muted">{t(lang, "dhikrSubtitle")}</p>
       </div>
-
-      <Link
-        href="/recite"
-        className="card flex items-center gap-3 hover:border-noor-300 dark:hover:border-noor-500"
-      >
-        <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gold-300 bg-gold-50 text-noor-800 dark:border-gold-600 dark:bg-noor-800 dark:text-gold-400"
-          aria-hidden
-        >
-          {Icons.mic}
-        </span>
-        <div className="min-w-0">
-          <p className="font-medium text-heading">{t(lang, "recite")}</p>
-          <p className="text-xs text-faint">{t(lang, "reciteCardDesc")}</p>
-        </div>
-      </Link>
 
       <div className="card space-y-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">

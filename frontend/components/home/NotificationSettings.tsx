@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@/components/Icon";
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { SavedToast } from "@/components/SavedToast";
@@ -46,7 +47,7 @@ function Toggle({
       aria-label={label}
       onClick={() => onChange(!on)}
       className={`relative h-7 w-12 shrink-0 rounded-full transition-all duration-300 ${
-        on ? "bg-gradient-to-r from-teal-600 to-teal-500 shadow-md shadow-teal-900/20" : "bg-slate-200 dark:bg-slate-700"
+        on ? "bg-noor-600" : "bg-slate-200 dark:bg-slate-700"
       }`}
     >
       <span
@@ -165,15 +166,15 @@ export function NotificationSettings({ times }: Props) {
     prefs.gratitudeDaily;
 
   return (
-    <section className="card overflow-hidden border-teal-100 p-0 dark:border-teal-800/60">
+    <section className="card overflow-hidden border-noor-100 p-0 dark:border-noor-800/60">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-3 p-4 text-left transition hover:bg-teal-50/50 dark:hover:bg-teal-950/20 sm:p-5"
+        className="flex w-full items-center justify-between gap-3 p-4 text-left transition hover:bg-noor-50/50 dark:hover:bg-noor-950/20 sm:p-5"
       >
         <div className="flex items-center gap-3">
-          <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-600 to-noor-700 text-lg text-white shadow-lg shadow-teal-900/15">
-            🔔
+          <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-noor-50 text-lg text-noor-700 dark:bg-noor-800 dark:text-gold-300">
+            <Icon name="bell" className="h-5 w-5" />
             {hydrated && anyOn && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-gold-400 ring-2 ring-white dark:ring-noor-900" />}
           </span>
           <div>
@@ -187,7 +188,7 @@ export function NotificationSettings({ times }: Props) {
       {open && (
         <div className="animate-fade-in-up space-y-5 border-t border-subtle px-4 pb-5 pt-4 sm:px-5">
           {native ? (
-            <p className="rounded-xl bg-teal-50 px-3 py-2 text-xs text-teal-800 dark:bg-teal-900/30 dark:text-teal-200">
+            <p className="rounded-xl bg-noor-50 px-3 py-2 text-xs text-noor-800 dark:bg-noor-900/30 dark:text-noor-200">
               {t(lang, "notificationsNativeHint")}
             </p>
           ) : perm !== "granted" ? (
@@ -215,7 +216,7 @@ export function NotificationSettings({ times }: Props) {
               {PRAYERS.map((id, i) => (
                 <div
                   key={id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-subtle bg-surface-muted/50 px-3 py-2.5 transition hover:border-teal-200 dark:hover:border-teal-700"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-subtle bg-surface-muted/50 px-3 py-2.5 transition hover:border-noor-200 dark:hover:border-noor-700"
                   style={{ animationDelay: `${i * 40}ms` }}
                 >
                   <div className="min-w-0">
@@ -249,7 +250,7 @@ export function NotificationSettings({ times }: Props) {
             )}
           </div>
 
-          <div className="rounded-2xl border border-gold-200/60 bg-gradient-to-br from-amber-50/80 to-teal-50/50 p-4 dark:border-gold-500/20 dark:from-amber-950/20 dark:to-teal-950/20">
+          <div className="rounded-2xl bg-noor-50/70 p-4 dark:bg-noor-800/50">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-semibold text-heading">{t(lang, "hadithNotification")}</h3>

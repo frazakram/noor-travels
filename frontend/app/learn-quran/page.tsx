@@ -1,5 +1,6 @@
 "use client";
 
+import { PageLoading } from "@/components/PageLoading";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useLang } from "@/components/LangProvider";
@@ -63,7 +64,7 @@ export default function LearnQuranPage() {
   }
 
   if (!index) {
-    return <p className="text-sm text-faint">{t(lang, "loading")}</p>;
+    return <PageLoading />;
   }
 
   return (

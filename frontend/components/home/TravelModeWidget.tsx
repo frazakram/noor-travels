@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useLang } from "@/components/LangProvider";
-import { useCardSheen } from "@/hooks/useCardSheen";
 import { apiStatic } from "@/lib/api";
 import { t } from "@/lib/i18n";
 
@@ -16,6 +15,8 @@ type Dua = {
 
 type Props = {
   coords: { lat: number; lng: number } | null;
+  /** Render nothing unless travel is detected or switched on (used on the home page). */
+  hideWhenIdle?: boolean;
 };
 
 const TRAVEL_MODE_KEY = "noor-travel-mode";
@@ -41,14 +42,13 @@ function loadManualTravel(): boolean {
   }
 }
 
-export function TravelModeWidget({ coords }: Props) {
+export function TravelModeWidget({ coords, hideWhenIdle = false }: Props) {
   const { lang } = useLang();
   const [manualOn, setManualOn] = useState(false);
   const [autoOn, setAutoOn] = useState(false);
   const [speedKmh, setSpeedKmh] = useState<number | null>(null);
   const [duas, setDuas] = useState<Dua[]>([]);
   const watchId = useRef<number | null>(null);
-  const sheen = useCardSheen();
 
   useEffect(() => {
     setManualOn(loadManualTravel());
@@ -124,15 +124,13 @@ export function TravelModeWidget({ coords }: Props) {
     return d.title_en;
   }
 
+  if (hideWhenIdle && !active) return null;
+
   return (
-    <section
-      className="card-touch relative overflow-hidden rounded-2xl border border-teal-200/70 bg-gradient-to-br from-teal-50 to-emerald-50/70 p-4 dark:border-teal-500/25 dark:from-teal-950/30 dark:to-emerald-950/20 sm:p-5"
-      onPointerDown={sheen.trigger}
-    >
-      {sheen.active && <span key={sheen.pulseId} className="card-sheen-pulse" aria-hidden />}
+    <section className="card">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-teal-700 dark:text-teal-300">
+          <p className="text-sm font-semibold text-heading">
             {t(lang, "travelMode")}
           </p>
           <p className="mt-1 text-sm text-body">
@@ -149,8 +147,8 @@ export function TravelModeWidget({ coords }: Props) {
           onClick={toggleManual}
           className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
             active
-              ? "bg-teal-700 text-white dark:bg-teal-600"
-              : "border border-teal-300 text-teal-800 dark:border-teal-600 dark:text-teal-200"
+              ? "bg-noor-700 text-white dark:bg-noor-600"
+              : "border border-subtle text-heading hover:border-noor-300"
           }`}
         >
           {active ? t(lang, "travelModeOn") : t(lang, "travelModeEnable")}
@@ -159,21 +157,21 @@ export function TravelModeWidget({ coords }: Props) {
 
       {active && (
         <div className="mt-4 space-y-3 animate-fade-in">
-          <div className="rounded-xl bg-white/70 p-3 text-sm dark:bg-slate-900/40">
+          <div className="rounded-xl bg-noor-50/70 p-3 text-sm dark:bg-noor-800/60">
             <p className="font-medium text-heading">{t(lang, "qasrJamTitle")}</p>
             <p className="mt-1 text-xs leading-relaxed text-muted">{t(lang, "qasrJamHint")}</p>
           </div>
 
           {duas.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-teal-800 dark:text-teal-200">
+              <p className="text-xs font-semibold text-heading">
                 {t(lang, "travelDuasQuick")}
               </p>
               {duas.map((d) => (
                 <Link
                   key={d.id}
                   href="/hadith?section=duas&category=travel"
-                  className="block rounded-lg bg-white/60 px-3 py-2 text-sm text-heading hover:bg-white dark:bg-slate-900/50 dark:hover:bg-slate-900"
+                  className="block rounded-lg bg-noor-50/70 px-3 py-2 text-sm text-heading hover:bg-noor-50 dark:bg-noor-800/60 dark:hover:bg-noor-800"
                 >
                   {duaTitle(d)}
                 </Link>

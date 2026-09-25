@@ -1,5 +1,6 @@
 "use client";
 
+import { PageLoading } from "@/components/PageLoading";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -105,7 +106,7 @@ export default function ModuleQuizPage() {
   }
 
   if (!mod || (!questions.length && !done)) {
-    return <p className="text-sm text-faint">{t(lang, "loading")}</p>;
+    return <PageLoading />;
   }
 
   if (done) {

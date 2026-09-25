@@ -256,7 +256,7 @@ export function HijriCalendarModal({ open, onClose, hijri }: Props) {
                   {greg.getDate()}
                 </span>
                 <span
-                  className={`whitespace-nowrap text-[9px] leading-tight ${isToday ? "text-white/80" : "text-faint"}`}
+                  className={`whitespace-nowrap text-[10px] leading-tight ${isToday ? "text-white/80" : "text-faint"}`}
                 >
                   {hijri.day}
                 </span>

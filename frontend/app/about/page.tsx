@@ -188,7 +188,7 @@ export default function AboutPage() {
     <div className="space-y-10 pb-12">
       <TimeOfDayHero phase="night">
         <div className="flex flex-col items-center gap-4 px-2 py-6 text-center sm:py-10">
-          <AppLogo size={72} className="h-16 w-16 animate-fade-in-up shadow-lg shadow-black/30 sm:h-[72px] sm:w-[72px]" />
+          <AppLogo size={72} className="h-16 w-16 sm:h-[72px] sm:w-[72px]" />
           <h1
             className="animate-fade-in-up text-3xl font-bold text-white drop-shadow-sm sm:text-4xl"
             style={{ animationDelay: "60ms" }}
@@ -214,7 +214,7 @@ export default function AboutPage() {
           <div className="flex flex-wrap animate-fade-in-up justify-center gap-3 pt-3" style={{ animationDelay: "240ms" }}>
             <Link
               href="/"
-              className="rounded-xl bg-gradient-to-r from-gold-500 to-gold-400 px-6 py-3 text-sm font-semibold text-noor-950 shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-xl active:scale-95"
+              className="rounded-xl bg-gold-400 px-6 py-3 text-sm font-semibold text-noor-950 transition-colors hover:bg-gold-300"
             >
               {t(lang, "aboutGetStarted")}
             </Link>
@@ -261,7 +261,7 @@ export default function AboutPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             {STEPS.map((step, i) => (
               <div key={step.titleKey} className="relative flex flex-col items-center gap-2 text-center">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-teal-600 to-noor-700 text-sm font-bold text-white shadow-md">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-noor-700 text-sm font-semibold text-white">
                   {i + 1}
                 </span>
                 <p className="font-medium text-heading">{t(lang, step.titleKey)}</p>
@@ -288,11 +288,11 @@ export default function AboutPage() {
               <Link
                 key={f.titleKey}
                 href={f.href}
-                className="card group animate-fade-in-up flex flex-col items-start gap-2.5 transition hover:-translate-y-1 hover:border-noor-300 hover:shadow-lg dark:hover:border-noor-500"
+                className="card group flex flex-col items-start gap-2.5 hover:border-noor-300 dark:hover:border-noor-500"
                 style={{ animationDelay: `${i * 45}ms` }}
               >
                 <span
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gold-300 bg-gradient-to-br from-gold-50 to-white text-2xl shadow-sm transition group-hover:scale-110 dark:border-gold-600 dark:from-noor-800 dark:to-noor-900"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-noor-50 text-2xl dark:bg-noor-800"
                   aria-hidden
                 >
                   {f.emoji}
@@ -312,7 +312,7 @@ export default function AboutPage() {
 
       {ayah && (
         <Reveal>
-          <section className="card space-y-4 bg-gradient-to-br from-noor-50 to-white dark:from-noor-900/50 dark:to-noor-950">
+          <section className="card space-y-4">
             <p className="font-arabic text-right text-2xl leading-loose text-heading sm:text-3xl" dir="rtl">
               {cleanQuranText(ayah.arabic)}
             </p>
@@ -331,7 +331,7 @@ export default function AboutPage() {
           <h2 className="text-center text-xl font-semibold text-heading">{t(lang, "aboutWhyTitle")}</h2>
           <div className="grid gap-3 sm:grid-cols-3">
             {WHY.map((w) => (
-              <div key={w.titleKey} className="card space-y-1.5 text-center transition hover:-translate-y-1 hover:shadow-lg">
+              <div key={w.titleKey} className="card space-y-1.5 text-center">
                 <span className="text-2xl" aria-hidden>
                   {w.emoji}
                 </span>
@@ -344,15 +344,15 @@ export default function AboutPage() {
       </Reveal>
 
       <Reveal>
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-noor-800 via-noor-700 to-teal-800 px-6 py-10 text-center shadow-xl">
+        <section className="relative overflow-hidden rounded-3xl bg-noor-800 px-6 py-10 text-center">
           <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-gold-400/20 blur-3xl" aria-hidden />
-          <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-teal-400/20 blur-3xl" aria-hidden />
+          <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-noor-400/20 blur-3xl" aria-hidden />
           <h2 className="relative text-2xl font-bold text-white sm:text-3xl">{t(lang, "aboutCtaTitle")}</h2>
           <p className="relative mx-auto mt-2 max-w-md text-sm text-white/80">{t(lang, "aboutCtaBody")}</p>
           <div className="relative mt-5 flex flex-wrap justify-center gap-3">
             <Link
               href="/"
-              className="rounded-xl bg-gradient-to-r from-gold-500 to-gold-400 px-6 py-3 text-sm font-semibold text-noor-950 shadow-lg transition hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-xl active:scale-95"
+              className="rounded-xl bg-gold-400 px-6 py-3 text-sm font-semibold text-noor-950 transition-colors hover:bg-gold-300"
             >
               {t(lang, "aboutGetStarted")}
             </Link>

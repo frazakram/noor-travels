@@ -49,12 +49,12 @@ export function SavedToast({ open, label, onDone, durationMs = 1400 }: Props) {
           visible ? "scale-100 opacity-100" : "scale-95 opacity-0"
         }`}
       >
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-teal-400 to-teal-700 text-white shadow-inner">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-noor-700 text-white">
           <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M5 13l4 4L19 7" />
           </svg>
         </span>
-        <span className="text-[15px] font-bold tracking-wide text-white">{label}</span>
+        <span className="text-base font-semibold text-white">{label}</span>
       </div>
     </div>,
     document.body,
