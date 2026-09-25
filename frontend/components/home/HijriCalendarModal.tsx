@@ -34,25 +34,37 @@ function hijriPartsOf(date: Date): HijriParts {
   return { day: get("day"), month: get("month"), year: get("year") };
 }
 
-// Month-name-only lookup, via formatToParts rather than .format(). ICU's
-// islamic-umalqura calendar appends an era string ("AH") to any pattern that
-// includes a year even when era was never requested, and for dates pushed
-// outside the calendar's supported table range that era/year label can come
-// back garbled (this is the mechanism behind a stray "BC" showing up) —
-// reading only the "month" part sidesteps that failure mode entirely, since
-// the numeric hijri year shown elsewhere always comes from hijriPartsOf()
-// above, never from a formatted string.
-const monthNameCache = new Map<string, Intl.DateTimeFormat>();
+// Static month names, not Intl's calendar-locale data — Android WebView's
+// ICU build silently fell back to *Gregorian* month names ("March–April")
+// for the islamic-umalqura calendar's month field, on real devices, while
+// this exact code worked correctly in a desktop Node/browser environment.
+// (An earlier bug in this same area — a stray "BC" era string — was a
+// different symptom of the same root problem: don't trust Intl's non-
+// Gregorian calendar-locale support to be complete or consistent across
+// engines.) The numeric hijri month (1-12) is already reliably computed by
+// hijriPartsOf() below via -nu-latn digit formatting, which is unaffected —
+// so month *names* are looked up here instead of asked from Intl at all.
+const HIJRI_MONTH_NAMES: Record<"en" | "ur" | "hi", string[]> = {
+  en: [
+    "Muharram", "Safar", "Rabi' al-awwal", "Rabi' al-thani",
+    "Jumada al-awwal", "Jumada al-thani", "Rajab", "Sha'ban",
+    "Ramadan", "Shawwal", "Dhu al-Qi'dah", "Dhu al-Hijjah",
+  ],
+  ur: [
+    "محرم", "صفر", "ربیع الاول", "ربیع الثانی",
+    "جمادی الاول", "جمادی الثانی", "رجب", "شعبان",
+    "رمضان", "شوال", "ذو القعدہ", "ذو الحجہ",
+  ],
+  hi: [
+    "मुहर्रम", "सफ़र", "रबीउल अव्वल", "रबीउस्सानी",
+    "जुमादा अल-अव्वल", "जुमादा अस-सानी", "रजब", "शाबान",
+    "रमज़ान", "शव्वाल", "ज़ुल-क़ादा", "ज़ुल-हिज्जा",
+  ],
+};
 
-function hijriMonthName(date: Date, locale: string): string {
-  const key = `${locale}-u-ca-islamic-umalqura`;
-  let fmt = monthNameCache.get(key);
-  if (!fmt) {
-    fmt = new Intl.DateTimeFormat(key, { month: "long" });
-    monthNameCache.set(key, fmt);
-  }
-  const part = fmt.formatToParts(date).find((p) => p.type === "month");
-  return part?.value ?? "";
+function hijriMonthName(monthNumber: number, lang: string): string {
+  const names = HIJRI_MONTH_NAMES[lang as "en" | "ur" | "hi"] ?? HIJRI_MONTH_NAMES.en;
+  return names[monthNumber - 1] ?? "";
 }
 
 function addDays(d: Date, days: number): Date {
@@ -144,8 +156,8 @@ export function HijriCalendarModal({ open, onClose, hijri }: Props) {
     const first = month.days[0]?.hijri;
     const last = month.days[month.days.length - 1]?.hijri;
     if (!first || !last) return "";
-    const firstName = hijriMonthName(addDays(month.first, offsetDays), locale);
-    const lastName = hijriMonthName(addDays(month.days[month.days.length - 1].greg, offsetDays), locale);
+    const firstName = hijriMonthName(first.month, lang);
+    const lastName = hijriMonthName(last.month, lang);
     const monthLabel =
       first.month === last.month && first.year === last.year
         ? firstName
@@ -154,7 +166,7 @@ export function HijriCalendarModal({ open, onClose, hijri }: Props) {
           : `${firstName} ${first.year} – ${lastName} ${last.year}`;
     const yearLabel = first.year === last.year ? `${first.year}` : `${first.year}–${last.year}`;
     return `${monthLabel} ${first.year === last.year ? yearLabel : ""} / ${month.gYear}`.replace(/\s+/g, " ").trim();
-  }, [month, offsetDays, locale]);
+  }, [month, lang]);
 
   const weekdayLabels = useMemo(() => {
     const fmt = new Intl.DateTimeFormat(locale, { weekday: "narrow" });
