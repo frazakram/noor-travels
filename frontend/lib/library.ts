@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { cache } from "react";
+import { answerShardPath } from "@/lib/library-shards";
 import { parseLibrarySlug } from "@/lib/library-slug";
 
 export { librarySlug, slugify, parseLibrarySlug } from "@/lib/library-slug";
@@ -31,25 +32,31 @@ export type LibraryAnswer = {
 
 const DATA_DIR = path.join(process.cwd(), "public", "data");
 
-/** Parsed once per server worker, not once per page — these files are 700KB/18MB. */
-export const loadLibraryIndex = cache(async (): Promise<LibraryIndex> => {
-  const raw = await readFile(path.join(DATA_DIR, "question-library-index.json"), "utf-8");
-  return JSON.parse(raw);
+let indexPromise: Promise<LibraryIndex> | null = null;
+
+/** Module-level memo: React cache() only lives for one request, and the index is ~700KB. */
+export const loadLibraryIndex = cache((): Promise<LibraryIndex> => {
+  indexPromise ??= readFile(path.join(DATA_DIR, "question-library-index.json"), "utf-8")
+    .then((raw) => JSON.parse(raw) as LibraryIndex)
+    .catch((err) => {
+      indexPromise = null;
+      throw err;
+    });
+  return indexPromise;
 });
 
-const loadLibraryAnswers = cache(async (): Promise<Record<string, LibraryAnswer>> => {
-  const raw = await readFile(path.join(DATA_DIR, "question-library-answers.json"), "utf-8");
-  return JSON.parse(raw);
-});
+async function loadAnswer(id: string): Promise<LibraryAnswer | undefined> {
+  const raw = await readFile(path.join(process.cwd(), "public", answerShardPath(id)), "utf-8");
+  return (JSON.parse(raw) as Record<string, LibraryAnswer>)[id];
+}
 
 export async function getLibraryItem(
   slug: string,
 ): Promise<{ item: LibraryItem; answer: LibraryAnswer } | null> {
   const id = parseLibrarySlug(slug);
   if (!id) return null;
-  const [index, answers] = await Promise.all([loadLibraryIndex(), loadLibraryAnswers()]);
+  const [index, answer] = await Promise.all([loadLibraryIndex(), loadAnswer(id)]);
   const item = index.items.find((i) => i.id === id);
-  const answer = answers[id];
   if (!item || !answer) return null;
   return { item, answer };
 }

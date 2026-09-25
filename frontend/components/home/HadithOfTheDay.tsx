@@ -45,11 +45,13 @@ export function HadithOfTheDay({ lang }: { lang: Lang }) {
   }, []);
 
   useEffect(() => {
+    let current = true;
     setFailed(false);
     setHadith(null);
     const q = topic && topic !== "all" ? `?topic=${encodeURIComponent(topic)}` : "";
     api<DailyHadith & { id: number }>(`/api/hadith/daily${q}`)
       .then((row) => {
+        if (!current) return;
         setHadith(row);
         if (row?.id) {
           import("@/lib/hadith-library").then(({ rememberHotd }) => {
@@ -63,7 +65,12 @@ export function HadithOfTheDay({ lang }: { lang: Lang }) {
           });
         }
       })
-      .catch(() => setFailed(true));
+      .catch(() => {
+        if (current) setFailed(true);
+      });
+    return () => {
+      current = false;
+    };
   }, [topic]);
 
   if (failed) return <p className="text-sm text-muted">{t(lang, "hadithDailyError")}</p>;

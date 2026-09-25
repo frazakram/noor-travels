@@ -29,6 +29,13 @@ elif _provider == "groq" and not settings.groq_api_key.strip():
 elif _provider == "openai" and not settings.openai_api_key.strip():
     logger.warning("CHAT_PROVIDER=openai but OPENAI_API_KEY is empty — chat falls back to local templates.")
 
+if settings.postgres_url.strip() and not settings.auth_secret.strip():
+    logger.warning(
+        "AUTH_SECRET is not set — login tokens are signed with a key derived from POSTGRES_URL, "
+        "so rotating the database password signs every user out. Set AUTH_SECRET.",
+        extra={"event": "config_warning"},
+    )
+
 app = FastAPI(title="Noor Safar API", version="1.0.0")
 
 app.state.limiter = limiter

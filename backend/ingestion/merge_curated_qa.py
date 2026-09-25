@@ -17,9 +17,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from curated_qa import QUESTIONS  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
+from library_shards import CANONICAL_ANSWERS, write_answer_shards  # noqa: E402
+
 OUT_DIR = REPO / "frontend" / "public" / "data"
 INDEX_PATH = OUT_DIR / "question-library-index.json"
-ANSWERS_PATH = OUT_DIR / "question-library-answers.json"
+# Canonical full answers file lives outside public/; the site gets 128 small shards.
+ANSWERS_PATH = CANONICAL_ANSWERS
 META_PATH = OUT_DIR / "question-library-meta.json"
 
 
@@ -58,6 +61,7 @@ def main() -> None:
     index["categories"] = curated_cats + [c for c in index["categories"] if c not in curated_cats]
     INDEX_PATH.write_text(json.dumps(index, ensure_ascii=False))
     ANSWERS_PATH.write_text(json.dumps(answers, ensure_ascii=False))
+    write_answer_shards(answers)
 
     if META_PATH.exists():
         meta = json.loads(META_PATH.read_text())

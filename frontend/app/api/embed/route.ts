@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { embedSecretMatches } from "@/lib/embed-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -24,7 +25,15 @@ async function getPipeline() {
   return _pipe;
 }
 
+/** Only the backend should call this; when EMBED_SECRET is set, requests must carry it. */
+function authorized(req: NextRequest): boolean {
+  return embedSecretMatches(process.env.EMBED_SECRET, req.headers.get("x-embed-secret"));
+}
+
+const UNAUTHORIZED = () => NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
 export async function POST(req: NextRequest) {
+  if (!authorized(req)) return UNAUTHORIZED();
   let body: { texts?: string[] };
   try {
     body = await req.json();
@@ -47,15 +56,18 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ embeddings, dims: 384 });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
+    console.error("embed failed", err);
+    return NextResponse.json({ error: "embedding failed" }, { status: 500 });
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  if (!authorized(req)) return UNAUTHORIZED();
   try {
     await getPipeline();
     return NextResponse.json({ status: "ok", model: "Xenova/all-MiniLM-L6-v2", dims: 384 });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    console.error("embed warmup failed", err);
+    return NextResponse.json({ error: "embedding model unavailable" }, { status: 500 });
   }
 }

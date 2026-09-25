@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     embedding_dimensions: int = 1024
     # URL of the Next.js /api/embed endpoint (auto-derived from VERCEL_URL when empty)
     embed_api_url: str = ""
+    # Shared with the Next.js /api/embed route; when set there, requests without it get 401.
+    embed_secret: str = ""
     rag_min_similarity: float = 0.50
     rag_retrieval_k: int = 20
     rag_final_k: int = 5

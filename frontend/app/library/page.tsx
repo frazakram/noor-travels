@@ -10,6 +10,7 @@ import { useLang } from "@/components/LangProvider";
 import { emitPageLoading } from "@/components/NavigationProgress";
 import { t, type Lang } from "@/lib/i18n";
 import { categoryLabel } from "@/lib/library-categories";
+import { answerShardPath } from "@/lib/library-shards";
 import { librarySlug } from "@/lib/library-slug";
 
 type LibraryIndex = {
@@ -42,12 +43,17 @@ function AnswerPanel({
   question,
   answer,
   loading,
+  failed,
 }: {
   lang: Lang;
   question: string;
   answer: LibraryAnswer | null;
   loading: boolean;
+  failed: boolean;
 }) {
+  if (failed && !answer) {
+    return <p className="text-sm text-muted">{t(lang, "genericErrorTitle")}</p>;
+  }
   if (loading && !answer) {
     return (
       <div className="rounded-xl border border-noor-200 bg-noor-50/50 p-4 dark:border-noor-800 dark:bg-noor-950/20">
@@ -100,7 +106,8 @@ function QuestionLibraryPageInner() {
   const { lang } = useLang();
   const { openChat } = useChat();
   const [index, setIndex] = useState<LibraryIndex | null>(null);
-  const [answers, setAnswers] = useState<Record<string, LibraryAnswer> | null>(null);
+  const [answers, setAnswers] = useState<Record<string, LibraryAnswer>>({});
+  const [answerFailed, setAnswerFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [answersLoading, setAnswersLoading] = useState(false);
   const [error, setError] = useState("");
@@ -125,24 +132,26 @@ function QuestionLibraryPageInner() {
       });
   }, []);
 
-  const loadAnswers = useCallback(async () => {
-    if (answers) return answers;
-    setAnswersLoading(true);
-    emitPageLoading(true);
-    try {
-      const r = await fetch("/data/question-library-answers.json");
-      if (!r.ok) throw new Error("Answers not found");
-      const data = (await r.json()) as Record<string, LibraryAnswer>;
-      setAnswers(data);
-      return data;
-    } catch {
-      setError("libraryLoadError");
-      return null;
-    } finally {
-      setAnswersLoading(false);
-      emitPageLoading(false);
-    }
-  }, [answers]);
+  const loadAnswer = useCallback(
+    async (id: string) => {
+      if (answers[id]) return;
+      setAnswersLoading(true);
+      setAnswerFailed(false);
+      emitPageLoading(true);
+      try {
+        const r = await fetch(answerShardPath(id));
+        if (!r.ok) throw new Error(`Answer shard ${r.status}`);
+        const shard = (await r.json()) as Record<string, LibraryAnswer>;
+        setAnswers((prev) => ({ ...prev, ...shard }));
+      } catch {
+        setAnswerFailed(true);
+      } finally {
+        setAnswersLoading(false);
+        emitPageLoading(false);
+      }
+    },
+    [answers],
+  );
 
   const filtered = useMemo(() => {
     if (!index) return [];
@@ -184,7 +193,7 @@ function QuestionLibraryPageInner() {
       return;
     }
     setSelectedId(id);
-    await loadAnswers();
+    await loadAnswer(id);
     // The answer expands under the tapped question — nudge it into view
     // if the fold cuts it off, without yanking the page around.
     requestAnimationFrame(() => {
@@ -316,8 +325,9 @@ function QuestionLibraryPageInner() {
                       <AnswerPanel
                         lang={lang}
                         question={item.question}
-                        answer={answers?.[item.id] ?? null}
+                        answer={answers[item.id] ?? null}
                         loading={answersLoading}
+                        failed={answerFailed}
                       />
                       <Link
                         href={`/library/${librarySlug(item)}`}

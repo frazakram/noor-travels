@@ -3,6 +3,15 @@
 @tailwind utilities;
 
 @layer base {
+  /* Keyboard/switch users need a visible focus position; mouse and touch focus stay unstyled. */
+  :focus-visible {
+    outline: 2px solid #3d8c78;
+    outline-offset: 2px;
+  }
+  html.dark :focus-visible {
+    outline-color: #d4a853;
+  }
+
   html {
     scroll-behavior: smooth;
     overflow-x: hidden;
@@ -178,7 +187,8 @@
   }
 
   .text-faint {
-    @apply text-noor-500 dark:text-noor-400;
+    /* Lightest shades that still clear WCAG AA 4.5:1 on sand/white (light) and noor-900 cards (dark). */
+    @apply text-[#347d6b] dark:text-[#66ae99];
   }
 
   .text-accent {

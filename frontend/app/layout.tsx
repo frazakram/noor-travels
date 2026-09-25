@@ -74,13 +74,16 @@ export const viewport: Viewport = {
   ],
 };
 
+// Blocked storage (private mode, some WebViews) throws on access; swap in memory so the app still runs.
+const storageShim = `(function(){function mem(){var d={};return{getItem:function(k){return Object.prototype.hasOwnProperty.call(d,k)?d[k]:null},setItem:function(k,v){d[k]=String(v)},removeItem:function(k){delete d[k]},clear:function(){d={}},key:function(i){return Object.keys(d)[i]||null},get length(){return Object.keys(d).length}}}["localStorage","sessionStorage"].forEach(function(n){try{var s=window[n],k="__noor_probe";s.setItem(k,k);s.removeItem(k)}catch(e){Object.defineProperty(window,n,{value:mem(),configurable:true})}})})();`;
+
 const themeScript = `(function(){try{var t=localStorage.getItem("noor-theme");if(t==="dark")document.documentElement.classList.add("dark");var a=localStorage.getItem("noor-a11y");if(a){var p=JSON.parse(a);var scales={sm:"0.92",md:"1",lg:"1.12",xl:"1.25"};if(p.fontScale&&scales[p.fontScale])document.documentElement.style.setProperty("--text-scale",scales[p.fontScale]);if(p.highContrast)document.documentElement.classList.add("high-contrast")}var ua=navigator.userAgent||"";if(/NoorSafarAndroid/i.test(ua)||/; wv\\)/i.test(ua)||window.matchMedia("(display-mode: standalone)").matches)document.documentElement.classList.add("app-shell")}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: storageShim + themeScript }} />
         <JsonLd
           data={[
             {

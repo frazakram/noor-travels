@@ -47,6 +47,11 @@ def _load_local_model():
     return SentenceTransformer(settings.local_embedding_model, device="cpu")
 
 
+def _embed_auth_header() -> dict[str, str]:
+    secret = get_settings().embed_secret.strip()
+    return {"x-embed-secret": secret} if secret else {}
+
+
 def _embed_via_xenova(texts: list[str]) -> list[list[float]]:
     """Call Next.js /api/embed in batches of 32."""
     url = get_settings().embed_url
@@ -58,7 +63,7 @@ def _embed_via_xenova(texts: list[str]) -> list[list[float]]:
         req = urllib.request.Request(
             url,
             data=payload,
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", **_embed_auth_header()},
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=25) as resp:

@@ -19,9 +19,12 @@ from ingestion.eval_chat import FOLLOWUP_CONTEXT, score_case  # noqa: E402
 from ingestion.generate_eval_questions import TARGET_TOTAL, build_cases  # noqa: E402
 from app.services.rag_service import _chat_local, _merge_history_context  # noqa: E402
 
+from ingestion.library_shards import CANONICAL_ANSWERS, write_answer_shards  # noqa: E402
+
 OUT_DIR = REPO / "frontend" / "public" / "data"
 INDEX_PATH = OUT_DIR / "question-library-index.json"
-ANSWERS_PATH = OUT_DIR / "question-library-answers.json"
+# Canonical full answers file lives outside public/; the site gets 128 small shards.
+ANSWERS_PATH = CANONICAL_ANSWERS
 META_PATH = OUT_DIR / "question-library-meta.json"
 
 
@@ -110,6 +113,7 @@ def _write_outputs(index: list[dict], answers: dict, failed: list, total: int) -
     }
     INDEX_PATH.write_text(json.dumps(index_payload, ensure_ascii=False))
     ANSWERS_PATH.write_text(json.dumps(answers, ensure_ascii=False))
+    write_answer_shards(answers)
 
     meta = {
         "version": 1,

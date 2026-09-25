@@ -335,28 +335,33 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
               );
             }
             return (
-              <button
+              <div
                 key={p.id}
-                type="button"
-                aria-disabled={!canMark}
-                title={!canMark ? t(lang, "prayerNotStarted") : undefined}
-                onClick={() => {
-                  if (canMark && prayerId) handleToggle(prayerId);
-                }}
                 className={`relative flex w-full items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition ${
                   isCurrent
-                    ? "border-gold-400/80 bg-gold-400/20 overflow-hidden animate-tile-bounce animate-tile-shimmer"
+                    ? "border-gold-400/80 bg-gold-400/20 overflow-hidden animate-tile-shimmer"
                     : isNext
                       ? "border-gold-300/40 bg-white/10"
                       : "border-white/15 bg-white/10"
                 } ${canMark ? "" : "opacity-60"}`}
               >
+                <button
+                  type="button"
+                  aria-label={`${prayerLabel(prayerId!)} — ${t(lang, "markAsPrayed")}`}
+                  aria-pressed={done}
+                  aria-disabled={!canMark}
+                  title={!canMark ? t(lang, "prayerNotStarted") : undefined}
+                  onClick={() => {
+                    if (canMark && prayerId) handleToggle(prayerId);
+                  }}
+                  className="absolute inset-0 rounded-xl"
+                />
                 <span
-                  className={`inline-flex text-gold-300 ${isPast ? "opacity-50" : ""}`}
+                  className={`pointer-events-none inline-flex text-gold-300 ${isPast ? "opacity-50" : ""}`}
                 >
                   <Icon name={PRAYER_ICONS[prayerId!]} className="h-5 w-5" />
                 </span>
-                <span className="flex min-w-0 flex-1 items-center gap-2">
+                <span className="pointer-events-none flex min-w-0 flex-1 items-center gap-2">
                   <span className="truncate text-sm font-semibold text-white">{prayerLabel(prayerId!)}</span>
                   {isCurrent && (
                     <span className="shrink-0 rounded-full bg-gold-400 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-noor-950">
@@ -364,7 +369,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                     </span>
                   )}
                 </span>
-                <span className={`text-right ${isPast ? "opacity-60" : ""}`}>
+                <span className={`pointer-events-none text-right ${isPast ? "opacity-60" : ""}`}>
                   <span className="block font-mono text-sm text-gold-300">{p.start}</span>
                   {p.end && (
                     <span className="block font-mono text-[10px] text-white/50">
@@ -372,29 +377,20 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                     </span>
                   )}
                 </span>
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void toggleNotification(prayerId!, p.start);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      void toggleNotification(prayerId!, p.start);
-                    }
-                  }}
-                  className={`relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] after:absolute after:-inset-2.5 after:content-[''] ${
+                <button
+                  type="button"
+                  aria-label={`${t(lang, "notifyAtAdhan")}: ${prayerLabel(prayerId!)}`}
+                  aria-pressed={!!notifySet[prayerId!]}
+                  onClick={() => void toggleNotification(prayerId!, p.start)}
+                  className={`relative z-10 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] after:absolute after:-inset-2.5 after:content-[''] ${
                     notifySet[prayerId!] ? "bg-gold-400 text-noor-950" : "bg-white/10 text-white/60"
                   }`}
                   title={t(lang, "notifyAtAdhan")}
                 >
                   <Icon name="bell" className="h-3.5 w-3.5" />
-                </span>
+                </button>
                 <span
-                  className={`relative flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] ${
+                  className={`pointer-events-none relative flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] ${
                     done
                       ? "animate-check-pop border-gold-400 bg-gold-400 text-noor-950"
                       : "border-white/25 text-transparent"
@@ -403,7 +399,7 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                   <Icon name="check" className="h-3 w-3" strokeWidth={3} />
                   {justMarked === prayerId && <ConfettiBurst />}
                 </span>
-              </button>
+              </div>
             );
           })}
           <button
@@ -429,15 +425,9 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
             const canMark = prayerId ? done || isCurrent || (!isNext && hasStarted(prayerId, p.start)) : false;
             const isPast = prayerId ? hasStarted(prayerId, p.start) && !isCurrent && !isNext : false;
             return (
-              <button
+              <div
                 key={p.id}
-                type="button"
-                aria-disabled={isSunrise || !canMark}
-                title={isSunrise ? t(lang, "fajrEndsAtSunrise") : !canMark ? t(lang, "prayerNotStarted") : undefined}
-                onClick={() => {
-                  if (canMark && prayerId) handleToggle(prayerId);
-                }}
-                className={`group relative rounded-xl border p-2.5 text-left transition-all duration-200 hover:-translate-y-0.5 sm:p-3 ${
+                className={`group relative rounded-xl border p-2.5 text-left transition-colors duration-200 sm:p-3 ${
                   isCurrent ? "pt-7 overflow-hidden animate-tile-shimmer" : ""
                 } ${
                   isSunrise
@@ -445,16 +435,29 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                     : isCurrent
                     ? "border-gold-400/70 bg-gold-400/15 shadow-md shadow-gold-500/20"
                     : isNext
-                      ? "animate-pulse border-gold-300/50 bg-white/10"
+                      ? "border-gold-300/50 bg-white/10"
                       : "border-white/15 bg-white/10 hover:bg-white/15"
                 } ${isSunrise || canMark ? "" : "cursor-not-allowed opacity-55"}`}
               >
+                {prayerId && (
+                  <button
+                    type="button"
+                    aria-label={`${prayerLabel(prayerId)} — ${t(lang, "markAsPrayed")}`}
+                    aria-pressed={done}
+                    aria-disabled={!canMark}
+                    title={!canMark ? t(lang, "prayerNotStarted") : undefined}
+                    onClick={() => {
+                      if (canMark) handleToggle(prayerId);
+                    }}
+                    className="absolute inset-0 rounded-xl"
+                  />
+                )}
                 {isCurrent && (
-                  <span className="absolute left-2 top-2 rounded-full bg-gold-400 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-noor-950">
+                  <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-gold-400 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-noor-950">
                     {t(lang, "salahActive")}
                   </span>
                 )}
-                <div className="flex items-center justify-between">
+                <div className="pointer-events-none flex items-center justify-between">
                   <span
                     className={`inline-flex text-gold-300 ${isPast ? "opacity-50" : ""}`}
                   >
@@ -462,25 +465,16 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                   </span>
                   <div className="flex items-center gap-1">
                     {prayerId && (
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void toggleNotification(prayerId, p.start);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            void toggleNotification(prayerId, p.start);
-                          }
-                        }}
-                        className={`relative inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] after:absolute after:-inset-2 after:content-[''] ${notifySet[prayerId] ? "bg-gold-400 text-noor-950" : "bg-white/10 text-white/60"}`}
+                      <button
+                        type="button"
+                        aria-label={`${t(lang, "notifyAtAdhan")}: ${prayerLabel(prayerId)}`}
+                        aria-pressed={!!notifySet[prayerId]}
+                        onClick={() => void toggleNotification(prayerId, p.start)}
+                        className={`pointer-events-auto relative z-10 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] after:absolute after:-inset-2 after:content-[''] ${notifySet[prayerId] ? "bg-gold-400 text-noor-950" : "bg-white/10 text-white/60"}`}
                         title={t(lang, "notifyAtAdhan")}
                       >
                         <Icon name="bell" className="h-3 w-3" />
-                      </span>
+                      </button>
                     )}
                     {done && (
                       <span className="relative flex h-5 w-5 animate-check-pop items-center justify-center rounded-full border border-gold-400 bg-gold-400 text-[10px] text-noor-950">
@@ -490,12 +484,12 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
                     )}
                   </div>
                 </div>
-                <p className="mt-1.5 font-semibold text-white">{isSunrise ? t(lang, "sunrise") : prayerLabel(prayerId!)}</p>
-                <p className={`mt-1 font-mono text-sm text-gold-300 ${isPast ? "grayscale-[30%] opacity-60" : ""}`}>{p.start}</p>
-                <p className="text-[10px] text-white/50">
+                <p className="pointer-events-none mt-1.5 font-semibold text-white">{isSunrise ? t(lang, "sunrise") : prayerLabel(prayerId!)}</p>
+                <p className={`pointer-events-none mt-1 font-mono text-sm text-gold-300 ${isPast ? "grayscale-[30%] opacity-60" : ""}`}>{p.start}</p>
+                <p className="pointer-events-none text-[10px] text-white/50">
                   {isSunrise ? t(lang, "fajrWindowEnds") : `${t(lang, "salahUntil")} ${p.end}`}
                 </p>
-              </button>
+              </div>
             );
           })}
         </div>
