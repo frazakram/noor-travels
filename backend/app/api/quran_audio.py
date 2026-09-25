@@ -1,4 +1,5 @@
 """Quran recitation + human translation audio via Al Quran Cloud CDN."""
+import logging
 import re
 import urllib.request
 from functools import lru_cache
@@ -6,6 +7,8 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query
+
+logger = logging.getLogger(__name__)
 
 ALQURAN = "https://api.alquran.cloud/v1"
 
@@ -64,8 +67,9 @@ CUSTOM_AUDIO_RECITERS: dict[str, dict[str, Any]] = {
 
 EVERYAYAH_ARABIC = "https://everyayah.com/data/{path}/{file}.mp3"
 EVERYAYAH_BISMILLAH = "https://everyayah.com/data/{path}/bismillah.mp3"
-WAY2QURAN_SURAH = "https://media.way2quran.com/{slug}/{riwaya}/{surah}.mp3"
-WAY2QURAN_RECITER_PAGE = "https://way2quran.com/reciters/{slug}"
+WAY2QURAN_SURAH = "https://media.way2quran.com/{slug}/{riwaya}/{surah:03d}.mp3"
+# The un-prefixed page 307s to https://localhost:3000 (their misconfiguration); /en/ serves the page.
+WAY2QURAN_RECITER_PAGE = "https://way2quran.com/en/reciters/{slug}"
 CDN_AYAH = "https://cdn.islamic.network/quran/audio/128/{reciter}/{ayah}.mp3"
 
 # Surahs that should not prepend Bismillah audio (1 already is Bismillah; 9 has none).
@@ -178,9 +182,18 @@ def _way2quran_surah_url(slug: str, riwaya: str, surah_number: int) -> str:
     return WAY2QURAN_SURAH.format(slug=slug, riwaya=riwaya, surah=surah_number)
 
 
-@lru_cache(maxsize=8)
+_way2quran_cache: dict[tuple[str, str], frozenset[int]] = {}
+
+
 def _way2quran_available_surahs(slug: str, riwaya: str) -> frozenset[int]:
-    """Discover which surahs Way2Quran hosts for a reciter (cached)."""
+    """Discover which surahs Way2Quran hosts for a reciter.
+
+    Only non-empty results are cached, so a transient network failure can't mark the
+    reciter as having no recordings for the rest of the instance's life.
+    """
+    cached = _way2quran_cache.get((slug, riwaya))
+    if cached:
+        return cached
     pattern = re.compile(
         rf'surahNumber\\":(\d+),\\"url\\":\\"https://media\.way2quran\.com/{re.escape(slug)}/{re.escape(riwaya)}/\d+\.mp3\\"'
     )
@@ -193,13 +206,17 @@ def _way2quran_available_surahs(slug: str, riwaya: str) -> frozenset[int]:
                 url,
                 headers={"User-Agent": "Mozilla/5.0 (compatible; NoorSafar/1.0)"},
             )
-            with urllib.request.urlopen(req, timeout=25) as resp:
+            with urllib.request.urlopen(req, timeout=8) as resp:
                 html = resp.read().decode("utf-8", "replace")
-        except Exception:
+        except Exception as exc:
+            logger.warning("Way2Quran page fetch failed: %s", exc, extra={"event": "way2quran_fetch_failed", "path": url})
             continue
         for num in pattern.findall(html):
             found.add(int(num))
-    return frozenset(found)
+    result = frozenset(found)
+    if result:
+        _way2quran_cache[(slug, riwaya)] = result
+    return result
 
 
 def _translation_payload(

@@ -61,7 +61,7 @@ def _embed_via_xenova(texts: list[str]) -> list[list[float]]:
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with urllib.request.urlopen(req, timeout=25) as resp:
             data = json.loads(resp.read())
         if "error" in data:
             raise RuntimeError(f"Xenova embed error: {data['error']}")
@@ -96,7 +96,7 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
             "expected 'local', 'xenova', or 'openai'."
         )
 
-    from openai import OpenAI
-    client = OpenAI(api_key=settings.openai_api_key)
+    from app.services.llm import openai_client
+    client = openai_client()
     resp = client.embeddings.create(model=settings.embedding_model, input=safe)
     return [item.embedding for item in resp.data]

@@ -12,5 +12,19 @@ distributed rate limiter.
 
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from starlette.requests import Request
 
-limiter = Limiter(key_func=get_remote_address)
+
+def client_ip(request: Request) -> str:
+    # Behind Vercel's edge request.client.host is the proxy, which would put every user in one
+    # bucket; Vercel sets x-real-ip / x-forwarded-for itself, so those identify the client.
+    real_ip = request.headers.get("x-real-ip", "").strip()
+    if real_ip:
+        return real_ip
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return get_remote_address(request)
+
+
+limiter = Limiter(key_func=client_ip)

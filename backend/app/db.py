@@ -1,43 +1,93 @@
 import json
+import logging
 import math
 import os
 import sqlite3
+import threading
+import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from psycopg2.pool import ThreadedConnectionPool
 
 from app.core.config import get_settings
 
+logger = logging.getLogger(__name__)
+
 SQLITE_PATH = Path(__file__).resolve().parents[1] / "data" / "noor_safar.db"
-_use_sqlite: bool | None = None
+
+CONNECT_TIMEOUT_S = 4
+CONNECT_ATTEMPTS = 2
+# Serverless instances freeze between requests; a pooled connection idle longer
+# than this is pinged before reuse because the server may have dropped it.
+IDLE_PING_AFTER_S = 30
+POOL_MAX = 5
 
 
-def _postgres_available() -> bool:
-    try:
-        conn = psycopg2.connect(get_settings().database_url, connect_timeout=4)
-        conn.close()
-        return True
-    except Exception:
-        return False
+class DatabaseUnavailable(RuntimeError):
+    """Postgres could not be reached after retries — callers get a 503, never a silent fallback."""
 
 
 def use_sqlite() -> bool:
-    global _use_sqlite
-    if _use_sqlite is None:
-        flag = os.getenv("FORCE_SQLITE", "") or get_settings().force_sqlite
-        if flag.lower() in ("1", "true", "yes"):
-            _use_sqlite = True
-        else:
-            _use_sqlite = not _postgres_available()
-            if _use_sqlite and get_settings().postgres_url:
-                print(
-                    "WARNING: POSTGRES_URL is set but Postgres is unreachable — "
-                    "falling back to SQLite for the lifetime of this process."
+    """SQLite only when forced or when no Postgres URL is configured.
+
+    Never decided by a connectivity probe: a transient Postgres blip must not flip a
+    production instance onto an empty local file for the rest of its life.
+    """
+    flag = os.getenv("FORCE_SQLITE", "") or get_settings().force_sqlite
+    if flag.lower() in ("1", "true", "yes"):
+        return True
+    return not get_settings().postgres_url.strip()
+
+
+_pool: ThreadedConnectionPool | None = None
+_pool_lock = threading.Lock()
+_last_used: dict[int, float] = {}
+
+
+def _get_pool() -> ThreadedConnectionPool:
+    global _pool
+    if _pool is None:
+        with _pool_lock:
+            if _pool is None:
+                _pool = ThreadedConnectionPool(
+                    0, POOL_MAX, get_settings().database_url, connect_timeout=CONNECT_TIMEOUT_S
                 )
-    return _use_sqlite
+    return _pool
+
+
+def _is_alive(conn) -> bool:
+    if conn.closed:
+        return False
+    if time.monotonic() - _last_used.get(id(conn), 0) < IDLE_PING_AFTER_S:
+        return True
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+        conn.rollback()
+        return True
+    except psycopg2.Error:
+        return False
+
+
+def _checkout_postgres():
+    last_error: Exception | None = None
+    for attempt in range(CONNECT_ATTEMPTS):
+        try:
+            pool = _get_pool()
+            conn = pool.getconn()
+            if _is_alive(conn):
+                return conn
+            pool.putconn(conn, close=True)
+            _last_used.pop(id(conn), None)
+        except psycopg2.Error as exc:
+            last_error = exc
+            logger.warning("postgres connect failed (attempt %d/%d): %s", attempt + 1, CONNECT_ATTEMPTS, exc)
+            time.sleep(0.2 * (attempt + 1))
+    raise DatabaseUnavailable("Database is temporarily unavailable") from last_error
 
 
 def _row_to_dict(row: Any) -> dict:
@@ -67,16 +117,26 @@ def get_conn():
             raise
         finally:
             conn.close()
-    else:
-        conn = psycopg2.connect(get_settings().database_url)
-        try:
-            yield conn
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
+        return
+
+    conn = _checkout_postgres()
+    broken = False
+    try:
+        yield conn
+        conn.commit()
+    except Exception as exc:
+        broken = isinstance(exc, (psycopg2.OperationalError, psycopg2.InterfaceError)) or conn.closed != 0
+        if not conn.closed:
+            try:
+                conn.rollback()
+            except psycopg2.Error:
+                broken = True
+        raise
+    finally:
+        _last_used[id(conn)] = time.monotonic()
+        _get_pool().putconn(conn, close=broken)
+        if broken:
+            _last_used.pop(id(conn), None)
 
 
 @contextmanager

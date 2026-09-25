@@ -678,7 +678,7 @@ def _search_ayahs(terms: list[str], limit: int) -> list[dict]:
     params: list[Any] = []
     for t in terms[:8]:
         clauses.append(
-            "(translation_en LIKE ? OR translation_ur LIKE ? OR transliteration LIKE ?)"
+            "(translation_en ILIKE ? OR translation_ur ILIKE ? OR transliteration ILIKE ?)"
         )
         pat = f"%{t}%"
         params.extend([pat, pat, pat])
@@ -747,7 +747,7 @@ def _search_hadiths(terms: list[str], limit: int) -> list[dict]:
     clauses = []
     params: list[Any] = []
     for t in topic_terms[:6]:
-        clauses.append("(english LIKE ? OR chapter_en LIKE ?)")
+        clauses.append("(english ILIKE ? OR chapter_en ILIKE ?)")
         pat = f"%{t}%"
         params.extend([pat, pat])
 
@@ -787,7 +787,7 @@ def _search_duas(terms: list[str], limit: int, dua_categories: list[str] | None 
     clauses = []
     params: list[Any] = []
     for t in terms[:6]:
-        clauses.append("(title_en LIKE ? OR translation_en LIKE ? OR translation_ur LIKE ?)")
+        clauses.append("(title_en ILIKE ? OR translation_en ILIKE ? OR translation_ur ILIKE ?)")
         pat = f"%{t}%"
         params.extend([pat, pat, pat])
 
@@ -890,7 +890,7 @@ def _search_tafsir(terms: list[str], limit: int) -> list[dict]:
     clauses = []
     params: list[Any] = []
     for t in terms[:5]:
-        clauses.append("text LIKE ?")
+        clauses.append("text ILIKE ?")
         params.append(f"%{t}%")
 
     # No SQL-level LIMIT — see _search_ayahs for why. tafsir is 6,236 rows.

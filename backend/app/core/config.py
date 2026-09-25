@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     # llama-3.1-8b-instant was decommissioned by Groq; gpt-oss-20b is the
     # current fast/cheap tier that still supports response_format=json_object.
     groq_chat_model: str = "openai/gpt-oss-20b"
+    # Tried in order when the primary model is removed or rejects a request.
+    groq_fallback_models: str = "qwen/qwen3.8-27b,openai/gpt-oss-120b"
 
     @property
     def embed_url(self) -> str:

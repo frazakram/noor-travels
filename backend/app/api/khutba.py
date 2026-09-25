@@ -3,14 +3,14 @@ import json
 import re
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query, Request, Response, WebSocket, WebSocketDisconnect
-from openai import OpenAI
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
 from app.core.limiter import limiter
 from app.db import get_cursor
 from app.services.khutbah_match import match_transcript
+from app.services.llm import complete, groq_client, groq_models, openai_client
 
 # app.services.khutba_pdf is imported lazily inside the endpoint. It pulls in
 # fpdf2/uharfbuzz, and uharfbuzz is a compiled wheel — importing it at module
@@ -25,14 +25,11 @@ Return JSON only: {"arabic": "...", "english": "...", "urdu": "..."}
 Keep religious terms accurate. If unclear, transliterate names."""
 
 
-def _translation_client_and_model(settings) -> tuple[OpenAI, str]:
-    """Prefer Groq (free tier) like the chat service; OpenAI only as fallback."""
+def _translation_client_and_models(settings):
+    """Prefer Groq (free tier) like the chat service; OpenAI only when no Groq key is set."""
     if settings.groq_api_key.strip():
-        return (
-            OpenAI(api_key=settings.groq_api_key.strip(), base_url="https://api.groq.com/openai/v1"),
-            settings.groq_chat_model,
-        )
-    return OpenAI(api_key=settings.openai_api_key.strip()), settings.chat_model
+        return groq_client(timeout=12.0), groq_models()
+    return openai_client(timeout=12.0), [settings.chat_model]
 
 
 @router.get("/sermons")
@@ -138,9 +135,10 @@ async def khutba_live_chunk(request: Request, body: LiveChunkRequest):
         return {"type": "empty", "message": "No speech detected"}
 
     try:
-        client, model = _translation_client_and_model(settings)
-        translation = client.chat.completions.create(
-            model=model,
+        client, models = _translation_client_and_models(settings)
+        translation = complete(
+            client,
+            models,
             messages=[
                 {"role": "system", "content": TRANSLATE_PROMPT},
                 {"role": "user", "content": transcript},
@@ -228,65 +226,6 @@ def khutba_pdf(body: KhutbaPdfRequest):
         media_type="application/pdf",
         headers={"Content-Disposition": 'attachment; filename="khutba.pdf"'},
     )
-
-
-@router.websocket("/live")
-async def khutba_live(ws: WebSocket):
-    await ws.accept()
-    settings = get_settings()
-    client, ws_model = _translation_client_and_model(settings)
-    accumulated_english = ""
-    matched_slug: str | None = None
-
-    try:
-        while True:
-            data = await ws.receive_bytes()
-            if matched_slug:
-                continue
-
-            transcript = await _transcribe_arabic(settings.deepgram_api_key, data)
-            if not transcript.strip():
-                await ws.send_json({"type": "empty", "message": "No speech detected"})
-                continue
-
-            translation = client.chat.completions.create(
-                model=ws_model,
-                messages=[
-                    {"role": "system", "content": TRANSLATE_PROMPT},
-                    {"role": "user", "content": transcript},
-                ],
-                response_format={"type": "json_object"},
-                temperature=0.2,
-            )
-            result = json.loads(translation.choices[0].message.content or "{}")
-            english = result.get("english", "").strip()
-            if english:
-                accumulated_english = f"{accumulated_english} {english}".strip()
-
-            await ws.send_json(
-                {
-                    "type": "translation",
-                    "arabic": result.get("arabic", transcript),
-                    "english": english,
-                    "urdu": result.get("urdu", ""),
-                }
-            )
-
-            match = match_transcript(accumulated_english)
-            if match and match.tier == "exact":
-                matched_slug = match.khutbah.slug
-                await ws.send_json(
-                    {
-                        "type": "matched",
-                        "slug": match.khutbah.slug,
-                        "title": match.khutbah.title,
-                        "source_url": match.khutbah.source_url,
-                        "score": match.score,
-                        "matched_phrase": match.matched_phrase,
-                    }
-                )
-    except WebSocketDisconnect:
-        pass
 
 
 # Whisper was trained on scraped YouTube subtitles, so on non-speech audio it

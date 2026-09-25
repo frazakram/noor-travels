@@ -1,5 +1,9 @@
-from fastapi import FastAPI
+import logging
+import time
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -7,22 +11,60 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.api import adhkar, auth, duas, hadith, khutba, quran, quran_audio, rag, recite, salah, tts
 from app.core.config import get_settings
 from app.core.limiter import limiter
+from app.core.logging_setup import configure_logging
+from app.db import DatabaseUnavailable, get_cursor
+
+configure_logging()
+logger = logging.getLogger("noor.api")
+
+SLOW_REQUEST_MS = 3000
 
 settings = get_settings()
 
 _provider = settings.chat_provider.lower()
 if _provider not in ("local", "groq", "openai"):
-    print(f"WARNING: unknown CHAT_PROVIDER '{settings.chat_provider}' — chat falls back to local templates.")
+    logger.warning(f"unknown CHAT_PROVIDER '{settings.chat_provider}' — chat falls back to local templates.")
 elif _provider == "groq" and not settings.groq_api_key.strip():
-    print("WARNING: CHAT_PROVIDER=groq but GROQ_API_KEY is empty — chat falls back to local templates.")
+    logger.warning("CHAT_PROVIDER=groq but GROQ_API_KEY is empty — chat falls back to local templates.")
 elif _provider == "openai" and not settings.openai_api_key.strip():
-    print("WARNING: CHAT_PROVIDER=openai but OPENAI_API_KEY is empty — chat falls back to local templates.")
+    logger.warning("CHAT_PROVIDER=openai but OPENAI_API_KEY is empty — chat falls back to local templates.")
 
 app = FastAPI(title="Noor Safar API", version="1.0.0")
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+
+
+@app.exception_handler(DatabaseUnavailable)
+async def _database_unavailable(request: Request, exc: DatabaseUnavailable):
+    logger.error("Database unavailable", extra={"event": "db_unavailable", "path": request.url.path})
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Service is temporarily unavailable. Please try again in a moment."},
+        headers={"Retry-After": "5"},
+    )
+
+
+@app.middleware("http")
+async def _log_failures_and_slow_requests(request: Request, call_next):
+    started = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        logger.exception("Unhandled error", extra={"event": "unhandled", "path": request.url.path})
+        raise
+    duration_ms = round((time.perf_counter() - started) * 1000)
+    if response.status_code >= 500 or duration_ms >= SLOW_REQUEST_MS:
+        logger.warning(
+            "%s %s -> %d in %dms",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration_ms,
+            extra={"event": "request", "path": request.url.path, "status": response.status_code, "duration_ms": duration_ms},
+        )
+    return response
 
 app.add_middleware(
     CORSMiddleware,
@@ -60,3 +102,45 @@ def health():
         "chat_provider": chat_provider,
         "embedding_provider": settings.embedding_provider,
     }
+
+
+@app.get("/api/health/deep")
+@limiter.limit("12/minute")
+def health_deep(request: Request):
+    """Exercises real dependencies so an uptime monitor can alert on a broken DB or dead LLM model."""
+    from app.services.llm import complete, groq_client, groq_models
+
+    checks: dict[str, dict] = {}
+    started = time.perf_counter()
+    try:
+        with get_cursor() as cur:
+            cur.execute("SELECT COUNT(*) AS n FROM ayahs")
+            row = cur.fetchone()
+        ayahs = int(row["n"])
+        checks["database"] = {"ok": ayahs > 6000, "ayahs": ayahs}
+    except Exception as exc:
+        checks["database"] = {"ok": False, "error": type(exc).__name__}
+
+    if get_settings().use_groq_chat:
+        try:
+            response = complete(
+                groq_client(timeout=10.0),
+                groq_models(),
+                messages=[{"role": "user", "content": "Reply with the single word: ok"}],
+                max_tokens=64,
+            )
+            checks["llm"] = {"ok": True, "model": response.model}
+        except Exception as exc:
+            checks["llm"] = {"ok": False, "error": type(exc).__name__, "detail": str(exc)[:200]}
+
+    healthy = all(c["ok"] for c in checks.values())
+    if not healthy:
+        logger.error("Deep health check failed", extra={"event": "health_failed", "reason": str(checks)[:500]})
+    return JSONResponse(
+        status_code=200 if healthy else 503,
+        content={
+            "status": "ok" if healthy else "degraded",
+            "checks": checks,
+            "duration_ms": round((time.perf_counter() - started) * 1000),
+        },
+    )

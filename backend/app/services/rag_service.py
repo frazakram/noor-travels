@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from typing import Any
 
@@ -9,7 +10,10 @@ from app.services.answer_validator import validate_answer
 from app.services.cache import get_cached, make_cache_key, set_cached
 from app.services.hybrid_retriever import rerank
 from app.services.retrieval import format_short_answer, retrieve_for_question
+from app.services.llm import complete, groq_client, groq_models, openai_client
 from app.services.query_analyzer import analyze_query
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are Noor Safar — an Islamic learning chat assistant for travelers.
 
@@ -132,10 +136,7 @@ def chat(
             "standalone_question": standalone,
             "history_verse_keys": history_verse_keys,
         }
-        client = OpenAI(
-            api_key=settings.groq_api_key,
-            base_url="https://api.groq.com/openai/v1",
-        )
+        client = groq_client()
         try:
             result = _chat_with_openai(
                 client,
@@ -145,16 +146,20 @@ def chat(
                 include_transliteration,
                 analysis=local_analysis,
                 cache_key=cache_key,
-                model=get_settings().groq_chat_model,
+                models=groq_models(),
                 mode="groq",
             )
             result = _apply_validation(question, result)
             set_cached(cache_key, result)
             return result
-        except APIError:
-            # Any Groq failure (quota, auth, 5xx, network) degrades to the
-            # grounded local answer instead of surfacing a 500 to the client.
-            pass
+        except APIError as exc:
+            # Any Groq failure (quota, auth, 5xx, network) degrades to the grounded
+            # local answer instead of a 500 — always logged so the degrade is visible.
+            logger.error(
+                "Groq chat failed, serving local answer: %s",
+                str(exc)[:300],
+                extra={"event": "chat_degraded", "provider": "groq", "reason": type(exc).__name__},
+            )
         return _chat_local(
             question,
             out_lang,
@@ -175,7 +180,7 @@ def chat(
             history_verse_keys=history_verse_keys,
         )
 
-    client = OpenAI(api_key=settings.openai_api_key)
+    client = openai_client()
     try:
         result = _chat_with_openai(
             client,
@@ -192,6 +197,11 @@ def chat(
     except APIError as exc:
         if not _is_quota_or_auth_error(exc):
             raise
+        logger.error(
+            "OpenAI chat failed, serving local answer: %s",
+            str(exc)[:300],
+            extra={"event": "chat_degraded", "provider": "openai", "reason": type(exc).__name__},
+        )
         return _chat_local(
             question,
             out_lang,
@@ -453,7 +463,7 @@ def _chat_with_openai(
     include_transliteration: bool,
     analysis: dict[str, Any] | None,
     cache_key: str,
-    model: str | None = None,
+    models: list[str] | None = None,
     mode: str = "openai",
 ) -> dict[str, Any]:
     analysis = analysis or analyze_query(client, question, out_lang, history)
@@ -526,8 +536,9 @@ def _chat_with_openai(
         ),
     })
 
-    response = client.chat.completions.create(
-        model=model or get_settings().chat_model,
+    response = complete(
+        client,
+        models or [get_settings().chat_model],
         messages=llm_messages,
         response_format={"type": "json_object"},
         temperature=0,

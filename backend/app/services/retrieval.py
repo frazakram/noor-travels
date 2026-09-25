@@ -1,9 +1,11 @@
 """Unified retrieval: local embeddings + keyword fallback."""
+import logging
 import re
+import time
 from typing import Any
 
 from app.core.config import get_settings
-from app.db import get_conn, use_sqlite
+from app.db import DatabaseUnavailable, get_conn, use_sqlite
 from app.services.hybrid_retriever import hybrid_retrieve, rerank
 from app.services.keyword_search import (
     _hadith_topic_terms,
@@ -27,7 +29,24 @@ def _is_surah_number_question(question: str) -> bool:
     return detect_surah_number_lookup(question) is not None
 
 
+logger = logging.getLogger(__name__)
+
+_CHUNK_COUNT_TTL_S = 600
+_chunk_count_cache: tuple[float, int] | None = None
+
+
 def _embedding_chunk_count() -> int:
+    """Row count of document_chunks — only changes on re-ingestion, so cached per instance."""
+    global _chunk_count_cache
+    now = time.monotonic()
+    if _chunk_count_cache and now - _chunk_count_cache[0] < _CHUNK_COUNT_TTL_S:
+        return _chunk_count_cache[1]
+    count = _count_embedding_chunks()
+    _chunk_count_cache = (now, count)
+    return count
+
+
+def _count_embedding_chunks() -> int:
     try:
         with get_conn() as conn:
             cur = conn.cursor()
@@ -36,7 +55,10 @@ def _embedding_chunk_count() -> int:
             if use_sqlite():
                 return int(row[0] if not isinstance(row, dict) else list(row.values())[0])
             return int(row["count"] if isinstance(row, dict) else row[0])
+    except DatabaseUnavailable:
+        raise
     except Exception:
+        logger.warning("document_chunks count failed; semantic search disabled", exc_info=True)
         return 0
 
 
@@ -237,8 +259,14 @@ def retrieve_for_question(
     if need_semantic:
         try:
             candidates.extend(hybrid_retrieve([question], source_filter))
+        except DatabaseUnavailable:
+            raise
         except Exception:
-            pass
+            logger.warning(
+                "Semantic retrieval failed; continuing with keyword results",
+                exc_info=True,
+                extra={"event": "semantic_degraded"},
+            )
 
     merged = rerank(" ".join(analysis["search_terms"]), candidates, settings.rag_retrieval_k)
     merged = _filter_dua_by_theme(merged, analysis)
@@ -346,8 +374,10 @@ def _fetch_tafsir_chunks(verse_keys: list[str]) -> list[dict]:
                         "similarity": 0.82,
                         "metadata": {"verse_key": tvk, "tafsir_source": src},
                     })
+    except DatabaseUnavailable:
+        raise
     except Exception:
-        pass
+        logger.warning("Tafsir lookup failed", exc_info=True, extra={"event": "tafsir_degraded"})
     return results
 
 

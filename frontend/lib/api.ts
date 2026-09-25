@@ -67,12 +67,3 @@ export function apiStatic<T>(path: string, init?: ApiInit): Promise<T> {
 function looksTechnical(message: string): boolean {
   return /backend|websocket|python|traceback|exception|localhost|port\s*\d+|enoent|module|stack/i.test(message);
 }
-
-export function wsUrl(path: string): string {
-  if (!API && typeof window !== "undefined") {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${protocol}//${window.location.host}${path}`;
-  }
-  const base = API.replace(/^http/, "ws");
-  return `${base}${path}`;
-}

@@ -6,6 +6,7 @@ The Android app wraps the same site, so this works there unchanged.
 """
 
 import base64
+import functools
 import hashlib
 import hmac
 import json
@@ -16,10 +17,11 @@ import time
 
 import psycopg2
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
+from app.core.limiter import limiter
 from app.db import get_cursor, use_sqlite
 
 router = APIRouter()
@@ -63,6 +65,11 @@ def verify_password(password: str, stored: str) -> bool:
 
 
 # ── Tokens ──────────────────────────────────────────────────────────────
+
+
+@functools.lru_cache(maxsize=1)
+def _dummy_hash() -> str:
+    return hash_password(os.urandom(16).hex())
 
 
 def _b64(data: bytes) -> str:
@@ -163,7 +170,8 @@ def _ensure_preferences_table(cur) -> None:
 
 
 @router.post("/signup")
-def signup(body: SignupRequest):
+@limiter.limit("5/minute")
+def signup(request: Request, body: SignupRequest):
     email = body.email.strip().lower()
     if not EMAIL_RE.match(email):
         raise HTTPException(400, "Please enter a valid email address")
@@ -190,12 +198,15 @@ def signup(body: SignupRequest):
 
 
 @router.post("/login")
-def login(body: LoginRequest):
+@limiter.limit("10/minute")
+def login(request: Request, body: LoginRequest):
     email = body.email.strip().lower()
     with get_cursor() as cur:
         cur.execute("SELECT * FROM users WHERE email = %s", (email,))
         row = cur.fetchone()
-    if not row or not verify_password(body.password, row["password_hash"]):
+    # Hash even when the email is unknown so response time doesn't reveal which emails have accounts.
+    stored = row["password_hash"] if row else _dummy_hash()
+    if not verify_password(body.password, stored) or not row:
         raise HTTPException(401, "Email or password is incorrect")
     with get_cursor() as cur:
         cur.execute("UPDATE users SET last_login_at = %s WHERE id = %s", (_now(), row["id"]))
@@ -291,7 +302,8 @@ def put_preferences(body: PreferencesRequest, authorization: str | None = Header
 
 
 @router.post("/delete-account")
-def delete_account(body: DeleteAccountRequest, authorization: str | None = Header(default=None)):
+@limiter.limit("5/minute")
+def delete_account(request: Request, body: DeleteAccountRequest, authorization: str | None = Header(default=None)):
     user_id = current_user_id(authorization)
     with get_cursor() as cur:
         cur.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
