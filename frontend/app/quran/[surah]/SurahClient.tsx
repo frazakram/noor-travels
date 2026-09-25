@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { AudioNoticeToast } from "@/components/AudioNoticeToast";
 import { AutoplayToggle } from "@/components/AutoplayToggle";
 import { AyahWordText, type AyahWord } from "@/components/AyahWordText";
 import { useLang } from "@/components/LangProvider";
@@ -537,6 +538,7 @@ export default function SurahClient() {
 
   return (
     <div className="space-y-4">
+      <AudioNoticeToast message={audio.audioNotice} onDismiss={audio.clearAudioNotice} />
       <Link
         href="/quran"
         className="inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-heading"

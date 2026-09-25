@@ -24,6 +24,7 @@ import {
   playSpokenText,
   prefetchAudioUrl,
   primeAudioPlayback,
+  resumePrimaryIfPaused,
   setGlobalPlaybackRate,
   stopAllPlayback,
   truncateForSpeech,
@@ -195,6 +196,9 @@ export function useSurahAudio({
   const [playIndex, setPlayIndex] = useState(0);
   const [repeatPass, setRepeatPass] = useState(1);
   const [status, setStatus] = useState("");
+  // A reciter/translation clip that should exist but didn't play — surfaced to
+  // the user explicitly instead of silently swapping in synthesized speech.
+  const [audioNotice, setAudioNotice] = useState<string | null>(null);
   const [activeWordIndex, setActiveWordIndex] = useState(-1);
   const [activeBismillahWordIndex, setActiveBismillahWordIndex] = useState(-1);
   const [isPlayingBismillah, setIsPlayingBismillah] = useState(false);
@@ -504,11 +508,6 @@ export function useSurahAudio({
   }, []);
 
   useEffect(() => {
-    setupMediaSession({
-      onPause: () => pause(),
-      onStop: () => pause(),
-    });
-
     if (isNativeApp()) {
       (window as unknown as { noorOnAyahIndex?: (i: number) => void }).noorOnAyahIndex = (i: number) => {
         if (!nativeModeRef.current) return;
@@ -529,6 +528,28 @@ export function useSurahAudio({
         // Native queue drained on its own (user pauses clear nativeModeRef
         // before this fires) — treat it as a natural finish.
         onPlaybackFinishedRef.current?.();
+      };
+      // A single item (one reciter clip or one translation clip) failed to load
+      // and was skipped — QuranPlaybackService.kt already moved on to the next
+      // item by the time this fires, this is purely "let the user know why."
+      (
+        window as unknown as { noorOnPlaybackError?: (ayahIndex: number, kind: string, errorCode: string) => void }
+      ).noorOnPlaybackError = (ayahIndex, kind) => {
+        if (!nativeModeRef.current) return;
+        const vk = textAyahsRef.current[ayahIndex]?.verse_key ?? `ayah ${ayahIndex + 1}`;
+        setAudioNotice(
+          kind === "translation"
+            ? `Translation audio unavailable for ${vk} — skipped`
+            : `Recitation audio unavailable for ${vk} — skipped`,
+        );
+      };
+      // Too many failures in a row (real outage, not one bad clip) — playback
+      // has actually stopped. Distinct from noorOnPlaybackEnded so this isn't
+      // mistaken for a natural finish (which would wrongly autoplay the next surah).
+      (window as unknown as { noorOnPlaybackStalled?: () => void }).noorOnPlaybackStalled = () => {
+        if (!nativeModeRef.current) return;
+        pause();
+        setAudioNotice("Playback stopped — too many audio errors in a row. Check your connection.");
       };
       // Native (ExoPlayer) playback has no web <audio> element for ontimeupdate
       // to fire on, so the word-highlight glow would otherwise never move
@@ -560,8 +581,26 @@ export function useSurahAudio({
       delete (window as unknown as { noorOnAyahIndex?: unknown }).noorOnAyahIndex;
       delete (window as unknown as { noorOnPlaybackEnded?: unknown }).noorOnPlaybackEnded;
       delete (window as unknown as { noorOnWordPosition?: unknown }).noorOnWordPosition;
+      delete (window as unknown as { noorOnPlaybackError?: unknown }).noorOnPlaybackError;
+      delete (window as unknown as { noorOnPlaybackStalled?: unknown }).noorOnPlaybackStalled;
     };
   }, [pause, releaseNativePlayback, surahName, surahNumber]);
+
+  // Screen Wake Lock is spec'd to auto-release whenever the document goes
+  // hidden (screen lock, backgrounding) regardless of what this module does,
+  // and some browsers additionally suspend a background tab's <audio> element
+  // outright — neither is detected or recovered from on its own. This was the
+  // exact class of bug already found and fixed for the Adhkar page; the Quran
+  // reader had the same gap, just never closed.
+  useEffect(() => {
+    function onVisibility() {
+      if (document.visibilityState !== "visible" || !playingRef.current || nativeModeRef.current) return;
+      void acquireWakeLock();
+      resumePrimaryIfPaused();
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
 
   const updateNowPlaying = useCallback(
     (title: string) => {
@@ -898,7 +937,12 @@ export function useSurahAudio({
           },
         });
       } catch {
-        /* skip broken Arabic URL; still try translation below */
+        // Skip broken Arabic URL; still try translation below. Surfaced (not
+        // silent) per the same "call it out, don't silently degrade" rule as
+        // the translation-audio path below.
+        if (!stopRef.current && sessionRef.current === gen) {
+          setAudioNotice(`Recitation audio unavailable for ${text.verse_key} — skipped`);
+        }
       }
     }
     setActiveWordIndex(-1);
@@ -909,7 +953,19 @@ export function useSurahAudio({
       if (tr || audio?.translation_audio) {
         stopAllPlayback();
         setStatus(`${prefix}${text.verse_key} · ${translation}`);
-        await playSpokenText(tr || " ", translation, audio?.translation_audio, gen);
+        try {
+          // Hindi has no human-recited translation audio at all (by design, not
+          // failure) — TTS is the expected voice there. English/Urdu do have one;
+          // if it fails to play, that must be surfaced, not silently replaced
+          // with a synthesized voice the user never asked for.
+          await playSpokenText(tr || " ", translation, audio?.translation_audio, gen, {
+            allowTtsFallback: translation === "hi",
+          });
+        } catch {
+          if (!stopRef.current && sessionRef.current === gen) {
+            setAudioNotice(`Translation audio unavailable for ${text.verse_key} — skipped`);
+          }
+        }
       }
     }
     if (stopRef.current || sessionRef.current !== gen) return;
@@ -1142,6 +1198,23 @@ export function useSurahAudio({
     playIndexRef.current = playIndex;
   }, [playIndex]);
 
+  useEffect(() => {
+    setupMediaSession({
+      onPause: () => pause(),
+      onStop: () => pause(),
+      // Previously unwired — pressing lock-screen/hardware "play" while
+      // paused did nothing, since there was no handler at all.
+      onPlay: () => {
+        if (nativeModeRef.current) return; // native queue manages its own play/pause
+        if (playingRef.current) {
+          if (!resumePrimaryIfPaused()) void playFromIndexRef.current(playIndexRef.current);
+        } else {
+          void playFromIndexRef.current(playIndexRef.current);
+        }
+      },
+    });
+  }, [pause]);
+
   // Leave native ExoPlayer queue when tafsir is turned on during playback.
   useEffect(() => {
     if (!includeTafsir || !playingRef.current || !nativeModeRef.current) return;
@@ -1168,6 +1241,8 @@ export function useSurahAudio({
     playIndex,
     repeatPass,
     status,
+    audioNotice,
+    clearAudioNotice: () => setAudioNotice(null),
     audioLoading,
     audioReady,
     playbackMode,

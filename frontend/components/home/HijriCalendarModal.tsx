@@ -34,6 +34,27 @@ function hijriPartsOf(date: Date): HijriParts {
   return { day: get("day"), month: get("month"), year: get("year") };
 }
 
+// Month-name-only lookup, via formatToParts rather than .format(). ICU's
+// islamic-umalqura calendar appends an era string ("AH") to any pattern that
+// includes a year even when era was never requested, and for dates pushed
+// outside the calendar's supported table range that era/year label can come
+// back garbled (this is the mechanism behind a stray "BC" showing up) —
+// reading only the "month" part sidesteps that failure mode entirely, since
+// the numeric hijri year shown elsewhere always comes from hijriPartsOf()
+// above, never from a formatted string.
+const monthNameCache = new Map<string, Intl.DateTimeFormat>();
+
+function hijriMonthName(date: Date, locale: string): string {
+  const key = `${locale}-u-ca-islamic-umalqura`;
+  let fmt = monthNameCache.get(key);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat(key, { month: "long" });
+    monthNameCache.set(key, fmt);
+  }
+  const part = fmt.formatToParts(date).find((p) => p.type === "month");
+  return part?.value ?? "";
+}
+
 function addDays(d: Date, days: number): Date {
   return new Date(d.getTime() + days * DAY_MS);
 }
@@ -92,45 +113,48 @@ export function HijriCalendarModal({ open, onClose, hijri }: Props) {
     [offsetDays],
   );
 
+  // A plain, simple Gregorian month grid (every day of the calendar month the
+  // user is on) — each cell carries its own hijri day/month/year alongside it.
   const month = useMemo(() => {
-    const h = hijriFor(anchor);
-    // Gregorian date carrying hijri day 1 of the anchor's month.
-    let first = addDays(anchor, -(h.day - 1));
-    for (let guard = 0; guard < 5; guard++) {
-      const p = hijriFor(first);
-      if (p.day === 1) break;
-      first = addDays(first, 1 - p.day);
-    }
-    // Normalize to noon so 24h steps never straddle a DST change.
-    first = new Date(first.getFullYear(), first.getMonth(), first.getDate(), 12);
-    const days: { greg: Date; hijriDay: number }[] = [];
-    for (let i = 0; i < 31; i++) {
+    const gYear = anchor.getFullYear();
+    const gMonth = anchor.getMonth();
+    const first = new Date(gYear, gMonth, 1, 12); // noon: 24h steps never straddle DST
+    const daysInMonth = new Date(gYear, gMonth + 1, 0).getDate();
+    const days: { greg: Date; hijri: HijriParts }[] = [];
+    for (let i = 0; i < daysInMonth; i++) {
       const greg = addDays(first, i);
-      const p = hijriFor(greg);
-      if (p.month !== h.month || p.year !== h.year) break;
-      days.push({ greg, hijriDay: p.day });
+      days.push({ greg, hijri: hijriFor(greg) });
     }
-    return { hijriMonth: h.month, hijriYear: h.year, first, days };
+    return { first, gYear, gMonth, days };
   }, [anchor, hijriFor]);
 
   const locale = displayLocale(lang);
 
-  const monthTitle = useMemo(() => {
-    try {
-      return new Intl.DateTimeFormat(`${locale}-u-ca-islamic-umalqura`, {
-        month: "long",
-        year: "numeric",
-      }).format(addDays(month.first, offsetDays));
-    } catch {
-      return `${month.hijriMonth}/${month.hijriYear}`;
-    }
-  }, [locale, month, offsetDays]);
+  const gregorianTitle = useMemo(
+    () => new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(month.first),
+    [locale, month.first],
+  );
 
-  const gregorianRange = useMemo(() => {
-    const fmt = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" });
-    const last = month.days[month.days.length - 1]?.greg ?? month.first;
-    return `${fmt.format(month.first)} – ${fmt.format(last)}`;
-  }, [locale, month]);
+  // The hijri month almost always changes partway through a gregorian month,
+  // so the subtitle shows whichever hijri month(s) actually fall within the
+  // visible grid, e.g. "Safar–Rabi' I 1447 / 2026" — both calendars' years,
+  // separated the way the islamic month/year are meant to sit alongside the
+  // gregorian ones.
+  const hijriSubtitle = useMemo(() => {
+    const first = month.days[0]?.hijri;
+    const last = month.days[month.days.length - 1]?.hijri;
+    if (!first || !last) return "";
+    const firstName = hijriMonthName(addDays(month.first, offsetDays), locale);
+    const lastName = hijriMonthName(addDays(month.days[month.days.length - 1].greg, offsetDays), locale);
+    const monthLabel =
+      first.month === last.month && first.year === last.year
+        ? firstName
+        : first.year === last.year
+          ? `${firstName}–${lastName}`
+          : `${firstName} ${first.year} – ${lastName} ${last.year}`;
+    const yearLabel = first.year === last.year ? `${first.year}` : `${first.year}–${last.year}`;
+    return `${monthLabel} ${first.year === last.year ? yearLabel : ""} / ${month.gYear}`.replace(/\s+/g, " ").trim();
+  }, [month, offsetDays, locale]);
 
   const weekdayLabels = useMemo(() => {
     const fmt = new Intl.DateTimeFormat(locale, { weekday: "narrow" });
@@ -138,18 +162,20 @@ export function HijriCalendarModal({ open, onClose, hijri }: Props) {
     return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(2023, 0, 1 + i)));
   }, [locale]);
 
-  // "15 Jul" under each hijri day — the grid spans two gregorian months, so a
-  // bare day number is ambiguous.
-  const gregDayFmt = useMemo(
-    () => new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }),
-    [locale],
-  );
-
   if (!mounted || !open) return null;
 
   const today = new Date();
-  const monthEvents = HIJRI_EVENTS.filter((e) => e.month === month.hijriMonth);
+  // A gregorian month can span two hijri months (or, at year-end, two hijri
+  // years) — match events against every (month, year) pair actually visible.
+  const visibleHijriMonths = new Set(month.days.map((d) => `${d.hijri.month}-${d.hijri.year}`));
+  const monthEvents = HIJRI_EVENTS.filter((e) =>
+    month.days.some((d) => visibleHijriMonths.has(`${d.hijri.month}-${d.hijri.year}`) && d.hijri.month === e.month),
+  );
   const leadingBlanks = month.first.getDay();
+
+  function goToMonth(offset: number) {
+    setAnchor(new Date(month.gYear, month.gMonth + offset, 1, 12));
+  }
 
   return createPortal(
     <div
@@ -166,19 +192,19 @@ export function HijriCalendarModal({ open, onClose, hijri }: Props) {
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"
-            onClick={() => setAnchor(addDays(month.first, -1))}
+            onClick={() => goToMonth(-1)}
             aria-label="Previous month"
             className="touch-target rounded-xl border border-noor-200 px-3 text-heading hover:bg-noor-50 dark:border-noor-600 dark:hover:bg-noor-800"
           >
             ‹
           </button>
           <div className="min-w-0 text-center">
-            <h2 className="truncate text-lg font-bold text-heading">{monthTitle}</h2>
-            <p className="text-xs text-muted">{gregorianRange}</p>
+            <h2 className="truncate text-lg font-bold text-heading">{gregorianTitle}</h2>
+            <p className="truncate text-xs text-muted">{hijriSubtitle}</p>
           </div>
           <button
             type="button"
-            onClick={() => setAnchor(addDays(month.first, month.days.length))}
+            onClick={() => goToMonth(1)}
             aria-label="Next month"
             className="touch-target rounded-xl border border-noor-200 px-3 text-heading hover:bg-noor-50 dark:border-noor-600 dark:hover:bg-noor-800"
           >
@@ -198,13 +224,13 @@ export function HijriCalendarModal({ open, onClose, hijri }: Props) {
           {Array.from({ length: leadingBlanks }, (_, i) => (
             <span key={`b${i}`} />
           ))}
-          {month.days.map(({ greg, hijriDay }) => {
+          {month.days.map(({ greg, hijri }) => {
             const isToday = sameGregorianDay(greg, today);
             const isFriday = greg.getDay() === 5;
-            const event = monthEvents.find((e) => e.day === hijriDay);
+            const event = monthEvents.find((e) => e.day === hijri.day && e.month === hijri.month);
             return (
               <div
-                key={hijriDay}
+                key={greg.getTime()}
                 title={event?.name}
                 className={`flex flex-col items-center rounded-lg py-1 ${
                   isToday
@@ -215,12 +241,12 @@ export function HijriCalendarModal({ open, onClose, hijri }: Props) {
                 }`}
               >
                 <span className={`text-sm font-semibold ${isToday ? "text-white" : "text-heading"}`}>
-                  {hijriDay}
+                  {greg.getDate()}
                 </span>
                 <span
                   className={`whitespace-nowrap text-[9px] leading-tight ${isToday ? "text-white/80" : "text-faint"}`}
                 >
-                  {gregDayFmt.format(greg)}
+                  {hijri.day}
                 </span>
                 <span
                   className={`h-1 w-1 rounded-full ${event ? "bg-gold-500 dark:bg-gold-400" : "bg-transparent"}`}

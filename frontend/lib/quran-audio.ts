@@ -594,10 +594,19 @@ export async function playSpokenText(
   text: string,
   lang: string,
   audioUrl?: string | null,
-  gen?: number
+  gen?: number,
+  opts?: {
+    /** false = a human-recited audioUrl was expected (en/ur translation) — a
+     *  failure here must not be silently replaced with synthesized speech, it
+     *  should surface to the user instead. Default true: this function is also
+     *  used for tafsir commentary, which never has a human recording to begin
+     *  with, so TTS there is the intended behavior, not a fallback. */
+    allowTtsFallback?: boolean;
+  }
 ): Promise<void> {
   if (gen !== undefined && isStale(gen)) return;
   const trimmed = (text || "").trim();
+  const allowTts = opts?.allowTtsFallback ?? true;
   // Prefer recorded translation audio even when verse text failed to load.
   if (!trimmed && !audioUrl) return;
 
@@ -612,9 +621,12 @@ export async function playSpokenText(
     try {
       await playAudioUrl(audioUrl, { gen });
       return;
-    } catch {
+    } catch (err) {
+      if (!allowTts) throw err instanceof Error ? err : new Error("Translation audio unavailable");
       /* fall through to TTS */
     }
+  } else if (!allowTts) {
+    throw new Error("Translation audio unavailable");
   }
 
   if (!trimmed) return;
@@ -639,4 +651,15 @@ export function stopSpeech(): void {
 
 export function stopAllPlayback(): void {
   stopSpeech();
+}
+
+/** If the OS/browser silently paused the currently-playing element (screen
+ *  lock, tab backgrounding — Wake Lock reduces but doesn't eliminate this) with
+ *  nothing in this module asking it to, resume it. Returns true if a resume
+ *  was attempted, so the caller knows whether anything needed recovering. */
+export function resumePrimaryIfPaused(): boolean {
+  const el = primary?.el;
+  if (!el || !el.src || !el.paused) return false;
+  void el.play().catch(() => undefined);
+  return true;
 }
