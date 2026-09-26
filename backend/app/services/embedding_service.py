@@ -1,6 +1,7 @@
 """Unified text embeddings: local bge-m3, OpenAI, or Xenova (Next.js /api/embed)."""
 from __future__ import annotations
 
+import os
 import urllib.request
 import json
 from functools import lru_cache
@@ -66,7 +67,7 @@ def _embed_via_xenova(texts: list[str]) -> list[list[float]]:
             headers={"Content-Type": "application/json", **_embed_auth_header()},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=25) as resp:
+        with urllib.request.urlopen(req, timeout=float(os.environ.get("EMBED_TIMEOUT_S", "25"))) as resp:
             data = json.loads(resp.read())
         if "error" in data:
             raise RuntimeError(f"Xenova embed error: {data['error']}")

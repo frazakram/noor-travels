@@ -14,44 +14,28 @@ OUT = ROOT / ".vercel.env"
 
 ORDER = [
     "NEXT_PUBLIC_API_URL",
-    "OPENAI_API_KEY",
-    "DEEPGRAM_API_KEY",
     "POSTGRES_URL",
-    "SUPABASE_URL",
-    "SUPABASE_PUBLISHABLE_KEY",
-    "SUPABASE_SECRET_KEY",
-    "SUPABASE_JWKS_URL",
-    "NEXT_PUBLIC_SUPABASE_URL",
-    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-    "FORCE_SQLITE",
     "CORS_ORIGINS",
     "CHAT_PROVIDER",
+    "GROQ_API_KEY",
+    "GROQ_CHAT_MODEL",
+    "GROQ_FALLBACK_MODELS",
+    "OPENAI_API_KEY",
+    "DEEPGRAM_API_KEY",
     "EMBEDDING_PROVIDER",
-    "EMBEDDING_MODEL",
-    "EMBEDDING_DIMENSIONS",
-    "EMBEDDING_BATCH_SIZE",
-    "RAG_MIN_SIMILARITY",
-    "RAG_RETRIEVAL_K",
-    "RAG_FINAL_K",
+    "AUTH_SECRET",
+    "EMBED_SECRET",
     "RAG_CACHE_TTL_HOURS",
-    "CHAT_MODEL",
 ]
 
+# Values that must hold in production regardless of local dev settings. See VERCEL_DEPLOY.md.
 PRODUCTION_DEFAULTS = {
-    # Empty means same-domain /api rewrites in production.
+    # Empty means same-origin /api in production.
     "NEXT_PUBLIC_API_URL": "",
-    # Vercel production must use hosted Postgres/Supabase, not local SQLite.
-    "FORCE_SQLITE": "0",
-    "CORS_ORIGINS": "https://noor-travels-chi.vercel.app,https://noor-travels.vercel.app,http://localhost:3000",
-    # Avoid installing/running local ML models in serverless.
-    "EMBEDDING_PROVIDER": "openai",
-    "EMBEDDING_MODEL": "text-embedding-3-small",
-    "EMBEDDING_DIMENSIONS": "1536",
-    "CHAT_PROVIDER": "local",
-    "CHAT_MODEL": "gpt-4o-mini",
-    "RAG_RETRIEVAL_K": "20",
-    "RAG_FINAL_K": "5",
-    "RAG_CACHE_TTL_HOURS": "168",
+    "CORS_ORIGINS": "https://noor-travels-chi.vercel.app",
+    "CHAT_PROVIDER": "groq",
+    # Query embeddings come from the frontend's /api/embed (384-dim MiniLM, matching the DB column).
+    "EMBEDDING_PROVIDER": "xenova",
 }
 
 
@@ -84,6 +68,9 @@ def main() -> None:
 
     OUT.write_text("\n".join(lines) + "\n")
     print(f"Wrote {OUT.name} with {len(lines) - 2} variables.")
+    missing = [k for k in ("POSTGRES_URL", "GROQ_API_KEY", "DEEPGRAM_API_KEY", "AUTH_SECRET") if not merged.get(k)]
+    if missing:
+        print("Missing (set these in Vercel too): " + ", ".join(missing))
 
 
 if __name__ == "__main__":

@@ -1,113 +1,96 @@
 # Vercel Deployment
 
-This project deploys as two Vercel Services from one repo:
+One repo, two Vercel Services (root `vercel.json`):
 
-- `frontend` — Next.js app at `/`
-- `backend` — FastAPI app behind `/api/*`
+- `frontend` — Next.js at `/` (also serves `/api/embed`)
+- `backend` — FastAPI at `/api/*`, entrypoint `app.main:app`
 
-## 1. Project Settings
+Functions run in **`sin1` (Singapore)** — next to the Supabase database (`ap-southeast-1`)
+and close to users in India. Moving the region away from the database puts every query
+on a ~230 ms round trip.
 
-In Vercel, import `frazakram/noor-travels` and keep:
+Every push to `main` deploys to production. If a push never gets a Vercel status on
+GitHub, use Vercel → Deployments → ⋯ → **Create Deployment** with `main`.
 
-- Project name: `noor-travels`
-- Application preset: `Services`
-- Root directory: repository root
+## Environment variables
 
-The root `vercel.json` defines both services and routes `/api/*` to the backend.
+Set in Vercel → Settings → Environment Variables (then Redeploy). `backend/app/core/config.py`
+is the source of truth for backend settings.
 
-## 2. Environment Variables
+| Variable | Needed | Value / notes |
+|---|---|---|
+| `POSTGRES_URL` | **Yes** | Supabase pooler URI (port 6543). With it set, the backend never falls back to SQLite; an unreachable DB returns 503. |
+| `CORS_ORIGINS` | **Yes** | `https://noor-travels-chi.vercel.app` |
+| `CHAT_PROVIDER` | **Yes** | `groq` |
+| `GROQ_API_KEY` | **Yes** | Chat, khutba translation, deep health check |
+| `DEEPGRAM_API_KEY` | **Yes** | Khutba Live, Recite, TTS fallback |
+| `EMBEDDING_PROVIDER` | **Yes** | `xenova` — the backend calls the frontend's `/api/embed` (MiniLM, 384 dims, matching `document_chunks.embedding vector(384)`). Do **not** use `openai` (1536 dims). |
+| `AUTH_SECRET` | **Yes** | Long random string that signs login tokens. Without it tokens are derived from `POSTGRES_URL`, so rotating the DB password signs everyone out (a startup warning is logged). |
+| `EMBED_SECRET` | Recommended | Long random string; set the **same value** for frontend and backend. `/api/embed` then rejects callers without it. |
+| `GROQ_CHAT_MODEL` | Optional | Default `openai/gpt-oss-20b` |
+| `GROQ_FALLBACK_MODELS` | Optional | Comma list tried when a model is removed or rate-limited. Default `qwen/qwen3.8-27b,openai/gpt-oss-120b` |
+| `OPENAI_API_KEY` | Optional | Only if `CHAT_PROVIDER=openai` |
+| `EMBED_API_URL` | Optional | Defaults to `https://$VERCEL_URL/api/embed` |
+| `NEXT_PUBLIC_API_URL` | Leave **empty** | Frontend then calls same-origin `/api` |
+| `NEXT_PUBLIC_SITE_URL` | Optional | Canonical origin for sitemap/OG; defaults to the production URL |
 
-See `.env.vercel.example` for the full list. **Minimum required for Quran, Hadith, and Chat:**
+Never set `FORCE_SQLITE` on Vercel (it's for local dev only).
 
-| Variable | Required | Notes |
-|----------|----------|-------|
-| `POSTGRES_URL` | **Yes** | Supabase Postgres URI |
-| `FORCE_SQLITE` | **Yes** | Must be `0` |
-| `CORS_ORIGINS` | **Yes** | Include `https://noor-travels-chi.vercel.app` |
-| `NEXT_PUBLIC_API_URL` | **Yes** | Leave **empty** |
-| `EMBEDDING_PROVIDER` | **Yes** | `openai` |
-| `OPENAI_API_KEY` | For chat | Set `CHAT_PROVIDER=openai` for best answers |
-| `DEEPGRAM_API_KEY` | Optional | Khutba live transcription only |
+## Monitoring
 
-Generate from local `.env` files:
+- `/api/health` — shallow, always fast.
+- `/api/health/deep` — real DB query + 1-token LLM call; returns 503 when either is broken.
+  Point an uptime monitor (UptimeRobot, Better Stack) at it every 5 minutes with email alerts.
+  This is what catches a decommissioned Groq model or a DB outage.
+- Logs are JSON lines; filter on `event` (`chat_degraded`, `llm_fallback`, `llm_model_failed`,
+  `semantic_degraded`, `db_unavailable`, `health_failed`, `config_warning`).
 
-```bash
-python3 scripts/prepare_vercel_env.py
-```
+## Database
 
-Import `.vercel.env` in Vercel → Settings → Environment Variables, then **Redeploy**.
-
-### Database setup (one-time — without this Quran stays on "Loading")
-
-Vercel has **no SQLite file**. You must use **Supabase Postgres** and seed it from your laptop:
+Schema lives in `backend/migrations/` (each file has a `_sqlite` twin). Seed a fresh database
+from a laptop:
 
 ```bash
 cd backend
 export POSTGRES_URL="postgresql://postgres.[ref]:[password]@...pooler.supabase.com:6543/postgres"
-export FORCE_SQLITE=0
+unset FORCE_SQLITE
 
-# 1. Create tables
-python ingestion/migrate.py
-
-# 2. Load Quran, Hadith, Duas (takes a few minutes)
+python ingestion/migrate.py                 # tables (includes 006: embedding -> vector(384))
 python ingestion/fetch_quran.py
 python ingestion/fetch_hadith.py
 python ingestion/seed_duas.py
 python ingestion/fetch_khutbahs.py --from-json
 
-# 3. Embeddings for chat (needs OPENAI_API_KEY in backend/.env)
-export EMBEDDING_PROVIDER=openai
-python ingestion/embed_index.py
+# Semantic search vectors, computed by the same production model the chat uses.
+# ~2 hours for ayahs + all hadith; --resume skips chunks already embedded.
+EMBEDDING_PROVIDER=xenova EMBED_TIMEOUT_S=120 \
+  EMBED_API_URL=https://noor-travels-chi.vercel.app/api/embed \
+  python ingestion/embed_index.py --resume
 ```
 
-Verify: open `https://noor-travels-chi.vercel.app/api/health` — should return `"status":"ok"`.
-Then open `/api/quran/surahs` — should return a JSON list of surahs.
+### Backups
 
-Important production settings:
+Quran, hadith, duas and tafsir can be re-ingested with the commands above. The only data that
+can't be recreated is user accounts: `users`, `user_learn_progress`, `user_preferences`.
 
-- `NEXT_PUBLIC_API_URL=` must stay empty so the frontend uses same-domain `/api` rewrites.
-- `FORCE_SQLITE=0` must be used on Vercel.
-- `POSTGRES_URL` must point to your hosted Supabase/Postgres database.
-- `EMBEDDING_PROVIDER=openai` avoids installing local ML models in serverless.
-
-If deploy fails with a bundle size error (~5 GB):
-
-1. Redeploy the **latest** commit (must include slim `backend/requirements.txt` without `sentence-transformers`).
-2. In Vercel → Project Settings → Build, clear any custom **Install Command** for the backend.
-3. Confirm `excludeFiles` lives under the `backend` service in `vercel.json` (top-level `functions` is ignored in Services mode).
-
-## 3. Python dependencies
-
-Vercel installs `backend/requirements.txt` (slim, no local ML models).
-
-For local development with local embeddings:
+- Enable Supabase's scheduled backups (Project → Database → Backups) if the plan allows it.
+- Either way, keep an off-site copy of the account tables:
 
 ```bash
-cd backend
-pip install -r requirements-dev.txt
+pg_dump "$POSTGRES_URL" --data-only \
+  -t users -t user_learn_progress -t user_preferences \
+  > "noor-accounts-$(date +%F).sql"
 ```
 
-Production must keep `EMBEDDING_PROVIDER=openai` so the backend does not need `sentence-transformers`.
+## Python dependencies
 
-## 4. Deploy
+Vercel installs from `backend/pyproject.toml`; the local venv uses `backend/requirements.txt`.
+Add every new package to **both** — `python backend/scripts/check_deps.py` (also in CI) fails when
+they drift. Never import an optional/heavy package at module scope in a router: `app/main.py`
+imports every router, so one failed import takes down the whole API.
 
-After importing env vars in Vercel, deploy from the dashboard.
+## Verify a deploy
 
-If using the Vercel CLI locally:
-
-```bash
-npm i -g vercel
-vercel login
-vercel env pull
-vercel --prod
-```
-
-## 5. Verify
-
-After deploy, check:
-
-- `/`
-- `/api/health`
-- `/quran`
-- `/khutba`
-
+- `/api/health/deep` → `"status": "ok"`
+- `/`, `/quran`, `/hadith`, `/library`, `/khutba` render
+- `/app-version.json` matches the latest GitHub release (see `CLAUDE.md`, Android APK releases)

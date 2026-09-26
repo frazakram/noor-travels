@@ -11,11 +11,30 @@ from app.services.embedding_service import embed_texts, use_local_embeddings, us
 from ingestion.embedding_chunks import insert_chunk
 
 BATCH = 32 if (use_local_embeddings() or use_xenova_embeddings()) else 50
+RESUME = "--resume" in sys.argv
+RETRY_DELAYS_S = (5, 20, 60)
+_done: set[str] = set()
+
+
+def _embed_with_retry(texts: list[str]) -> list[list[float]]:
+    """A long ingestion run must survive the odd slow or failed embedding call."""
+    for attempt, delay in enumerate((*RETRY_DELAYS_S, None)):
+        try:
+            return embed_texts(texts)
+        except Exception as exc:
+            if delay is None:
+                raise
+            print(f"    embed failed ({type(exc).__name__}), retry {attempt + 1} in {delay}s", flush=True)
+            time.sleep(delay)
+    raise RuntimeError("unreachable")
 
 
 def _insert_batch(cur, rows, source_type, ref_fn, text_fn, meta_fn, is_sqlite) -> None:
+    rows = [r for r in rows if ref_fn(r) not in _done]
+    if not rows:
+        return
     texts = [text_fn(r) for r in rows]
-    embeddings = embed_texts(texts)
+    embeddings = _embed_with_retry(texts)
     for row, emb, text in zip(rows, embeddings, texts):
         insert_chunk(cur, source_type, ref_fn(row), text, meta_fn(row), emb, is_sqlite)
 
@@ -32,7 +51,11 @@ def main():
 
     with get_conn() as conn:
         cur = conn.cursor()
-        if is_sqlite:
+        if RESUME:
+            cur.execute("SELECT source_ref FROM document_chunks")
+            _done.update(r[0] if not isinstance(r, dict) else r["source_ref"] for r in cur.fetchall())
+            print(f"Resuming: {len(_done)} chunks already embedded", flush=True)
+        elif is_sqlite:
             cur.execute("DELETE FROM document_chunks")
         else:
             cur.execute("TRUNCATE document_chunks RESTART IDENTITY CASCADE")
