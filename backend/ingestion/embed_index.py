@@ -77,8 +77,8 @@ def main():
         if is_sqlite:
             hadiths = [tuple(h) for h in hadiths]
 
-    print(f"Embedding {len(hadiths)} hadiths (sampling 800 for speed)...")
-    sample = hadiths[:800]
+    print(f"Embedding {len(hadiths)} hadiths...")
+    sample = hadiths
     for i in range(0, len(sample), BATCH):
         batch = sample[i : i + BATCH]
         with get_conn() as conn:

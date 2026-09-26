@@ -1,5 +1,6 @@
 "use client";
 
+import { nativeSetPrayerLocation } from "@/lib/native-bridge";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { applyAllNotificationSchedules } from "@/lib/notification-schedule";
@@ -140,6 +141,15 @@ export function useSalah(): SalahState {
         starts[p.id] = p.start;
       });
       applyAllNotificationSchedules(loadNotificationPrefs(), starts, prayerTimes.timezone);
+      nativeSetPrayerLocation({
+        lat,
+        lng,
+        method: opts.method,
+        school: opts.school,
+        latitudeAdjustment: opts.latitudeAdjustment ?? 0,
+        offsets: { ...(opts.offsets ?? DEFAULT_SALAH_SETTINGS.offsets) },
+        timezone: prayerTimes.timezone,
+      });
       localStorage.setItem(COORDS_KEY, JSON.stringify({ lat, lng }));
       localStorage.setItem(LABEL_KEY, loc.label);
     } catch {

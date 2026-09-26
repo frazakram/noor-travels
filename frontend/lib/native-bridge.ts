@@ -25,6 +25,8 @@ type NoorAndroidBridge = {
   savePdf?: (filename: string, base64: string) => boolean;
   /** "1.2 (3)" — versionName and versionCode of the installed APK. */
   appVersion?: () => string;
+  /** 1.7+: lets the APK refresh adhan times itself when the app isn't opened. */
+  setPrayerLocation?: (json: string) => void;
 };
 
 function bridge(): NoorAndroidBridge | null {
@@ -107,6 +109,24 @@ export function nativeSchedulePrayerAlarmTz(
     return true;
   } catch {
     return false;
+  }
+}
+
+export type NativePrayerLocation = {
+  lat: number;
+  lng: number;
+  method: number;
+  school: number;
+  latitudeAdjustment: number;
+  offsets: Record<string, number>;
+  timezone: string;
+};
+
+export function nativeSetPrayerLocation(location: NativePrayerLocation): void {
+  try {
+    bridge()?.setPrayerLocation?.(JSON.stringify(location));
+  } catch {
+    /* older APKs lack the method; alarms then rely on the page re-scheduling them */
   }
 }
 
