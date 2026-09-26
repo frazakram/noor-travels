@@ -256,6 +256,7 @@ function QuestionLibraryPageInner() {
           type="search"
           className="input w-full"
           placeholder={t(lang, "librarySearchPlaceholder")}
+          aria-label={t(lang, "librarySearchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />

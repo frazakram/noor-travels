@@ -368,6 +368,7 @@ export default function HadithPage() {
         <input
           className="input min-w-0"
           placeholder={t(lang, "search")}
+          aria-label={t(lang, "search")}
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
         />

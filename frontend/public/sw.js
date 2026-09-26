@@ -21,13 +21,13 @@ function isApiData(req) {
 
 // Bump VERSION to drop every old cache on the next visit. Each cache is capped so a
 // long-lived install can't grow without bound across deploys.
-const VERSION = "v9";
+const VERSION = "v10";
 const SHELL = `noor-shell-${VERSION}`;
 const STATIC = `noor-static-${VERSION}`;
 const PAGES = `noor-pages-${VERSION}`;
 const RUNTIME = `noor-runtime-${VERSION}`;
 const LIMITS = { [STATIC]: 150, [PAGES]: 25, [RUNTIME]: 120 };
-const SHELL_ASSETS = ["/", "/quran", "/hadith", "/khutba", "/adhkar", "/logo.png", "/logo-sm.png", "/logo-192.png"];
+const SHELL_ASSETS = ["/", "/quran", "/hadith", "/khutba", "/adhkar", "/logo-sm.png", "/logo-192.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(SHELL).then((cache) => cache.addAll(SHELL_ASSETS)));

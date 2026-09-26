@@ -639,6 +639,7 @@ export default function AdhkarPage() {
       <input
         className="input w-full"
         placeholder={t(lang, "search")}
+        aria-label={t(lang, "search")}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />

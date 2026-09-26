@@ -65,7 +65,7 @@ export default function AccountPage() {
       setUser(u);
       await syncAfterAuth();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(err instanceof Error ? err.message : t(lang, "errorTryAgain"));
     } finally {
       setBusy(false);
     }
@@ -81,7 +81,7 @@ export default function AccountPage() {
       setUser(null);
       setDeletePassword("");
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setDeleteError(err instanceof Error ? err.message : t(lang, "errorTryAgain"));
     } finally {
       setBusy(false);
     }
@@ -137,6 +137,7 @@ export default function AccountPage() {
               type="password"
               autoComplete="current-password"
               placeholder={t(lang, "deleteAccountPassword")}
+              aria-label={t(lang, "deleteAccountPassword")}
               value={deletePassword}
               onChange={(e) => setDeletePassword(e.target.value)}
             />
@@ -170,6 +171,7 @@ export default function AccountPage() {
             type="text"
             autoComplete="name"
             placeholder={t(lang, "authName")}
+            aria-label={t(lang, "authName")}
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={80}
@@ -181,6 +183,7 @@ export default function AccountPage() {
           required
           autoComplete="email"
           placeholder={t(lang, "authEmail")}
+          aria-label={t(lang, "authEmail")}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -191,6 +194,7 @@ export default function AccountPage() {
           minLength={mode === "signup" ? 8 : 1}
           autoComplete={mode === "signup" ? "new-password" : "current-password"}
           placeholder={t(lang, "authPassword")}
+          aria-label={t(lang, "authPassword")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />

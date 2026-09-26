@@ -63,7 +63,7 @@ export default function QuranPage() {
         setLoadError("");
       })
       .catch((e: Error) => {
-        setLoadError(e.message || "Could not load Quran. The server may need database setup.");
+        setLoadError(e.message || t(lang, "quranLoadErrorBody"));
         setSurahs([]);
       })
       .finally(() => setLoading(false));
@@ -162,6 +162,7 @@ export default function QuranPage() {
         <input
           className="input min-w-0"
           placeholder={t(lang, "search")}
+          aria-label={t(lang, "search")}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);

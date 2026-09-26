@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   ...pageMetadata({
     title: "Hadith of the Day",
     description:
-      "A new authentic hadith every day from Sahih al-Bukhari, Sahih Muslim and other collections, with translation and reference — a daily dose of prophetic guidance.",
+      "A new authentic hadith every day from Sahih al-Bukhari, in Arabic and English with its reference — a daily dose of prophetic guidance.",
     path: "/hadith-of-day",
   }),
   // Re-declare as a template (not a plain string) so /hadith-of-day/[date]

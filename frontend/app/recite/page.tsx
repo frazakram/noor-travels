@@ -292,6 +292,7 @@ export default function RecitePage() {
         <div className="flex flex-wrap items-center gap-2">
           <label className="text-xs text-muted">{t(lang, "reciteSelectSurah")}</label>
           <select
+            aria-label={t(lang, "reciteSelectSurah")}
             className="input max-w-[230px] py-1.5 text-sm"
             value={surah}
             disabled={recording || scoring}
@@ -307,6 +308,7 @@ export default function RecitePage() {
           </select>
           <label className="text-xs text-muted">{t(lang, "loopFrom")}</label>
           <select
+            aria-label={t(lang, "loopFrom")}
             className="input w-auto py-1.5 text-sm"
             value={ayahFrom}
             disabled={recording || scoring}
@@ -320,6 +322,7 @@ export default function RecitePage() {
           </select>
           <label className="text-xs text-muted">{t(lang, "loopTo")}</label>
           <select
+            aria-label={t(lang, "loopTo")}
             className="input w-auto py-1.5 text-sm"
             value={ayahTo}
             disabled={recording || scoring}

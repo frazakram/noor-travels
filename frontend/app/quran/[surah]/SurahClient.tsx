@@ -351,6 +351,8 @@ export default function SurahClient() {
 
   useEffect(() => {
     if (!prefsHydrated) return;
+    // Switching surah/translation quickly must not let an older response land last.
+    let current = true;
     const idx = Math.max(0, startAyah - 1);
     setViewIndex(idx);
     setSurahLoading(true);
@@ -361,6 +363,7 @@ export default function SurahClient() {
       `/api/quran/surahs/${surahNumber}?translation=${translation}`
     )
       .then((d) => {
+        if (!current) return;
         setSurahName(displaySurahName(surahNumber, d.surah.name_en));
         setAyahs(d.ayahs);
         const nextIndex = Math.min(idx, Math.max(0, d.ayahs.length - 1));
@@ -368,8 +371,15 @@ export default function SurahClient() {
         setRenderLimit(Math.min(d.ayahs.length, Math.max(AYAH_RENDER_CHUNK, nextIndex + 6)));
         pendingScrollRef.current = nextIndex > 0;
       })
-      .catch(() => setSurahError(true))
-      .finally(() => setSurahLoading(false));
+      .catch(() => {
+        if (current) setSurahError(true);
+      })
+      .finally(() => {
+        if (current) setSurahLoading(false);
+      });
+    return () => {
+      current = false;
+    };
   }, [surahNumber, translation, startAyah, prefsHydrated, loadAttempt]);
 
   // Deep links (?ayah=N from shares and continue-reading) scroll to the ayah once loaded.

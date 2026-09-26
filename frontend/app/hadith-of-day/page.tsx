@@ -73,11 +73,13 @@ export default function HadithOfDayPage() {
   }, []);
 
   useEffect(() => {
+    let current = true;
     setError(false);
     setHadith(null);
     const q = topic && topic !== "all" ? `?topic=${encodeURIComponent(topic)}` : "";
     api<DailyHadith>(`/api/hadith/daily${q}`)
       .then((row) => {
+        if (!current) return;
         setHadith(row);
         setSaved(isHadithFavorite(row.id));
         setArchive(
@@ -90,7 +92,12 @@ export default function HadithOfDayPage() {
           })
         );
       })
-      .catch(() => setError(true));
+      .catch(() => {
+        if (current) setError(true);
+      });
+    return () => {
+      current = false;
+    };
   }, [topic]);
 
   function handleSave() {

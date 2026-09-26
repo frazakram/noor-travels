@@ -51,7 +51,7 @@ export function AuthNudge() {
           <button
             type="button"
             onClick={() => setVisible(false)}
-            aria-label="Dismiss"
+            aria-label={t(lang, "dismiss")}
             className="shrink-0 rounded-full p-1 text-faint hover:bg-surface-muted hover:text-body"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">

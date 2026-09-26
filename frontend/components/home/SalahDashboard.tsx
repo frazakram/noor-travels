@@ -227,6 +227,16 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
         </div>
       </div>
 
+      {/* Same footprint as the loaded card and rows, so the page doesn't jump when times arrive. */}
+      {!times && !error && (
+        <div aria-hidden className="space-y-3">
+          <div className="h-[128px] animate-pulse rounded-2xl bg-white/10 sm:h-[144px]" />
+          <div className="h-[50px] animate-pulse rounded-xl bg-white/10 sm:hidden" />
+          <div className="h-[34px] rounded-xl border border-white/10 sm:hidden" />
+          <div className="hidden h-[50px] animate-pulse rounded-xl bg-white/10 sm:block" />
+        </div>
+      )}
+
       {/* Next salah countdown */}
       {nextInfo && times && now && (
         <div

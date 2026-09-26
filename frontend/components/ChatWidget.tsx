@@ -199,6 +199,9 @@ export function ChatWidget() {
       <div
         ref={panelRef}
         dir="ltr"
+        // Closed panel is only faded out; inert keeps keyboard and screen readers out of it.
+        inert={!isOpen}
+        aria-hidden={!isOpen}
         className={`fixed z-50 flex flex-col bg-white shadow-2xl transition-all duration-300 ease-out dark:bg-noor-900 dark:shadow-black/40
           bottom-0 end-0 w-full rounded-t-2xl pb-safe
           h-[calc(85dvh-env(safe-area-inset-bottom,0px))]
@@ -228,7 +231,7 @@ export function ChatWidget() {
             <button
               onClick={closeChat}
               className="rounded-lg p-1.5 text-faint hover:bg-noor-50 dark:hover:bg-noor-800"
-              aria-label="Close"
+              aria-label={t(lang, "close")}
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

@@ -21,7 +21,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: "Surah not found", robots: { index: false, follow: false } };
   }
   return pageMetadata({
-    title: `Surah ${meta.name} (${meta.english}) — Read Online with Translation`,
+    title: `Surah ${meta.name}${
+      meta.english.toLowerCase() === meta.name.toLowerCase() ? "" : ` (${meta.english})`
+    } — Read Online with Translation`,
     description: `Read Surah ${meta.name} (chapter ${meta.number} of the Quran, "${meta.english}", ${meta.ayahs} ayahs) with Arabic text, English, Urdu and Hindi translation, audio recitation and tafsir.`,
     path: `/quran/${meta.number}`,
   });

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useLang } from "@/components/LangProvider";
+import { t } from "@/lib/i18n";
 
 type Props = {
   message: string | null;
@@ -16,6 +18,7 @@ type Props = {
  * rather than have it silently replaced with synthesized speech.
  */
 export function AudioNoticeToast({ message, onDismiss, durationMs = 4000 }: Props) {
+  const { lang } = useLang();
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const onDismissRef = useRef(onDismiss);
@@ -59,7 +62,7 @@ export function AudioNoticeToast({ message, onDismiss, durationMs = 4000 }: Prop
         <button
           type="button"
           onClick={() => setVisible(false)}
-          aria-label="Dismiss"
+          aria-label={t(lang, "dismiss")}
           className="ml-auto shrink-0 text-faint hover:text-heading"
         >
           ×

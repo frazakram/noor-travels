@@ -581,6 +581,7 @@ export default function KhutbaPage() {
             <input
               className="input"
               placeholder={t(lang, "search")}
+              aria-label={t(lang, "search")}
               value={sermonQuery}
               onChange={(e) => {
                 setSermonQuery(e.target.value);

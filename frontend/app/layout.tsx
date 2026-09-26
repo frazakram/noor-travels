@@ -92,7 +92,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               "@id": `${SITE_URL}/#organization`,
               name: SITE_NAME,
               url: SITE_URL,
-              logo: `${SITE_URL}/logo.png`,
+              logo: `${SITE_URL}/logo-512.png`,
             },
             {
               "@context": "https://schema.org",

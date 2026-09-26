@@ -13,6 +13,7 @@ import { TravelModeWidget } from "@/components/home/TravelModeWidget";
 import { useLang } from "@/components/LangProvider";
 import { useSalah } from "@/hooks/useSalah";
 import { getTimePhase } from "@/lib/salah";
+import { t } from "@/lib/i18n";
 
 export default function HomePage() {
   const { lang } = useLang();
@@ -41,6 +42,9 @@ export default function HomePage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-5 pb-4">
+      <h1 className="sr-only">
+        {t(lang, "appName")} — {t(lang, "tagline")}
+      </h1>
       <TimeOfDayHero phase={phase} coords={salah.coords}>
         <p className="mb-3 min-h-[1.25rem] text-sm text-white/80" dir="ltr">
           {gregorianDate}

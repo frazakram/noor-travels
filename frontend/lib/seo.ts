@@ -22,6 +22,9 @@ type PageMetaInput = {
  * robots, Open Graph and Twitter card. Root layout supplies metadataBase and
  * the title template.
  */
+/** Pages that set their own openGraph replace the root one wholesale, so the image must be repeated. */
+const OG_IMAGE = { url: "/opengraph-image", width: 1200, height: 630, alt: SITE_NAME };
+
 export function pageMetadata({ title, description, path, noIndex }: PageMetaInput): Metadata {
   return {
     title,
@@ -35,11 +38,13 @@ export function pageMetadata({ title, description, path, noIndex }: PageMetaInpu
       siteName: SITE_NAME,
       type: "website",
       locale: "en_IN",
+      images: [OG_IMAGE],
     },
     twitter: {
       card: "summary_large_image",
       title: `${title} · ${SITE_NAME}`,
       description,
+      images: [OG_IMAGE.url],
     },
   };
 }

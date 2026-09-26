@@ -205,7 +205,7 @@ export function HijriCalendarModal({ open, onClose, hijri }: Props) {
           <button
             type="button"
             onClick={() => goToMonth(-1)}
-            aria-label="Previous month"
+            aria-label={t(lang, "previousMonth")}
             className="touch-target rounded-xl border border-noor-200 px-3 text-heading hover:bg-noor-50 dark:border-noor-600 dark:hover:bg-noor-800"
           >
             ‹
@@ -217,7 +217,7 @@ export function HijriCalendarModal({ open, onClose, hijri }: Props) {
           <button
             type="button"
             onClick={() => goToMonth(1)}
-            aria-label="Next month"
+            aria-label={t(lang, "nextMonth")}
             className="touch-target rounded-xl border border-noor-200 px-3 text-heading hover:bg-noor-50 dark:border-noor-600 dark:hover:bg-noor-800"
           >
             ›
