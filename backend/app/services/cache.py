@@ -8,6 +8,10 @@ from app.core.config import get_settings
 from app.db import get_conn, use_sqlite
 
 
+# Bump when retrieval or answer logic changes so answers cached by older code stop being served.
+CACHE_VERSION = "2"
+
+
 def _normalize(text: str) -> str:
     return re.sub(r"\s+", " ", text.strip().lower())
 
@@ -18,7 +22,7 @@ def make_cache_key(
     history_tail: str = "",
     include_transliteration: bool = False,
 ) -> str:
-    raw = f"{lang}|{int(include_transliteration)}|{_normalize(question)}|{_normalize(history_tail)}"
+    raw = f"v{CACHE_VERSION}|{lang}|{int(include_transliteration)}|{_normalize(question)}|{_normalize(history_tail)}"
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
