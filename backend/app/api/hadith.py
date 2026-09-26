@@ -1,5 +1,7 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
+
+from app.core.limiter import limiter
 
 from app.db import get_cursor
 
@@ -52,7 +54,8 @@ def browse_hadith(
 
 
 @router.get("/search")
-def search_hadith(q: str = Query(min_length=2)):
+@limiter.limit("30/minute")
+def search_hadith(request: Request, q: str = Query(min_length=2, max_length=100)):
     pattern = f"%{q}%"
     with get_cursor() as cur:
         cur.execute(

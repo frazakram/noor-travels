@@ -5,6 +5,7 @@ Scoring is deterministic (normalized word alignment) — no free-form religious
 text is generated, in keeping with the retrieval-grounded-only policy.
 """
 
+import asyncio
 import base64
 import re
 from difflib import SequenceMatcher
@@ -60,6 +61,20 @@ class ScoreRequest(BaseModel):
     ayah_end: int = Field(ge=1, le=286)
 
 
+def _fetch_ayah_range(surah: int, start: int, end: int) -> list[dict]:
+    with get_cursor() as cur:
+        cur.execute(
+            """
+            SELECT ayah_number, verse_key, arabic
+            FROM ayahs
+            WHERE surah_number = %s AND ayah_number BETWEEN %s AND %s
+            ORDER BY ayah_number
+            """,
+            (surah, start, end),
+        )
+        return cur.fetchall()
+
+
 @router.post("/score")
 @limiter.limit("15/minute")
 async def score_recitation(request: Request, body: ScoreRequest):
@@ -78,17 +93,7 @@ async def score_recitation(request: Request, body: ScoreRequest):
     if len(data) < 200:
         return {"type": "empty"}
 
-    with get_cursor() as cur:
-        cur.execute(
-            """
-            SELECT ayah_number, verse_key, arabic
-            FROM ayahs
-            WHERE surah_number = %s AND ayah_number BETWEEN %s AND %s
-            ORDER BY ayah_number
-            """,
-            (body.surah, body.ayah_start, body.ayah_end),
-        )
-        rows = cur.fetchall()
+    rows = await asyncio.to_thread(_fetch_ayah_range, body.surah, body.ayah_start, body.ayah_end)
     if not rows:
         raise HTTPException(404, "Ayahs not found")
 

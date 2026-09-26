@@ -158,7 +158,8 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
     {
         "id": "asr_madhab",
         "priority": 52,
-        "pattern": r"asr|hanafi|shafi|shadow.{0,20}length|madhab|مذہب",
+        # "Surah Al-Asr" is a different question entirely; only the prayer counts here.
+        "pattern": r"(?<!al-)(?<!al )(?<![a-z])asr\b|hanafi|shafi|shadow.{0,20}length|madhab|مذہب",
         "terms": ["Asr", "afternoon", "shadow", "length", "Hanafi", "Shafi", "prayer time"],
         "dua_categories": [],
         "verse_keys": ["2:238"],
@@ -221,7 +222,8 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
     {
         "id": "jannah",
         "priority": 50,
-        "pattern": r"jannah|paradise|heaven|جنہ|جنت|स्वर्ग",
+        # "heavens (and earth)" means the sky, not Paradise.
+        "pattern": r"jannah|paradise|\bheaven\b|جنہ|جنت|स्वर्ग",
         "terms": ["Paradise", "Jannah", "heaven", "reward", "garden", "believers"],
         "dua_categories": [],
         "verse_keys": ["3:133", "9:72", "18:31"],
@@ -865,8 +867,40 @@ def theme_priority(theme_id: str) -> int:
     return int(_CLUSTER_BY_ID.get(theme_id, {}).get("priority", 0))
 
 
+# The English translation uses these names/words; users often type the Arabic ones.
+TERM_BRIDGES: dict[str, list[str]] = {
+    "yunus": ["Jonah", "fish"], "younus": ["Jonah", "fish"], "whale": ["fish"],
+    "musa": ["Moses"], "moosa": ["Moses"], "isa": ["Jesus"], "eesa": ["Jesus"],
+    "ibrahim": ["Abraham"], "ibraheem": ["Abraham"], "nuh": ["Noah"], "nooh": ["Noah"],
+    "yusuf": ["Joseph"], "yousuf": ["Joseph"], "dawud": ["David"], "dawood": ["David"],
+    "sulaiman": ["Solomon"], "sulayman": ["Solomon"], "yaqub": ["Jacob"], "yakub": ["Jacob"],
+    "ishaq": ["Isaac"], "ismail": ["Ishmael"], "harun": ["Aaron"], "haroon": ["Aaron"],
+    "ayyub": ["Job"], "yahya": ["John"], "zakariya": ["Zechariah"], "zakariyya": ["Zechariah"],
+    "lut": ["Lot"], "ilyas": ["Elias"], "maryam": ["Mary"], "firaun": ["Pharaoh"], "firon": ["Pharaoh"],
+    # Hadith describe joining prayers as offering them "together" on a "journey".
+    "combine": ["together", "journey"], "combining": ["together", "journey"], "jama": ["together"],
+    "shorten": ["shorten", "two rak"], "qasr": ["shorten", "two rak"],
+}
+
+_SUFFIXES = ("ing", "ed", "es", "s")
+
+
+def _stem(term: str) -> str | None:
+    """Prefix stem for substring search: 'backbiting' -> 'backbit' also matches 'backbite'."""
+    lower = term.lower()
+    for suffix in _SUFFIXES:
+        if lower.endswith(suffix) and len(lower) - len(suffix) >= 4:
+            return lower[: -len(suffix)]
+    return None
+
+
 def expand_query(question: str, base_terms: list[str]) -> list[str]:
     terms = list(base_terms)
+    for term in base_terms:
+        terms.extend(TERM_BRIDGES.get(term.lower(), []))
+        stem = _stem(term)
+        if stem:
+            terms.append(stem)
     for cluster in match_themes(question):
         terms.extend(cluster["terms"])
     return list(dict.fromkeys(terms))[:16]
@@ -899,8 +933,19 @@ def infer_dua_categories(question: str) -> list[str]:
     return list(dict.fromkeys(categories))
 
 
+# Passages people ask for by name rather than number.
+NAMED_PASSAGES: list[tuple[re.Pattern[str], list[str]]] = [
+    (re.compile(r"kurs[iy]|throne\s+verse|آیۃ الکرسی|آیت الکرسی|आयतुल कुर्सी", re.I), ["2:255"]),
+    (re.compile(r"last\s+(?:two|2)\s+(?:verses|ayat|ayahs)\s+of\s+(?:surah\s+)?(?:al[- ]?)?baqara", re.I), ["2:285", "2:286"]),
+    (re.compile(r"ayat?\s+an[- ]?n[uo]+r|light\s+verse|verse\s+of\s+light", re.I), ["24:35"]),
+]
+
+
 def infer_verse_keys(question: str) -> list[str]:
     keys: list[str] = []
+    for pattern, passage_keys in NAMED_PASSAGES:
+        if pattern.search(question):
+            keys.extend(passage_keys)
     for cluster in match_themes(question):
         keys.extend(cluster.get("verse_keys") or [])
     return list(dict.fromkeys(keys))

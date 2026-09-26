@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 import httpx
-from openai import AuthenticationError, BadRequestError, NotFoundError
+from openai import AuthenticationError, BadRequestError, NotFoundError, RateLimitError
 
 from app.services import llm
 
@@ -46,6 +46,11 @@ class CompleteTest(unittest.TestCase):
 
     def test_rejected_request_shape_falls_through(self):
         client = FakeClient({"primary": _api_error(BadRequestError, 400), "backup": "ok"})
+        with self.assertLogs("app.services.llm", level="WARNING"):
+            self.assertEqual(llm.complete(client, ["primary", "backup"], messages=[]).model, "backup")
+
+    def test_rate_limited_model_falls_through_to_the_next_quota(self):
+        client = FakeClient({"primary": _api_error(RateLimitError, 429), "backup": "ok"})
         with self.assertLogs("app.services.llm", level="WARNING"):
             self.assertEqual(llm.complete(client, ["primary", "backup"], messages=[]).model, "backup")
 

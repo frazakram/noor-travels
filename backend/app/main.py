@@ -76,7 +76,8 @@ async def _log_failures_and_slow_requests(request: Request, call_next):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
-    allow_credentials=True,
+    # Auth is a bearer header, never cookies, so credentialed cross-origin requests aren't needed.
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

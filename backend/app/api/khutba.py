@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 import re
@@ -33,7 +34,10 @@ def _translation_client_and_models(settings):
 
 
 @router.get("/sermons")
-def list_sermons(q: str = Query(default="", min_length=0)):
+def list_sermons(response: Response, q: str = Query(default="", min_length=0, max_length=100)):
+    if not q.strip():
+        # The full list only changes when khutbahs are re-ingested.
+        response.headers["Cache-Control"] = "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800"
     with get_cursor() as cur:
         if q.strip():
             pattern = f"%{q.strip()}%"
@@ -77,7 +81,8 @@ def get_sermon(slug: str):
 
 
 @router.get("/match")
-def match_sermon(q: str = Query(min_length=8)):
+@limiter.limit("30/minute")
+def match_sermon(request: Request, q: str = Query(min_length=8, max_length=8000)):
     result = match_transcript(q)
     if not result:
         return {"match": None}
@@ -136,7 +141,10 @@ async def khutba_live_chunk(request: Request, body: LiveChunkRequest):
 
     try:
         client, models = _translation_client_and_models(settings)
-        translation = complete(
+        # complete() and match_transcript() block; running them inline would stall every
+        # other request on this instance for the length of the LLM call.
+        translation = await asyncio.to_thread(
+            complete,
             client,
             models,
             messages=[
@@ -168,7 +176,7 @@ async def khutba_live_chunk(request: Request, body: LiveChunkRequest):
         "match": None,
         "suggestion": None,
     }
-    match = match_transcript(accumulated_english, accumulated_arabic)
+    match = await asyncio.to_thread(match_transcript, accumulated_english, accumulated_arabic)
     if match:
         payload = {
             "slug": match.khutbah.slug,
@@ -204,7 +212,8 @@ class KhutbaPdfRequest(BaseModel):
 
 
 @router.post("/pdf")
-def khutba_pdf(body: KhutbaPdfRequest):
+@limiter.limit("5/minute")
+def khutba_pdf(request: Request, body: KhutbaPdfRequest):
     try:
         from app.services.khutba_pdf import KhutbaLine, build_khutba_pdf
     except Exception as exc:  # missing wheel, bad build, absent font

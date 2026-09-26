@@ -1,4 +1,5 @@
 """Local keyword retrieval when OpenAI embeddings are unavailable."""
+import math
 import re
 from typing import Any
 
@@ -212,6 +213,7 @@ SEARCH_STOP = STOP_WORDS | frozenset(
     """
     quran kuran chapter surah sura verse ayah ayat whats whats the this that
     time period when reveal revealed revelation era tell give show
+    say says said islam islamic teach teaches taught please explain
     """.split()
 )
 
@@ -396,8 +398,15 @@ def detect_verse_reference(question: str) -> tuple[int, int] | None:
     return None
 
 
+# Several prophets share a name with a surah (Yunus, Yusuf, Ibrahim, Nuh, Maryam, Hud...).
+PROPHET_CONTEXT = re.compile(r"\b(?:prophet|nabi|hazrat|story|stories|qissa|messenger|life\s+of)\b", re.I)
+EXPLICIT_SURAH = re.compile(r"\b(?:surah|sura|surat|soorah|chapter)\b|سورہ|سورة|सूरह", re.I)
+
+
 def detect_surah_number(question: str) -> int | None:
     q = question.lower()
+    if PROPHET_CONTEXT.search(question) and not EXPLICIT_SURAH.search(question):
+        return None
 
     m = CHAPTER_SURAH_NUM.search(q)
     if m:
@@ -570,6 +579,38 @@ def extract_search_terms(text: str, min_len: int = 3) -> list[str]:
     return list(dict.fromkeys(terms))
 
 
+def _term_weights(texts: list[str], terms: list[str]) -> dict[str, float]:
+    """IDF-style weights over the candidate set: a term found in few rows says more than one found everywhere."""
+    lowered = [t.lower() for t in texts]
+    total = max(1, len(lowered))
+    weights = {}
+    for term in terms:
+        df = sum(1 for text in lowered if term.lower() in text)
+        # A term no candidate contains can't separate candidates; don't let it dilute the rest.
+        weights[term] = math.log(1 + total / (1 + df)) if df else 0.0
+    return weights
+
+
+def _relative_scores(texts: list[str], terms: list[str]) -> list[float]:
+    """Relevance in 0..1 relative to the best candidate for this query.
+
+    Rare terms weigh more (IDF over the candidate set) and adjacent query terms found
+    together ("six days") earn a phrase bonus. Scoring against the best candidate rather
+    than a perfect match means a document isn't penalised for query words it expresses
+    differently (a hadith says "together", the user typed "combine").
+    """
+    weights = _term_weights(texts, terms)
+    pairs = [f"{a.lower()} {b.lower()}" for a, b in zip(terms, terms[1:])]
+    raw = []
+    for text in texts:
+        lower = text.lower()
+        matched = sum(w for t, w in weights.items() if t.lower() in lower)
+        phrase = sum(1 for p in pairs if p in lower)
+        raw.append(matched * (1 + 0.5 * phrase) if matched else 0.0)
+    best = max(raw, default=0.0) or 1.0
+    return [r / best for r in raw]
+
+
 def _score_text(text: str, terms: list[str]) -> float:
     if not terms:
         return 0.0
@@ -698,12 +739,13 @@ def _search_ayahs(terms: list[str], limit: int) -> list[dict]:
         _run_query(cur, sql, params)
         rows = cur.fetchall()
 
-    for row in rows:
-        vk, ar, tr, en, ur = _row_fields(
-            row, "verse_key", "arabic", "transliteration", "translation_en", "translation_ur"
-        )
+    fields = [
+        _row_fields(row, "verse_key", "arabic", "transliteration", "translation_en", "translation_ur")
+        for row in rows
+    ]
+    scores = _relative_scores([f"{en} {tr}" for _vk, _ar, tr, en, _ur in fields], terms[:8])
+    for (vk, ar, tr, en, ur), score in zip(fields, scores):
         content = f"Quran {vk}. Arabic: {ar}. English: {en}. Urdu: {ur}."
-        score = _score_text(content, terms)
         if score < 0.2:
             continue
         results.append(
@@ -761,10 +803,10 @@ def _search_hadiths(terms: list[str], limit: int) -> list[dict]:
         _run_query(cur, sql, params)
         rows = cur.fetchall()
 
-    for row in rows:
-        hid, ref, ch, ar, en = _row_fields(row, "id", "reference", "chapter_en", "arabic", "english")
+    fields = [_row_fields(row, "id", "reference", "chapter_en", "arabic", "english") for row in rows]
+    scores = _relative_scores([f"{ch} {en[:1500]}" for _h, _r, ch, _a, en in fields], topic_terms[:6])
+    for (hid, ref, ch, ar, en), score in zip(fields, scores):
         content = f"{ref}. Chapter: {ch}. English: {en[:1500]}."
-        score = _score_text(content, topic_terms)
         if score < 0.35:
             continue
         results.append(

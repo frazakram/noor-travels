@@ -165,7 +165,8 @@ def get_tafsir(
 
 
 @router.get("/search")
-def search_quran(q: str = Query(min_length=2)):
+@limiter.limit("30/minute")
+def search_quran(request: Request, q: str = Query(min_length=2, max_length=100)):
     pattern = f"%{q}%"
     with get_cursor() as cur:
         cur.execute(

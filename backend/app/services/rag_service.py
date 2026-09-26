@@ -15,6 +15,8 @@ from app.services.query_analyzer import analyze_query
 
 logger = logging.getLogger(__name__)
 
+STRUCTURED_INTENTS = {"surah_summary", "verse_lookup", "verse_range_lookup", "surah_number_lookup"}
+
 SYSTEM_PROMPT = """You are Noor Safar — an Islamic learning chat assistant for travelers.
 
 STRICT GROUNDING RULES (never break these):
@@ -127,12 +129,16 @@ def chat(
         return cached
 
     if settings.use_groq_chat:
-        from app.services.keyword_search import extract_search_terms
-        from app.services.query_expansion import build_analysis
-        _la = build_analysis(standalone, out_lang, extract_search_terms(standalone))
+        from app.services.keyword_search import analyze_keyword_query
+
+        # analyze_keyword_query recognises surah/verse questions; a structured intent must
+        # not also carry keyword themes ("Surah Al-Asr" is not about Asr prayer timing).
+        _la = analyze_keyword_query(standalone, out_lang)
+        if _la.get("intent") in STRUCTURED_INTENTS:
+            _la = {**_la, "themes": []}
         local_analysis = {
             **_la,
-            "search_queries_en": _la.get("search_terms", [standalone]),
+            "search_queries_en": _la.get("search_terms") or [standalone],
             "standalone_question": standalone,
             "history_verse_keys": history_verse_keys,
         }
@@ -431,13 +437,10 @@ def _try_fast_local_answer(
 
     from app.services.query_expansion import get_theme_summary
 
-    fast_intents = {"surah_summary", "verse_lookup", "verse_range_lookup", "surah_number_lookup"}
-    if intent in fast_intents or get_theme_summary(themes, out_lang):
+    # Only hand-written answers skip the LLM: structured surah/verse answers and curated
+    # theme summaries. Anything else is a raw snippet dump, which the LLM does far better.
+    if intent in STRUCTURED_INTENTS or get_theme_summary(themes, out_lang):
         confidence = "high"
-    elif top_score >= 0.32 and not _is_generic_pointer(answer):
-        confidence = "medium" if top_score < 0.55 else "high"
-    elif len(answer.strip()) > 90 and not _is_generic_pointer(answer) and top_score >= 0.22:
-        confidence = "medium"
     else:
         return None
 

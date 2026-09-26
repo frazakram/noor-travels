@@ -22,9 +22,16 @@ cd backend && .venv/bin/python ingestion/run_all_tests.py
 
 # RAG retrieval quality eval (offline, forces local SQLite, no LLM)
 cd backend && .venv/bin/python ingestion/eval_chat.py
+
+# Chat relevance eval: do answers cite the verses a correct answer must cite? (uses the configured LLM)
+cd backend && .venv/bin/python ingestion/eval_relevance.py
+
+# Unit tests
+cd backend && .venv/bin/python -m unittest discover -s tests -t .
+cd frontend && npm test
 ```
 
-There is no pytest/jest suite; testing is the two scripts above plus manual verification in the running app.
+Unit tests use stdlib `unittest` and `node --test` (no extra deps). `eval_chat.py` only checks keyword presence, so a confidently wrong answer can pass it — `eval_relevance.py` is the real quality gate for chat changes.
 
 **Critical rule: never push without testing locally first.** Run the app, verify the change works, then push.
 

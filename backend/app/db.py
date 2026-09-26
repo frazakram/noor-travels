@@ -11,7 +11,7 @@ from typing import Any
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from psycopg2.pool import ThreadedConnectionPool
+from psycopg2.pool import PoolError, ThreadedConnectionPool
 
 from app.core.config import get_settings
 
@@ -24,7 +24,7 @@ CONNECT_ATTEMPTS = 2
 # Serverless instances freeze between requests; a pooled connection idle longer
 # than this is pinged before reuse because the server may have dropped it.
 IDLE_PING_AFTER_S = 30
-POOL_MAX = 5
+POOL_MAX = 10
 
 
 class DatabaseUnavailable(RuntimeError):
@@ -46,6 +46,8 @@ def use_sqlite() -> bool:
 _pool: ThreadedConnectionPool | None = None
 _pool_lock = threading.Lock()
 _last_used: dict[int, float] = {}
+# Connections opened directly because the pool was full; closed after use, never pooled.
+_overflow: set[int] = set()
 
 
 def _get_pool() -> ThreadedConnectionPool:
@@ -78,7 +80,13 @@ def _checkout_postgres():
     for attempt in range(CONNECT_ATTEMPTS):
         try:
             pool = _get_pool()
-            conn = pool.getconn()
+            try:
+                conn = pool.getconn()
+            except PoolError:
+                # Pool exhausted means busy, not down — serve this request on its own connection.
+                conn = psycopg2.connect(get_settings().database_url, connect_timeout=CONNECT_TIMEOUT_S)
+                _overflow.add(id(conn))
+                return conn
             if _is_alive(conn):
                 return conn
             pool.putconn(conn, close=True)
@@ -133,10 +141,14 @@ def get_conn():
                 broken = True
         raise
     finally:
-        _last_used[id(conn)] = time.monotonic()
-        _get_pool().putconn(conn, close=broken)
-        if broken:
-            _last_used.pop(id(conn), None)
+        if id(conn) in _overflow:
+            _overflow.discard(id(conn))
+            conn.close()
+        else:
+            _last_used[id(conn)] = time.monotonic()
+            _get_pool().putconn(conn, close=broken)
+            if broken:
+                _last_used.pop(id(conn), None)
 
 
 @contextmanager

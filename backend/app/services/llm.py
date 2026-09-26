@@ -8,7 +8,7 @@ silently dropping chat to template answers.
 import logging
 from typing import Any
 
-from openai import BadRequestError, NotFoundError, OpenAI
+from openai import BadRequestError, NotFoundError, OpenAI, RateLimitError
 
 from app.core.config import get_settings
 
@@ -48,9 +48,9 @@ def _model_kwargs(model: str) -> dict[str, Any]:
 def complete(client: OpenAI, models: list[str], **kwargs: Any):
     """chat.completions.create over an ordered model list.
 
-    Falls through on model-level failures only (model removed, or it rejected/failed
-    the request shape). Transport and auth errors propagate so callers can apply
-    their own degradation.
+    Falls through on model-level failures: model removed, request shape rejected, or
+    rate-limited (Groq quotas are per model, so the next model has its own budget).
+    Transport and auth errors propagate so callers can apply their own degradation.
     """
     last_error: Exception | None = None
     for index, model in enumerate(models):
@@ -62,7 +62,7 @@ def complete(client: OpenAI, models: list[str], **kwargs: Any):
                     extra={"event": "llm_fallback", "model": model, "reason": type(last_error).__name__},
                 )
             return response
-        except (NotFoundError, BadRequestError) as exc:
+        except (NotFoundError, BadRequestError, RateLimitError) as exc:
             logger.error(
                 "LLM model failed: %s",
                 str(exc)[:300],

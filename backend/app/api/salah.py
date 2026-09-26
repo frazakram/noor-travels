@@ -7,7 +7,9 @@ from datetime import datetime, timezone
 from threading import Lock
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response
+
+from app.core.limiter import limiter
 
 router = APIRouter()
 
@@ -76,7 +78,7 @@ def prayer_times(
     lng: float = Query(..., ge=-180, le=180),
     method: int = Query(default=DEFAULT_METHOD, ge=1, le=23),
     school: int = Query(default=DEFAULT_SCHOOL, ge=0, le=1),
-    date: str | None = Query(default=None, description="DD-MM-YYYY"),
+    date: str | None = Query(default=None, pattern=r"^\d{2}-\d{2}-\d{4}$", description="DD-MM-YYYY"),
     timezone: str | None = Query(default=None, description="IANA timezone for today's date"),
     fajr_adj: int = Query(default=0, ge=-60, le=60),
     dhuhr_adj: int = Query(default=0, ge=-60, le=60),
@@ -166,7 +168,9 @@ def prayer_times(
 
 
 @router.get("/location")
+@limiter.limit("20/minute")
 def reverse_geocode(
+    request: Request,
     response: Response,
     lat: float = Query(..., ge=-90, le=90),
     lng: float = Query(..., ge=-180, le=180),
@@ -217,7 +221,8 @@ def reverse_geocode(
 
 
 @router.get("/geocode")
-def geocode_city(q: str = Query(min_length=2, max_length=120)):
+@limiter.limit("20/minute")
+def geocode_city(request: Request, q: str = Query(min_length=2, max_length=120)):
     url = "https://nominatim.openstreetmap.org/search"
     params = {
         "q": q,
