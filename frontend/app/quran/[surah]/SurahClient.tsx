@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { AudioNoticeToast } from "@/components/AudioNoticeToast";
 import { AutoplayToggle } from "@/components/AutoplayToggle";
 import { AyahWordText, type AyahWord } from "@/components/AyahWordText";
@@ -32,16 +32,33 @@ const BISMILLAH_WORDS: AyahWord[] = [
 
 type TafsirRow = { verse_key: string; source: string; text: string };
 
-export default function SurahClient() {
+type Props = {
+  /** Server-fetched English ayahs so the first screen is in the HTML (crawlers, fast first paint). */
+  initialAyahs?: Ayah[];
+  initialName?: string;
+};
+
+export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
   const params = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const surahNumber = Number(params.surah);
-  const startAyah = Math.max(1, Number(searchParams.get("ayah")) || 1);
+  // Read after mount rather than via useSearchParams: that hook opts the whole reader out
+  // of server rendering, which left crawlers with an empty "Loading…" page.
+  const [query, setQuery] = useState<URLSearchParams | null>(null);
+  useEffect(() => {
+    const read = () => setQuery(new URLSearchParams(window.location.search));
+    read();
+    window.addEventListener("popstate", read);
+    return () => window.removeEventListener("popstate", read);
+  }, []);
+  const startAyah = Math.max(1, Number(query?.get("ayah")) || 1);
   const { lang } = useLang();
 
-  const [ayahs, setAyahs] = useState<Ayah[]>([]);
-  const [surahName, setSurahName] = useState("");
+  const [ayahs, setAyahs] = useState<Ayah[]>(initialAyahs ?? []);
+  const [surahName, setSurahName] = useState(
+    initialName ? displaySurahName(surahNumber, initialName) : "",
+  );
+  const serverAyahsPending = useRef(!!initialAyahs?.length);
   const [translation, setTranslation] = useState<TranslationLang>("en");
   // Independent from `translation` (the displayed text language) — lets someone
   // read English while hearing the Urdu human-recited translation audio, etc.
@@ -70,11 +87,13 @@ export default function SurahClient() {
   const [showAudioOpts, setShowAudioOpts] = useState(false);
   const [shareStatus, setShareStatus] = useState("");
   const [showTranslationText, setShowTranslationText] = useState(true);
-  const [surahLoading, setSurahLoading] = useState(true);
+  const [surahLoading, setSurahLoading] = useState(!initialAyahs?.length);
   const [surahError, setSurahError] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [renderLimit, setRenderLimit] = useState(AYAH_RENDER_CHUNK);
   const [wordsByVerse, setWordsByVerse] = useState<Record<string, AyahWord[]>>({});
+  // Word-by-word data makes every ayah card taller; deep-link scrolling waits for it.
+  const [wordsSettled, setWordsSettled] = useState(false);
   const [bookmarkedKeys, setBookmarkedKeys] = useState<Record<string, boolean>>({});
 
   const ayahRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -83,7 +102,8 @@ export default function SurahClient() {
   const lastUserScrollAt = useRef(0);
   const programmaticScrollRef = useRef(false);
   const lastReadTimer = useRef<number | undefined>(undefined);
-  const pendingScrollRef = useRef(false);
+  // Target of a ?ayah= deep link; state (not a ref) so the scroll runs after that ayah has rendered.
+  const [pendingScrollIndex, setPendingScrollIndex] = useState<number | null>(null);
   const [prefsHydrated, setPrefsHydrated] = useState(false);
 
   const isFollowingPlayback = useCallback(
@@ -162,12 +182,12 @@ export default function SurahClient() {
     // Only honored when the user's own toggle is on — a shared ?autoplay=1
     // link must not chain-play (autoplay policy would silently skip every
     // ayah and cascade-navigate through the mushaf).
-    if (!autoPlayNext || searchParams.get("autoplay") !== "1") return;
+    if (!autoPlayNext || query?.get("autoplay") !== "1") return;
     autoPlayedRef.current = true;
     lastUserScrollAt.current = 0;
     void audio.playFromIndex(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- audio changes every render; the ref guards re-entry
-  }, [surahLoading, ayahs.length, autoPlayNext, searchParams]);
+  }, [surahLoading, ayahs.length, autoPlayNext, query]);
 
   // Follow playback; a user scroll pauses following, which resumes after a few
   // idle seconds (so trackpad-momentum or a stray touch never kills it for good).
@@ -332,6 +352,7 @@ export default function SurahClient() {
 
   useEffect(() => {
     let cancelled = false;
+    setWordsSettled(false);
     api<{ ayahs: { verse_key: string; words: AyahWord[] }[] }>(
       `/api/quran/surahs/${surahNumber}/words`
     )
@@ -343,6 +364,9 @@ export default function SurahClient() {
       })
       .catch(() => {
         if (!cancelled) setWordsByVerse({});
+      })
+      .finally(() => {
+        if (!cancelled) setWordsSettled(true);
       });
     return () => {
       cancelled = true;
@@ -351,9 +375,18 @@ export default function SurahClient() {
 
   useEffect(() => {
     if (!prefsHydrated) return;
+    const idx = Math.max(0, startAyah - 1);
+    const useServerAyahs = serverAyahsPending.current && translation === "en" && loadAttempt === 0;
+    serverAyahsPending.current = false;
+    if (useServerAyahs) {
+      const nextIndex = Math.min(idx, Math.max(0, ayahs.length - 1));
+      setViewIndex(nextIndex);
+      setRenderLimit(Math.min(ayahs.length, Math.max(AYAH_RENDER_CHUNK, nextIndex + 6)));
+      setPendingScrollIndex(nextIndex > 0 ? nextIndex : null);
+      return;
+    }
     // Switching surah/translation quickly must not let an older response land last.
     let current = true;
-    const idx = Math.max(0, startAyah - 1);
     setViewIndex(idx);
     setSurahLoading(true);
     setSurahError(false);
@@ -369,7 +402,7 @@ export default function SurahClient() {
         const nextIndex = Math.min(idx, Math.max(0, d.ayahs.length - 1));
         setViewIndex(nextIndex);
         setRenderLimit(Math.min(d.ayahs.length, Math.max(AYAH_RENDER_CHUNK, nextIndex + 6)));
-        pendingScrollRef.current = nextIndex > 0;
+        setPendingScrollIndex(nextIndex > 0 ? nextIndex : null);
       })
       .catch(() => {
         if (current) setSurahError(true);
@@ -384,10 +417,10 @@ export default function SurahClient() {
 
   // Deep links (?ayah=N from shares and continue-reading) scroll to the ayah once loaded.
   useEffect(() => {
-    if (surahLoading || studyMode || !pendingScrollRef.current || !ayahs.length) return;
-    pendingScrollRef.current = false;
-    scrollToAyah(viewIndex);
-  }, [surahLoading, studyMode, ayahs.length, viewIndex, scrollToAyah]);
+    if (surahLoading || !wordsSettled || studyMode || pendingScrollIndex === null || !ayahs.length) return;
+    setPendingScrollIndex(null);
+    scrollToAyah(pendingScrollIndex);
+  }, [surahLoading, wordsSettled, studyMode, ayahs.length, pendingScrollIndex, scrollToAyah]);
 
   useEffect(() => {
     if (studyMode || surahLoading || ayahs.length === 0 || renderLimit >= ayahs.length) return;

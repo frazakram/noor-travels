@@ -5,10 +5,28 @@ import { JsonLd } from "@/components/JsonLd";
 import { getLibraryItemsByTag, librarySlug } from "@/lib/library";
 import { pageMetadata, SITE_URL } from "@/lib/seo";
 import { getSurahMeta, SURAHS } from "@/lib/surah-meta";
+import type { Ayah } from "@/lib/quran-types";
 import { libraryTagForSurah } from "@/lib/surah-library-tags";
 import SurahClient from "./SurahClient";
 
 type Props = { params: Promise<{ surah: string }> };
+
+const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL || SITE_URL;
+
+/** English ayahs for the server-rendered first screen; null keeps the old client-side load. */
+async function loadInitialAyahs(surah: number): Promise<{ name: string; ayahs: Ayah[] } | null> {
+  try {
+    const res = await fetch(`${API_ORIGIN}/api/quran/surahs/${surah}?translation=en`, {
+      next: { revalidate: 86400 },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { surah?: { name_en?: string }; ayahs?: Ayah[] };
+    return data.ayahs?.length ? { name: data.surah?.name_en ?? "", ayahs: data.ayahs } : null;
+  } catch {
+    return null;
+  }
+}
 
 export function generateStaticParams() {
   return SURAHS.map((s) => ({ surah: String(s.number) }));
@@ -33,7 +51,10 @@ export default async function SurahPage({ params }: Props) {
   const { surah } = await params;
   const meta = getSurahMeta(Number(surah));
   const tag = meta ? libraryTagForSurah(meta.number) : undefined;
-  const related = tag ? await getLibraryItemsByTag(tag) : [];
+  const [related, initial] = await Promise.all([
+    tag ? getLibraryItemsByTag(tag) : Promise.resolve([]),
+    meta ? loadInitialAyahs(meta.number) : Promise.resolve(null),
+  ]);
 
   return (
     <>
@@ -94,7 +115,7 @@ export default async function SurahPage({ params }: Props) {
         </details>
       )}
       <Suspense fallback={<p className="text-muted">Loading…</p>}>
-        <SurahClient />
+        <SurahClient initialAyahs={initial?.ayahs} initialName={initial?.name} />
       </Suspense>
     </>
   );
