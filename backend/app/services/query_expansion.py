@@ -158,8 +158,13 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
     {
         "id": "asr_madhab",
         "priority": 52,
-        # "Surah Al-Asr" is a different question entirely; only the prayer counts here.
-        "pattern": r"(?<!al-)(?<!al )(?<![a-z])asr\b|hanafi|shafi|shadow.{0,20}length|madhab|مذہب",
+        # Only questions about *when* Asr starts (the madhab difference). "Surah Al-Asr" or
+        # "combine Dhuhr and Asr" are different questions.
+        "pattern": (
+            r"hanafi|shafi|shadow.{0,20}length|madhab|مذہب|"
+            r"(?<!al-)(?<!al )(?<![a-z])asr\b.{0,40}\b(?:time|timing|start|starts|begin|begins|end|ends)\b|"
+            r"\b(?:time|timing|when)\b.{0,30}(?<!al-)(?<!al )(?<![a-z])asr\b"
+        ),
         "terms": ["Asr", "afternoon", "shadow", "length", "Hanafi", "Shafi", "prayer time"],
         "dua_categories": [],
         "verse_keys": ["2:238"],
@@ -376,7 +381,8 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
     {
         "id": "halal_haram",
         "priority": 40,
-        "pattern": r"(?:is|are).{0,20}(?:halal|haram|permissible|allowed|forbidden|prohibited|lawful|unlawful)",
+        # "Is it allowed to pray late?" is not a halal/haram question; only the explicit words are.
+        "pattern": r"\b(?:halal|haram|lawful|unlawful)\b",
         "terms": ["halal", "haram", "permissible", "forbidden", "lawful", "unlawful", "allowed", "prohibited"],
         "dua_categories": [],
         "verse_keys": ["2:168", "5:3", "6:145"],
@@ -877,6 +883,14 @@ TERM_BRIDGES: dict[str, list[str]] = {
     "ishaq": ["Isaac"], "ismail": ["Ishmael"], "harun": ["Aaron"], "haroon": ["Aaron"],
     "ayyub": ["Job"], "yahya": ["John"], "zakariya": ["Zechariah"], "zakariyya": ["Zechariah"],
     "lut": ["Lot"], "ilyas": ["Elias"], "maryam": ["Mary"], "firaun": ["Pharaoh"], "firon": ["Pharaoh"],
+    # The Bukhari translation spells it Zuhr.
+    "dhuhr": ["Zuhr"], "duhr": ["Zuhr"], "zohar": ["Zuhr"], "zuhar": ["Zuhr"],
+    # A missed prayer is "forgotten" and prayed "when he remembers" in the hadith.
+    "overslept": ["forgets", "remembers"], "oversleep": ["forgets", "remembers"],
+    "missed": ["forgets", "remembers"], "qaza": ["forgets", "remembers"], "qada": ["forgets", "remembers"],
+    "travelling": ["journey"], "traveling": ["journey"], "travel": ["journey"], "safar": ["journey"],
+    "servants": ["slave", "brothers"], "servant": ["slave", "brothers"], "workers": ["labourer", "wages"],
+    "employees": ["labourer", "wages"], "maid": ["slave"], "riba": ["usury"], "interest": ["usury", "riba"],
     # Hadith describe joining prayers as offering them "together" on a "journey".
     "combine": ["together", "journey"], "combining": ["together", "journey"], "jama": ["together"],
     "shorten": ["shorten", "two rak"], "qasr": ["shorten", "two rak"],
@@ -895,9 +909,13 @@ def _stem(term: str) -> str | None:
 
 
 def expand_query(question: str, base_terms: list[str]) -> list[str]:
-    terms = list(base_terms)
+    # Each word's translation-vocabulary bridge sits right after it, so capped term lists
+    # (the searches use the first 8) keep the variant that actually appears in the text.
+    terms: list[str] = []
     for term in base_terms:
+        terms.append(term)
         terms.extend(TERM_BRIDGES.get(term.lower(), []))
+    for term in base_terms:
         stem = _stem(term)
         if stem:
             terms.append(stem)

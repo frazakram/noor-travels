@@ -5,7 +5,7 @@ from typing import Any
 
 from app.core.config import get_settings
 from app.db import get_cursor, use_sqlite
-from app.services.query_expansion import DUA_HINT, build_analysis
+from app.services.query_expansion import DUA_HINT, TERM_BRIDGES, build_analysis
 
 
 def _run_query(cur, sql: str, params: tuple | list = ()) -> None:
@@ -112,6 +112,9 @@ SURAH_ALIASES: dict[str, int] = {
     "ala": 87,
     "ghashiyah": 88,
     "fajr": 89,
+    "rum": 30,
+    "room": 30,
+    "roum": 30,
     "balad": 90,
     "shams": 91,
     "layl": 92,
@@ -214,6 +217,8 @@ SEARCH_STOP = STOP_WORDS | frozenset(
     quran kuran chapter surah sura verse ayah ayat whats whats the this that
     time period when reveal revealed revelation era tell give show
     say says said islam islamic teach teaches taught please explain
+    allowed allow permissible permitted okay late while can could should if then
+    story stories
     """.split()
 )
 
@@ -263,6 +268,9 @@ def lookup_surah_by_name_phrase(phrase: str) -> int | None:
     norm_phrase = _normalize_name(phrase)
     if len(norm_phrase) < 3:
         return None
+    for alias, number in SURAH_ALIASES.items():
+        if _normalize_name(alias) == norm_phrase:
+            return number
 
     with get_cursor() as cur:
         cur.execute("SELECT number, name_en, name_en_translation FROM surahs")
@@ -281,7 +289,7 @@ def lookup_surah_by_name_phrase(phrase: str) -> int | None:
             fuzzy_candidates.append((norm_name, int(num)))
             if norm_name == norm_phrase:
                 exact = int(num)
-            elif norm_phrase in norm_name or norm_name in norm_phrase:
+            elif len(norm_name) >= 5 and (norm_phrase in norm_name or norm_name in norm_phrase):
                 if not contains or len(norm_name) > contains[1]:
                     contains = (int(num), len(norm_name))
 
@@ -400,6 +408,12 @@ def detect_verse_reference(question: str) -> tuple[int, int] | None:
 
 # Several prophets share a name with a surah (Yunus, Yusuf, Ibrahim, Nuh, Maryam, Hud...).
 PROPHET_CONTEXT = re.compile(r"\b(?:prophet|nabi|hazrat|story|stories|qissa|messenger|life\s+of)\b", re.I)
+TRAILING_REQUEST_WORDS = re.compile(
+    r"\s+(?:summary|summari[sz]e|overview|meaning|explanation|tafsir|translation|about|in\s+(?:english|urdu|hindi)|please)\b.*$",
+    re.I,
+)
+# Surah names that are also daily-prayer/time words; they need an explicit "surah".
+PRAYER_NAMED_SURAHS = frozenset({"asr", "fajr", "duha", "layl", "lail"})
 EXPLICIT_SURAH = re.compile(r"\b(?:surah|sura|surat|soorah|chapter)\b|سورہ|سورة|सूरह", re.I)
 
 
@@ -418,10 +432,18 @@ def detect_surah_number(question: str) -> int | None:
         m = pat.search(question)
         if m:
             phrase = m.group(1).strip().rstrip("?.!")
+            # "Al-Fajr summary" -> "Al-Fajr": trailing request words aren't part of the name.
+            phrase = TRAILING_REQUEST_WORDS.sub("", phrase).strip()
             if phrase and not phrase.isdigit():
                 hit = lookup_surah_by_name_phrase(phrase)
                 if hit:
                     return hit
+
+    # A bare surah name elsewhere in a sentence is usually something else ("Dhuhr and Asr",
+    # "the people" -> nas): only resolve it when the question is about a surah.
+    explicit = bool(EXPLICIT_SURAH.search(question))
+    if not explicit and not SUMMARY_HINTS.search(question):
+        return None
 
     cleaned = re.sub(
         r"summ?a?r[iy]?[sz]e?|summary|overview|for me|please|tell me|about|explain|"
@@ -438,6 +460,8 @@ def detect_surah_number(question: str) -> int | None:
     ]
 
     for token in tokens:
+        if token in PRAYER_NAMED_SURAHS and not explicit:
+            continue
         if token in SURAH_ALIASES:
             return SURAH_ALIASES[token]
         norm = _normalize_name(token)
@@ -591,24 +615,59 @@ def _term_weights(texts: list[str], terms: list[str]) -> dict[str, float]:
     return weights
 
 
-def _relative_scores(texts: list[str], terms: list[str]) -> list[float]:
-    """Relevance in 0..1 relative to the best candidate for this query.
+def _same_concept(a: str, b: str) -> bool:
+    """A word and its stem ("travelling"/"travell"), or a word and its synonym bridge ("combine"/"together").
 
-    Rare terms weigh more (IDF over the candidate set) and adjacent query terms found
-    together ("six days") earn a phrase bonus. Scoring against the best candidate rather
-    than a perfect match means a document isn't penalised for query words it expresses
-    differently (a hadith says "together", the user typed "combine").
+    Only a bridge's first entry is a synonym; later entries are separate evidence
+    (Yunus -> Jonah is the same name, "fish" is an additional clue).
+    """
+    a, b = a.lower(), b.lower()
+    if a.startswith(b) or b.startswith(a):
+        return True
+    synonym_a = [x.lower() for x in TERM_BRIDGES.get(a, [])[:1]]
+    synonym_b = [x.lower() for x in TERM_BRIDGES.get(b, [])[:1]]
+    return b in synonym_a or a in synonym_b
+
+
+def _concept_groups(terms: list[str]) -> list[list[str]]:
+    groups: list[list[str]] = []
+    for term in terms:
+        for group in groups:
+            if any(_same_concept(term, g) for g in group):
+                group.append(term)
+                break
+        else:
+            groups.append([term])
+    return groups
+
+
+def _coverage_scores(texts: list[str], terms: list[str]) -> list[float]:
+    """Relevance in 0..1: weighted share of the query's concepts a text contains.
+
+    Rare terms weigh more (IDF over the candidate set), a word and its stem count once,
+    and adjacent query terms found together ("six days") earn a phrase bonus.
     """
     weights = _term_weights(texts, terms)
     pairs = [f"{a.lower()} {b.lower()}" for a, b in zip(terms, terms[1:])]
+    concepts = _concept_groups(terms)
     raw = []
     for text in texts:
         lower = text.lower()
-        matched = sum(w for t, w in weights.items() if t.lower() in lower)
+        # A word and its stem ("travelling"/"travell") are one concept: count it once.
+        matched = sum(
+            max((weights[t] for t in group if t.lower() in lower), default=0.0) for group in concepts
+        )
         phrase = sum(1 for p in pairs if p in lower)
-        raw.append(matched * (1 + 0.5 * phrase) if matched else 0.0)
-    best = max(raw, default=0.0) or 1.0
-    return [r / best for r in raw]
+        # Long passages (2,000-char tafsir) contain many words by sheer length; damp them mildly.
+        length_damping = 1 + 0.3 * max(0.0, math.log(len(lower) / 400)) if lower else 1.0
+        raw.append(matched * (1 + 0.5 * phrase) / length_damping if matched else 0.0)
+    # Coverage of the query's concepts, so scores compare across sources (verses vs hadith).
+    # Concepts no candidate contains weigh 0 and so don't count against anyone.
+    # Expansion adds bridges and theme words, so no text covers every concept; a text that
+    # covers the three most informative ones is a full match.
+    concept_weights = sorted((max(weights[t] for t in group) for group in concepts), reverse=True)
+    total = sum(concept_weights[:3]) or 1.0
+    return [min(1.0, r / total) for r in raw]
 
 
 def _score_text(text: str, terms: list[str]) -> float:
@@ -743,7 +802,7 @@ def _search_ayahs(terms: list[str], limit: int) -> list[dict]:
         _row_fields(row, "verse_key", "arabic", "transliteration", "translation_en", "translation_ur")
         for row in rows
     ]
-    scores = _relative_scores([f"{en} {tr}" for _vk, _ar, tr, en, _ur in fields], terms[:8])
+    scores = _coverage_scores([f"{en} {tr}" for _vk, _ar, tr, en, _ur in fields], terms[:8])
     for (vk, ar, tr, en, ur), score in zip(fields, scores):
         content = f"Quran {vk}. Arabic: {ar}. English: {en}. Urdu: {ur}."
         if score < 0.2:
@@ -788,7 +847,7 @@ def _search_hadiths(terms: list[str], limit: int) -> list[dict]:
     topic_terms = _hadith_topic_terms(terms)
     clauses = []
     params: list[Any] = []
-    for t in topic_terms[:6]:
+    for t in topic_terms[:8]:
         clauses.append("(english ILIKE ? OR chapter_en ILIKE ?)")
         pat = f"%{t}%"
         params.extend([pat, pat])
@@ -804,7 +863,7 @@ def _search_hadiths(terms: list[str], limit: int) -> list[dict]:
         rows = cur.fetchall()
 
     fields = [_row_fields(row, "id", "reference", "chapter_en", "arabic", "english") for row in rows]
-    scores = _relative_scores([f"{ch} {en[:1500]}" for _h, _r, ch, _a, en in fields], topic_terms[:6])
+    scores = _coverage_scores([f"{ch} {en[:1500]}" for _h, _r, ch, _a, en in fields], topic_terms[:8])
     for (hid, ref, ch, ar, en), score in zip(fields, scores):
         content = f"{ref}. Chapter: {ch}. English: {en[:1500]}."
         if score < 0.35:
@@ -931,7 +990,7 @@ def _search_tafsir(terms: list[str], limit: int) -> list[dict]:
         return []
     clauses = []
     params: list[Any] = []
-    for t in terms[:5]:
+    for t in terms[:8]:
         clauses.append("text ILIKE ?")
         params.append(f"%{t}%")
 
@@ -947,10 +1006,10 @@ def _search_tafsir(terms: list[str], limit: int) -> list[dict]:
         _run_query(cur, sql, params)
         rows = cur.fetchall()
 
-    for row in rows:
-        vk, src, txt = _row_fields(row, "verse_key", "source", "text")
+    fields = [_row_fields(row, "verse_key", "source", "text") for row in rows]
+    scores = _coverage_scores([txt[:2000] for _vk, _src, txt in fields], terms[:8])
+    for (vk, src, txt), score in zip(fields, scores):
         content = f"Tafsir {src} {vk}: {txt[:2000]}"
-        score = _score_text(content, terms)
         if score < 0.25:
             continue
         results.append(
@@ -1123,7 +1182,15 @@ def keyword_retrieve_smart(question: str, lang: str = "en") -> tuple[list[dict],
         if ref not in seen or c["similarity"] > seen[ref]["similarity"]:
             seen[ref] = c
 
-    ranked = sorted(seen.values(), key=lambda x: x["similarity"], reverse=True)
+    # Each source scored against its own vocabulary (verses never say "Zuhr"), so re-score the
+    # merged pool once with shared weights to make verses, hadith and tafsir comparable.
+    pool = list(seen.values())
+    searched = [c for c in pool if not c.get("metadata", {}).get("curated")]
+    if terms and searched:
+        for c, score in zip(searched, _coverage_scores([c["content"] for c in searched], terms[:8])):
+            c["similarity"] = score
+
+    ranked = sorted(pool, key=lambda x: x["similarity"], reverse=True)
     has_curated = any(c.get("metadata", {}).get("curated") for c in ranked)
     if has_curated:
         curated = [c for c in ranked if c.get("metadata", {}).get("curated")]
