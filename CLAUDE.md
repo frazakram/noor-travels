@@ -33,6 +33,8 @@ cd frontend && npm test
 
 Unit tests use stdlib `unittest` and `node --test` (no extra deps). `eval_chat.py` only checks keyword presence, so a confidently wrong answer can pass it — `eval_relevance.py` is the real quality gate for chat changes.
 
+Chat retrieval is model-first: `query_analyzer.rewrite_for_retrieval` (Groq, `GROQ_REWRITE_MODELS`) turns the question into keywords in the translations' vocabulary plus phrases for vector search; `TERM_BRIDGES`/regex themes are only the offline fallback. Fix wrong retrieval in the rewrite prompt or ranking, never with per-question word lists. Hadith numbers are this dataset's sequential ids, **not** sunnah.com's standard numbering — never copy a hadith number from an outside source into curated data; look it up by text (a unit test checks curated references match their theme).
+
 **Critical rule: never push without testing locally first.** Run the app, verify the change works, then push.
 
 ## Architecture

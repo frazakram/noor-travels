@@ -86,10 +86,10 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "id": "death",
         "priority": 50,
         "pattern": r"death|dying|grave|janaz|funeral|موت",
-        "terms": ["death", "grave", "hereafter", "mercy", "forgive"],
+        "terms": ["death", "grave", "hereafter", "mercy", "forgive", "funeral", "calamity"],
         "dua_categories": ["death"],
         "verse_keys": ["2:156", "3:185"],
-        "hadith_refs": ["Sahih al-Bukhari 18", "Sahih al-Bukhari 1260"],
+        "hadith_refs": ["Sahih al-Bukhari 6177", "Sahih al-Bukhari 1260"],
     },
     {
         "id": "forgiveness",
@@ -98,7 +98,7 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "terms": ["forgive", "mercy", "repent", "sin", "pardon"],
         "dua_categories": ["forgiveness"],
         "verse_keys": ["39:53", "2:286"],
-        "hadith_refs": ["Sahih al-Bukhari 6306"],
+        "hadith_refs": ["Sahih al-Bukhari 6069"],
     },
     {
         "id": "rizq",
@@ -132,7 +132,7 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "terms": ["parent", "mother", "father", "kindness", "mercy"],
         "dua_categories": [],
         "verse_keys": ["17:23", "31:14"],
-        "hadith_refs": ["Sahih al-Bukhari 5971"],
+        "hadith_refs": ["Sahih al-Bukhari 5743"],
     },
     {
         "id": "sleep",
@@ -168,7 +168,7 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "terms": ["Asr", "afternoon", "shadow", "length", "Hanafi", "Shafi", "prayer time"],
         "dua_categories": [],
         "verse_keys": ["2:238"],
-        "hadith_refs": ["Sahih al-Bukhari 46"],
+        "hadith_refs": ["Sahih al-Bukhari 548"],
     },
     {
         "id": "ramadan",
@@ -177,7 +177,7 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "terms": ["fast", "fasting", "ramadan", "month", "break", "poor", "taqwa"],
         "dua_categories": [],
         "verse_keys": ["2:183", "2:185", "2:187"],
-        "hadith_refs": ["Sahih al-Bukhari 1899"],
+        "hadith_refs": ["Sahih al-Bukhari 1830"],
     },
     {
         "id": "hajj",
@@ -204,7 +204,7 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "terms": ["Allah", "great", "Akbar", "magnificent", "praise"],
         "dua_categories": [],
         "verse_keys": ["37:102", "17:111"],
-        "hadith_refs": ["Sahih al-Bukhari 340"],
+        "hadith_refs": [],
     },
     {
         "id": "makruh_haram",
@@ -241,7 +241,7 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "terms": ["truth", "honest", "lie", "lying", "trustworthy", "falsehood"],
         "dua_categories": [],
         "verse_keys": ["9:119", "33:35"],
-        "hadith_refs": ["Sahih al-Bukhari 319"],
+        "hadith_refs": ["Sahih al-Bukhari 5862"],
     },
     {
         "id": "eating_etiquette",
@@ -250,7 +250,7 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "terms": ["eat", "Bismillah", "right hand", "food", "manners", "table"],
         "dua_categories": [],
         "verse_keys": ["2:168", "7:31"],
-        "hadith_refs": ["Sahih al-Bukhari 3"],
+        "hadith_refs": ["Sahih al-Bukhari 5162"],
     },
     {
         "id": "business_honesty",
@@ -277,7 +277,7 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "terms": ["charity", "zakat", "poor", "needy", "spend", "wealth"],
         "dua_categories": [],
         "verse_keys": ["2:267", "9:60", "57:7"],
-        "hadith_refs": ["Sahih al-Bukhari 1419"],
+        "hadith_refs": ["Sahih al-Bukhari 1371"],
     },
     {
         "id": "scripture",
@@ -304,7 +304,7 @@ THEMATIC_CLUSTERS: list[dict[str, Any]] = [
         "terms": ["neighbor", "neighbour", "rights", "kindness", "harm"],
         "dua_categories": [],
         "verse_keys": ["4:36", "49:10"],
-        "hadith_refs": ["Sahih al-Bukhari 6014"],
+        "hadith_refs": ["Sahih al-Bukhari 5786"],
     },
     {
         "id": "jihad",
@@ -915,10 +915,6 @@ def expand_query(question: str, base_terms: list[str]) -> list[str]:
     for term in base_terms:
         terms.append(term)
         terms.extend(TERM_BRIDGES.get(term.lower(), []))
-    for term in base_terms:
-        stem = _stem(term)
-        if stem:
-            terms.append(stem)
     for cluster in match_themes(question):
         terms.extend(cluster["terms"])
     return list(dict.fromkeys(terms))[:16]

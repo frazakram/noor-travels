@@ -65,3 +65,59 @@ def analyze_query(
         "intent": parsed.get("intent", ""),
         "standalone_question": parsed.get("standalone_question") or question,
     }
+
+
+REWRITE_PROMPT = """You prepare search input for an Islamic Q&A retriever over three English texts:
+the Quran (Sahih International translation), Sahih al-Bukhari (Muhsin Khan translation) and Ibn Kathir's tafsir.
+The retriever matches words, so it can only find what you name in THOSE translations' own vocabulary.
+
+Return JSON only:
+{
+  "keywords": ["3-8 single words or short terms"],
+  "phrases": ["1-3 short English phrases describing what the answer is about"],
+  "wants": ["quran" and/or "hadith" and/or "tafsir" and/or "dua"]
+}
+
+Rules:
+- keywords: the topic itself, not the question's framing. Drop words like written, mentioned, where, allowed, Islam, say.
+- Use root/base forms (backbite, forget, sleep, combine), not inflections (backbiting, forgotten, slept).
+- Skip generic words (brother, people, good, Allah, prayer) unless they ARE the topic; distinctive words find the right text.
+- Use the translations' spellings and names: Jonah (not Yunus), Moses, Abraham, Noah, Joseph, fish (not whale),
+  Zuhr, Asr, Maghrib, Isha, usury (riba), prostration (sujood), charity/Zakat, Hajj, Umra, fast/fasting (sawm).
+- Add the concrete words a relevant verse or hadith would contain (beard -> beard, moustaches; missed prayer -> forgets, sleep, remembers).
+- The question may be in Urdu, Hindi, Arabic or Roman script: still answer in English terms."""
+
+
+def rewrite_for_retrieval(client: OpenAI, models: list[str], question: str) -> dict[str, list[str]] | None:
+    """LLM query understanding for retrieval; None when the model is unavailable or returns nothing usable."""
+    from app.services.llm import complete
+
+    response = complete(
+        client,
+        models,
+        messages=[
+            {"role": "system", "content": REWRITE_PROMPT},
+            {"role": "user", "content": question},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0,
+        max_tokens=300,
+    )
+    try:
+        parsed = json.loads(response.choices[0].message.content or "{}")
+    except ValueError:
+        return None
+    if not isinstance(parsed, dict):
+        return None
+
+    def clean(values: object, limit: int) -> list[str]:
+        if not isinstance(values, list):
+            return []
+        out = [str(v).strip() for v in values if isinstance(v, (str, int)) and str(v).strip()]
+        return list(dict.fromkeys(out))[:limit]
+
+    keywords = clean(parsed.get("keywords"), 8)
+    if not keywords:
+        return None
+    wants = [w for w in clean(parsed.get("wants"), 4) if w in ("quran", "hadith", "tafsir", "dua")]
+    return {"keywords": keywords, "phrases": clean(parsed.get("phrases"), 3), "wants": wants}

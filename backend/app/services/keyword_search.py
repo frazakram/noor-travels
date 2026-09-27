@@ -5,7 +5,7 @@ from typing import Any
 
 from app.core.config import get_settings
 from app.db import get_cursor, use_sqlite
-from app.services.query_expansion import DUA_HINT, TERM_BRIDGES, build_analysis
+from app.services.query_expansion import DUA_HINT, TERM_BRIDGES, _stem, build_analysis
 
 
 def _run_query(cur, sql: str, params: tuple | list = ()) -> None:
@@ -603,6 +603,21 @@ def extract_search_terms(text: str, min_len: int = 3) -> list[str]:
     return list(dict.fromkeys(terms))
 
 
+MAX_SEARCH_TERMS = 12
+
+
+def _roots(terms: list[str]) -> list[str]:
+    """Match every term by its root so inflections meet ("backbiting"/"backbite" -> "backbit")."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for term in terms:
+        root = _stem(term) or term.lower()
+        if root not in seen:
+            seen.add(root)
+            out.append(root)
+    return out[:MAX_SEARCH_TERMS]
+
+
 def _term_weights(texts: list[str], terms: list[str]) -> dict[str, float]:
     """IDF-style weights over the candidate set: a term found in few rows says more than one found everywhere."""
     lowered = [t.lower() for t in texts]
@@ -774,9 +789,10 @@ def _fetch_ayah_chunks(verse_keys: list[str]) -> list[dict]:
 def _search_ayahs(terms: list[str], limit: int) -> list[dict]:
     if not terms:
         return []
+    terms = _roots(terms)
     clauses = []
     params: list[Any] = []
-    for t in terms[:8]:
+    for t in terms:
         clauses.append(
             "(translation_en ILIKE ? OR translation_ur ILIKE ? OR transliteration ILIKE ?)"
         )
@@ -802,7 +818,7 @@ def _search_ayahs(terms: list[str], limit: int) -> list[dict]:
         _row_fields(row, "verse_key", "arabic", "transliteration", "translation_en", "translation_ur")
         for row in rows
     ]
-    scores = _coverage_scores([f"{en} {tr}" for _vk, _ar, tr, en, _ur in fields], terms[:8])
+    scores = _coverage_scores([f"{en} {tr}" for _vk, _ar, tr, en, _ur in fields], terms)
     for (vk, ar, tr, en, ur), score in zip(fields, scores):
         content = f"Quran {vk}. Arabic: {ar}. English: {en}. Urdu: {ur}."
         if score < 0.2:
@@ -844,10 +860,10 @@ def _hadith_topic_terms(terms: list[str]) -> list[str]:
 def _search_hadiths(terms: list[str], limit: int) -> list[dict]:
     if not terms:
         return []
-    topic_terms = _hadith_topic_terms(terms)
+    topic_terms = _roots(_hadith_topic_terms(terms))
     clauses = []
     params: list[Any] = []
-    for t in topic_terms[:8]:
+    for t in topic_terms:
         clauses.append("(english ILIKE ? OR chapter_en ILIKE ?)")
         pat = f"%{t}%"
         params.extend([pat, pat])
@@ -863,7 +879,7 @@ def _search_hadiths(terms: list[str], limit: int) -> list[dict]:
         rows = cur.fetchall()
 
     fields = [_row_fields(row, "id", "reference", "chapter_en", "arabic", "english") for row in rows]
-    scores = _coverage_scores([f"{ch} {en[:1500]}" for _h, _r, ch, _a, en in fields], topic_terms[:8])
+    scores = _coverage_scores([f"{ch} {en[:1500]}" for _h, _r, ch, _a, en in fields], topic_terms)
     for (hid, ref, ch, ar, en), score in zip(fields, scores):
         content = f"{ref}. Chapter: {ch}. English: {en[:1500]}."
         if score < 0.35:
@@ -988,9 +1004,10 @@ def fetch_duas_by_categories(categories: list[str], limit: int = 2) -> list[dict
 def _search_tafsir(terms: list[str], limit: int) -> list[dict]:
     if not terms:
         return []
+    terms = _roots(terms)
     clauses = []
     params: list[Any] = []
-    for t in terms[:8]:
+    for t in terms:
         clauses.append("text ILIKE ?")
         params.append(f"%{t}%")
 
@@ -1007,7 +1024,7 @@ def _search_tafsir(terms: list[str], limit: int) -> list[dict]:
         rows = cur.fetchall()
 
     fields = [_row_fields(row, "verse_key", "source", "text") for row in rows]
-    scores = _coverage_scores([txt[:2000] for _vk, _src, txt in fields], terms[:8])
+    scores = _coverage_scores([txt[:2000] for _vk, _src, txt in fields], terms)
     for (vk, src, txt), score in zip(fields, scores):
         content = f"Tafsir {src} {vk}: {txt[:2000]}"
         if score < 0.25:
@@ -1135,7 +1152,10 @@ def _fetch_verse_lookup_chunks(verse_key: str) -> list[dict]:
     return chunks
 
 
-def keyword_retrieve_smart(question: str, lang: str = "en") -> tuple[list[dict], dict[str, Any]]:
+def keyword_retrieve_smart(
+    question: str, lang: str = "en", extra_terms: list[str] | None = None
+) -> tuple[list[dict], dict[str, Any]]:
+    """extra_terms: model-produced keywords in the translations' vocabulary, searched first."""
     analysis = analyze_keyword_query(question, lang)
 
     if analysis.get("intent") == "verse_range_lookup" and analysis.get("verse_keys"):
@@ -1158,6 +1178,10 @@ def keyword_retrieve_smart(question: str, lang: str = "en") -> tuple[list[dict],
         return _fetch_surah_summary_chunks(analysis["surah_number"]), analysis
 
     terms = analysis["search_terms"]
+    if extra_terms:
+        seen = {t.lower() for t in extra_terms}
+        terms = list(extra_terms) + [t for t in terms if t.lower() not in seen]
+        analysis = {**analysis, "search_terms": terms}
     source_filter = analysis["source_filter"]
     dua_categories = analysis.get("dua_categories") or []
     settings = get_settings()
@@ -1185,13 +1209,15 @@ def keyword_retrieve_smart(question: str, lang: str = "en") -> tuple[list[dict],
     # Each source scored against its own vocabulary (verses never say "Zuhr"), so re-score the
     # merged pool once with shared weights to make verses, hadith and tafsir comparable.
     pool = list(seen.values())
-    searched = [c for c in pool if not c.get("metadata", {}).get("curated")]
+    # Theme-pinned ("curated") sources keep their fixed score only when no model understanding
+    # is available; otherwise they compete on relevance like every other candidate.
+    searched = pool if extra_terms else [c for c in pool if not c.get("metadata", {}).get("curated")]
     if terms and searched:
-        for c, score in zip(searched, _coverage_scores([c["content"] for c in searched], terms[:8])):
+        for c, score in zip(searched, _coverage_scores([c["content"] for c in searched], _roots(terms))):
             c["similarity"] = score
 
     ranked = sorted(pool, key=lambda x: x["similarity"], reverse=True)
-    has_curated = any(c.get("metadata", {}).get("curated") for c in ranked)
+    has_curated = not extra_terms and any(c.get("metadata", {}).get("curated") for c in ranked)
     if has_curated:
         curated = [c for c in ranked if c.get("metadata", {}).get("curated")]
         other = [c for c in ranked if not c.get("metadata", {}).get("curated") and c["similarity"] >= 0.3]

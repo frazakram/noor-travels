@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     groq_chat_model: str = "openai/gpt-oss-20b"
     # Tried in order when the primary model is removed or rejects a request.
     groq_fallback_models: str = "qwen/qwen3.8-27b,openai/gpt-oss-120b"
+    # Question -> retrieval keywords. A different model from answering keeps the two on
+    # separate Groq rate-limit budgets; qwen was the most precise and fastest in testing.
+    groq_rewrite_models: str = "qwen/qwen3.8-27b,openai/gpt-oss-120b,openai/gpt-oss-20b"
 
     @property
     def embed_url(self) -> str:

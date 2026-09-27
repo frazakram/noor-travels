@@ -36,3 +36,26 @@ class SurahDetectionTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(SQLITE_PATH.exists(), "needs the local hadith database")
+class CuratedHadithReferencesTest(unittest.TestCase):
+    """Curated theme hadith must actually be about the theme.
+
+    The hadith data uses its own sequential numbering, not sunnah.com's, so a reference
+    copied from a standard source silently points at an unrelated hadith.
+    """
+
+    def test_every_curated_hadith_mentions_its_theme(self):
+        from app.services.query_expansion import THEMATIC_CLUSTERS
+
+        db = sqlite3.connect(SQLITE_PATH)
+        unrelated = []
+        for cluster in THEMATIC_CLUSTERS:
+            terms = [t.lower() for t in cluster.get("terms", [])]
+            for ref in cluster.get("hadith_refs", []):
+                row = db.execute("SELECT english, chapter_en FROM hadiths WHERE reference = ?", (ref,)).fetchone()
+                text = " ".join(row).lower() if row else ""
+                if not any(term in text for term in terms):
+                    unrelated.append((cluster["id"], ref, text[:80]))
+        self.assertEqual(unrelated, [])

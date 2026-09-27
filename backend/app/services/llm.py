@@ -39,6 +39,10 @@ def groq_models() -> list[str]:
     return [m.strip() for m in chain if m.strip() and not (m.strip() in seen or seen.add(m.strip()))]
 
 
+def rewrite_models() -> list[str]:
+    return [m.strip() for m in get_settings().groq_rewrite_models.split(",") if m.strip()]
+
+
 def _model_kwargs(model: str) -> dict[str, Any]:
     # gpt-oss models reason before answering; "low" keeps latency down and leaves the
     # max_tokens budget for the answer. Other models reject the parameter.

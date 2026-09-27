@@ -36,6 +36,9 @@ CASES: list[dict] = [
     {"q": "Can I combine Dhuhr and Asr while travelling?", "expect": ["Sahih al-Bukhari 10"], "forbid": ["Surah Al-Asr", "Declining Day"]},
     {"q": "Is it allowed to pray Fajr late if I overslept?", "expect": ["Sahih al-Bukhari", "Quran 2:238", "Quran 4:103", "Quran 17:78", "Quran 20:14"], "forbid": ["Surah Al-Fajr"]},
     {"q": "Surah Al-Fajr summary", "expect": ["Quran 89:"]},
+    {"q": "where it is written to have beard ?", "expect": ["Sahih al-Bukhari 5665", "Sahih al-Bukhari 5666"]},
+    {"q": "What is the punishment for lying?", "expect": ["Sahih al-Bukhari 5862", "Quran 40:28", "Quran 16:105", "Quran 39:3"], "forbid": ["menses"]},
+    {"q": "kya namaz qasr kar sakte hain safar mein?", "expect": ["Sahih al-Bukhari 10", "Quran 4:101"]},
     {"q": "What does Islam teach about honesty in trade?", "expect": ["Sahih al-Bukhari", "Quran 83:", "Quran 2:282", "Quran 4:29", "Quran 17:35"]},
 ]
 

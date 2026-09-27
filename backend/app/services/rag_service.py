@@ -17,13 +17,33 @@ logger = logging.getLogger(__name__)
 
 STRUCTURED_INTENTS = {"surah_summary", "verse_lookup", "verse_range_lookup", "surah_number_lookup"}
 
+
+def _rewrite_for_retrieval(question: str) -> dict[str, Any]:
+    """Model understanding of the question for retrieval; {} (word matching only) if unavailable."""
+    from app.services.llm import rewrite_models
+    from app.services.query_analyzer import rewrite_for_retrieval
+
+    try:
+        rewrite = rewrite_for_retrieval(groq_client(timeout=6.0), rewrite_models(), question)
+    except Exception as exc:
+        logger.warning(
+            "Query rewrite failed; using word matching only: %s",
+            str(exc)[:200],
+            extra={"event": "rewrite_degraded", "reason": type(exc).__name__},
+        )
+        return {}
+    if not rewrite:
+        return {}
+    return {"llm_keywords": rewrite["keywords"], "llm_phrases": rewrite["phrases"]}
+
 SYSTEM_PROMPT = """You are Noor Safar — an Islamic learning chat assistant for travelers.
 
 STRICT GROUNDING RULES (never break these):
 - Answer ONLY using text explicitly present in the RETRIEVED SOURCES below.
 - Do NOT use your own knowledge of Islam, hadith, or Quran — only the provided sources.
 - Every single factual claim MUST be followed by its citation in brackets.
-- If the retrieved sources do not contain enough information, respond ONLY with the localized refusal phrase given in the user message (in the requested response language).
+- A source that states a general ruling answers the specific cases it covers (e.g. "whoever forgets a prayer should pray it when he remembers" answers "I overslept Fajr"): answer from it and cite it.
+- Only if none of the retrieved sources address the question, respond ONLY with the localized refusal phrase given in the user message (in the requested response language).
   Do NOT guess, infer, or paraphrase beyond what the sources say.
 - Do NOT invent verse numbers, hadith numbers, or dua names.
 - Do NOT issue fatwas, personal rulings, or religious opinions of your own.
@@ -136,6 +156,8 @@ def chat(
         _la = analyze_keyword_query(standalone, out_lang)
         if _la.get("intent") in STRUCTURED_INTENTS:
             _la = {**_la, "themes": []}
+        else:
+            _la = {**_la, **_rewrite_for_retrieval(standalone)}
         local_analysis = {
             **_la,
             "search_queries_en": _la.get("search_terms") or [standalone],
@@ -480,6 +502,8 @@ def _chat_with_openai(
         standalone or question,
         out_lang,
         context_verse_keys=history_verse_keys,
+        extra_terms=analysis.get("llm_keywords"),
+        semantic_queries=analysis.get("llm_phrases"),
     )
     chunks = _prioritize_chunks_for_question(standalone or question, chunks)
     chunks = rerank(standalone, chunks, get_settings().rag_final_k)
@@ -559,25 +583,18 @@ def _chat_with_openai(
         fallback = format_short_answer(standalone or question, chunks, merged_analysis, out_lang)
         if fallback and not _is_refusal_answer(fallback):
             answer = fallback
-    if _is_refusal_answer(answer) and chunks:
-        from app.services.keyword_search import extract_search_terms
-        from app.services.query_expansion import build_analysis
+    # The model refuses when the retrieved sources don't answer the question. Keep that:
+    # replacing it with a dump of those same off-topic snippets reads as a wrong answer.
+    refused = _is_refusal_answer(answer)
 
-        fallback_analysis = analysis or build_analysis(
-            question, out_lang, extract_search_terms(question)
-        )
-        fallback = format_short_answer(question, chunks, fallback_analysis, out_lang)
-        if fallback and not _is_refusal_answer(fallback):
-            answer = fallback
-
-    citations = _validate_citations(parsed.get("citations", []), chunks)
+    citations = [] if refused else _validate_citations(parsed.get("citations", []), chunks)
     transliteration = parsed.get("transliteration", "") if include_transliteration else ""
 
     result = {
         "answer": answer,
         "transliteration": transliteration,
         "citations": citations,
-        "confidence": parsed.get("confidence", "medium"),
+        "confidence": "low" if refused else parsed.get("confidence", "medium"),
         "sources": _chunk_sources(chunks),
         "analysis": _public_analysis(analysis),
         "from_cache": False,

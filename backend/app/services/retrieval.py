@@ -140,7 +140,11 @@ def retrieve_for_question(
     lang: str = "en",
     *,
     context_verse_keys: list[str] | None = None,
+    extra_terms: list[str] | None = None,
+    semantic_queries: list[str] | None = None,
 ) -> tuple[list[dict], dict[str, Any]]:
+    """extra_terms / semantic_queries come from the LLM rewrite (query_analyzer.rewrite_for_retrieval):
+    keywords in the translations' own vocabulary and short phrases for vector search."""
     """Retrieve relevant chunks: semantic (bge-m3) when indexed, plus keyword expansion."""
     settings = get_settings()
 
@@ -192,6 +196,12 @@ def retrieve_for_question(
             return chunks, analysis
 
     analysis = build_analysis(question, lang, extract_search_terms(question))
+    if extra_terms:
+        seen = {t.lower() for t in extra_terms}
+        analysis = {
+            **analysis,
+            "search_terms": list(extra_terms) + [t for t in analysis["search_terms"] if t.lower() not in seen],
+        }
     if context_verse_keys:
         merged_keys = list(dict.fromkeys((analysis.get("verse_keys") or []) + context_verse_keys))
         analysis = {**analysis, "verse_keys": merged_keys}
@@ -210,17 +220,19 @@ def retrieve_for_question(
         or bool(re.search(r"\b(context|why|meaning|background|story|teach)\b", question, re.I)),
         wants_prophet_hadith=wants_hadith,
     )
-    if themed:
+    # Regex themes are a coarse stand-in for understanding; when the model has already read
+    # the question they may add their pinned sources below but must not replace the search.
+    if themed and not extra_terms:
         return themed, analysis
 
     candidates: list[dict] = []
-    kw_chunks, kw_analysis = keyword_retrieve_smart(question, lang)
+    kw_chunks, kw_analysis = keyword_retrieve_smart(question, lang, extra_terms)
     if not (matched_clusters and kw_analysis.get("intent") == "surah_summary"):
         candidates.extend(kw_chunks)
     analysis = {**kw_analysis, **analysis, "search_terms": analysis["search_terms"]}
 
     from app.services.keyword_search import _fetch_ayah_chunks
-    for cluster in matched_clusters:
+    for cluster in ([] if extra_terms else matched_clusters):
         pinned = _fetch_ayah_chunks(cluster.get("verse_keys") or [])
         for p in pinned:
             p["final_score"] = 0.85
@@ -249,16 +261,18 @@ def retrieve_for_question(
         "verse_range_lookup",
         "surah_number_lookup",
     )
-    # Semantic embed is slow on Vercel (HTTP to /api/embed) — skip when keyword/theme already suffices.
+    # Vector search matches meaning rather than words. With model-written phrases it always
+    # runs (that's what catches questions worded unlike the translation); without them it's
+    # only a backstop when keyword retrieval came up short.
     need_semantic = (
         _embedding_chunk_count() > 50
         and not structured_intent
         and not matched_clusters
-        and len(candidates) < 5
+        and (bool(semantic_queries) or len(candidates) < 5)
     )
     if need_semantic:
         try:
-            candidates.extend(hybrid_retrieve([question], source_filter))
+            candidates.extend(hybrid_retrieve(semantic_queries or [question], source_filter))
         except DatabaseUnavailable:
             raise
         except Exception:
