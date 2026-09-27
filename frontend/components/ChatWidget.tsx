@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useChat } from "@/components/ChatProvider";
-import { ChatSearchProgress } from "@/components/ChatSearchProgress";
+import { ChatSearchProgress, SearchTrail, type SearchTrailData } from "@/components/ChatSearchProgress";
 import { useLang } from "@/components/LangProvider";
 import { NoticeCard } from "@/components/NoticeCard";
 import { api } from "@/lib/api";
@@ -27,6 +27,8 @@ type ChatMessage = {
   responseLang?: Lang;
   /** Freshly arrived answer: reveal it word by word once. */
   reveal?: boolean;
+  /** How the answer was found (streamed stages), shown as a summary above it. */
+  trail?: SearchTrailData;
 };
 
 type ChatResponse = {
@@ -118,6 +120,7 @@ export function ChatWidget() {
   const [showTransliteration, setShowTransliteration] = useState(true);
   const [retranslatePending, setRetranslatePending] = useState(false);
   const [stages, setStages] = useState<ChatStage[]>([]);
+  const [startedAt, setStartedAt] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -162,6 +165,10 @@ export function ChatWidget() {
     setInput("");
     setLoading(true);
     setStages([]);
+    const started = Date.now();
+    setStartedAt(started);
+    // Collected alongside state so the finished message can keep them.
+    const received: ChatStage[] = [];
 
     try {
       const history = messages.map((m) => ({ role: m.role, content: m.content }));
@@ -174,9 +181,10 @@ export function ChatWidget() {
       };
       let data: ChatResponse;
       try {
-        data = await streamChat<ChatResponse>(body, (stage) =>
-          setStages((prev) => [...prev.filter((s) => s.stage !== stage.stage), stage]),
-        );
+        data = await streamChat<ChatResponse>(body, (stage) => {
+          received.push(stage);
+          setStages((prev) => [...prev.filter((s) => s.stage !== stage.stage), stage]);
+        });
       } catch (err) {
         // Older backend or a proxy that refuses the stream: same answer, just without live stages.
         if (!(err instanceof StreamUnavailable)) throw err;
@@ -194,6 +202,10 @@ export function ChatWidget() {
           confidence: data.confidence,
           responseLang: answerLang,
           reveal: true,
+          // Cached answers skip the pipeline, so there is nothing to show.
+          trail: received.some((s) => s.stage === "found")
+            ? { stages: received, ms: Date.now() - started }
+            : undefined,
         },
       ]);
     } catch {
@@ -348,6 +360,8 @@ export function ChatWidget() {
                 } ${m.reveal ? "animate-answer-in" : ""}`}
                 dir={msgDir}
               >
+                {m.role === "assistant" && m.trail && <SearchTrail trail={m.trail} lang={lang} />}
+
                 {m.role === "assistant" && m.notice && (
                   <p className="mb-2 text-[10px] italic text-faint">{m.notice}</p>
                 )}
@@ -401,7 +415,7 @@ export function ChatWidget() {
 
           {loading && (
             <div className="flex justify-start animate-fade-in-up">
-              <ChatSearchProgress stages={stages} lang={lang} />
+              <ChatSearchProgress stages={stages} lang={lang} startedAt={startedAt} />
             </div>
           )}
           <div ref={bottomRef} />

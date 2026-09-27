@@ -75,6 +75,7 @@ TRANSLITERATION RULES:
 - If include_transliteration is false: leave transliteration as empty string.
 
 Citation format: [Quran 2:255], [Sahih al-Bukhari 431], [Dua travel-4]
+Write plain text: no markdown (no *, **, #, or bullet symbols).
 
 Return JSON:
 {
