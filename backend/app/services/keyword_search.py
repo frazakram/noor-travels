@@ -631,8 +631,25 @@ def _term_weights(texts: list[str], terms: list[str]) -> dict[str, float]:
     return weights
 
 
-def _same_concept(a: str, b: str) -> bool:
-    """A word and its stem ("travelling"/"travell"), or a word and its synonym bridge ("combine"/"together").
+# term (and its root) -> index of the model concept it belongs to. The rewrite model groups
+# alternatives ("backbite", "gossip", "slander") into one concept; a source that uses any one
+# of them covers that concept. Without this, every synonym counted as a separate requirement
+# and a verse using the exact word scored lower the more synonyms the model added.
+Synonyms = dict[str, int]
+
+
+def concept_synonyms(concepts: list[list[str]] | None) -> Synonyms:
+    out: Synonyms = {}
+    for index, group in enumerate(concepts or []):
+        for word in group:
+            out[word.lower()] = index
+            out[_stem(word) or word.lower()] = index
+    return out
+
+
+def _same_concept(a: str, b: str, synonyms: Synonyms | None = None) -> bool:
+    """A word and its stem ("travelling"/"travell"), a word and its synonym bridge ("combine"/"together"),
+    or two alternatives the model grouped as one concept.
 
     Only a bridge's first entry is a synonym; later entries are separate evidence
     (Yunus -> Jonah is the same name, "fish" is an additional clue).
@@ -640,16 +657,18 @@ def _same_concept(a: str, b: str) -> bool:
     a, b = a.lower(), b.lower()
     if a.startswith(b) or b.startswith(a):
         return True
+    if synonyms and a in synonyms and synonyms.get(a) == synonyms.get(b):
+        return True
     synonym_a = [x.lower() for x in TERM_BRIDGES.get(a, [])[:1]]
     synonym_b = [x.lower() for x in TERM_BRIDGES.get(b, [])[:1]]
     return b in synonym_a or a in synonym_b
 
 
-def _concept_groups(terms: list[str]) -> list[list[str]]:
+def _concept_groups(terms: list[str], synonyms: Synonyms | None = None) -> list[list[str]]:
     groups: list[list[str]] = []
     for term in terms:
         for group in groups:
-            if any(_same_concept(term, g) for g in group):
+            if any(_same_concept(term, g, synonyms) for g in group):
                 group.append(term)
                 break
         else:
@@ -723,7 +742,9 @@ def _ranked_rows(
         return cur.fetchall(), weights
 
 
-def _coverage_scores(texts: list[str], terms: list[str], weights: dict[str, float] | None = None) -> list[float]:
+def _coverage_scores(
+    texts: list[str], terms: list[str], weights: dict[str, float] | None = None, synonyms: Synonyms | None = None
+) -> list[float]:
     """Relevance in 0..1: weighted share of the query's concepts a text contains.
 
     Rare terms weigh more (IDF over the candidate set), a word and its stem count once,
@@ -731,7 +752,7 @@ def _coverage_scores(texts: list[str], terms: list[str], weights: dict[str, floa
     """
     weights = weights if weights is not None else _term_weights(texts, terms)
     pairs = [f"{a.lower()} {b.lower()}" for a, b in zip(terms, terms[1:])]
-    concepts = _concept_groups(terms)
+    concepts = _concept_groups(terms, synonyms)
     raw = []
     for text in texts:
         lower = text.lower()
@@ -853,7 +874,7 @@ def _fetch_ayah_chunks(verse_keys: list[str]) -> list[dict]:
     return results
 
 
-def _search_ayahs(terms: list[str], limit: int) -> list[dict]:
+def _search_ayahs(terms: list[str], limit: int, synonyms: Synonyms | None = None) -> list[dict]:
     if not terms:
         return []
     terms = _roots(terms)
@@ -868,7 +889,7 @@ def _search_ayahs(terms: list[str], limit: int) -> list[dict]:
         _row_fields(row, "verse_key", "arabic", "transliteration", "translation_en", "translation_ur")
         for row in rows
     ]
-    scores = _coverage_scores([f"{en} {tr}" for _vk, _ar, tr, en, _ur in fields], terms, weights)
+    scores = _coverage_scores([f"{en} {tr}" for _vk, _ar, tr, en, _ur in fields], terms, weights, synonyms)
     for (vk, ar, tr, en, ur), score in zip(fields, scores):
         content = f"Quran {vk}. Arabic: {ar}. English: {en}. Urdu: {ur}."
         if score < 0.2:
@@ -907,7 +928,7 @@ def _hadith_topic_terms(terms: list[str]) -> list[str]:
     return expanded or terms[:4]
 
 
-def _search_hadiths(terms: list[str], limit: int) -> list[dict]:
+def _search_hadiths(terms: list[str], limit: int, synonyms: Synonyms | None = None) -> list[dict]:
     if not terms:
         return []
     topic_terms = _roots(_hadith_topic_terms(terms))
@@ -919,7 +940,7 @@ def _search_hadiths(terms: list[str], limit: int) -> list[dict]:
     )
     results = []
     fields = [_row_fields(row, "id", "reference", "chapter_en", "arabic", "english") for row in rows]
-    scores = _coverage_scores([f"{ch} {en[:1500]}" for _h, _r, ch, _a, en in fields], topic_terms, weights)
+    scores = _coverage_scores([f"{ch} {en[:1500]}" for _h, _r, ch, _a, en in fields], topic_terms, weights, synonyms)
     for (hid, ref, ch, ar, en), score in zip(fields, scores):
         content = f"{ref}. Chapter: {ch}. English: {en[:1500]}."
         if score < 0.35:
@@ -1041,7 +1062,7 @@ def fetch_duas_by_categories(categories: list[str], limit: int = 2) -> list[dict
     return results[:limit]
 
 
-def _search_tafsir(terms: list[str], limit: int) -> list[dict]:
+def _search_tafsir(terms: list[str], limit: int, synonyms: Synonyms | None = None) -> list[dict]:
     if not terms:
         return []
     terms = _roots(terms)
@@ -1050,7 +1071,7 @@ def _search_tafsir(terms: list[str], limit: int) -> list[dict]:
     )
     results = []
     fields = [_row_fields(row, "verse_key", "source", "text") for row in rows]
-    scores = _coverage_scores([txt[:2000] for _vk, _src, txt in fields], terms, weights)
+    scores = _coverage_scores([txt[:2000] for _vk, _src, txt in fields], terms, weights, synonyms)
     for (vk, src, txt), score in zip(fields, scores):
         content = f"Tafsir {src} {vk}: {txt[:2000]}"
         if score < 0.25:
@@ -1182,10 +1203,15 @@ _SEARCH_POOL = ThreadPoolExecutor(max_workers=8, thread_name_prefix="kw-search")
 
 
 def keyword_retrieve_smart(
-    question: str, lang: str = "en", extra_terms: list[str] | None = None
+    question: str,
+    lang: str = "en",
+    extra_terms: list[str] | None = None,
+    concepts: list[list[str]] | None = None,
 ) -> tuple[list[dict], dict[str, Any]]:
-    """extra_terms: model-produced keywords in the translations' vocabulary, searched first."""
+    """extra_terms: model-produced keywords in the translations' vocabulary, searched first.
+    concepts: the same keywords grouped into alternatives for one idea (see concept_synonyms)."""
     analysis = analyze_keyword_query(question, lang)
+    synonyms = concept_synonyms(concepts)
 
     if analysis.get("intent") == "verse_range_lookup" and analysis.get("verse_keys"):
         return (
@@ -1223,13 +1249,13 @@ def keyword_retrieve_smart(
     # Each source is an independent database round trip; run them side by side.
     searches = []
     if "quran" in source_filter:
-        searches.append(_SEARCH_POOL.submit(_search_ayahs, terms, per_source))
+        searches.append(_SEARCH_POOL.submit(_search_ayahs, terms, per_source, synonyms))
     if "hadith" in source_filter:
-        searches.append(_SEARCH_POOL.submit(_search_hadiths, terms, per_source))
+        searches.append(_SEARCH_POOL.submit(_search_hadiths, terms, per_source, synonyms))
     if "dua" in source_filter:
         searches.append(_SEARCH_POOL.submit(_search_duas, terms, per_source, dua_categories or None))
     if "tafsir" in source_filter:
-        searches.append(_SEARCH_POOL.submit(_search_tafsir, terms, per_source // 2))
+        searches.append(_SEARCH_POOL.submit(_search_tafsir, terms, per_source // 2, synonyms))
     for search in searches:
         candidates.extend(search.result())
 
@@ -1246,7 +1272,7 @@ def keyword_retrieve_smart(
     # is available; otherwise they compete on relevance like every other candidate.
     searched = pool if extra_terms else [c for c in pool if not c.get("metadata", {}).get("curated")]
     if terms and searched:
-        for c, score in zip(searched, _coverage_scores([c["content"] for c in searched], _roots(terms))):
+        for c, score in zip(searched, _coverage_scores([c["content"] for c in searched], _roots(terms), None, synonyms)):
             c["similarity"] = score
 
     ranked = sorted(pool, key=lambda x: x["similarity"], reverse=True)

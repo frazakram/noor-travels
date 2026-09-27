@@ -59,3 +59,24 @@ class CuratedHadithReferencesTest(unittest.TestCase):
                 if not any(term in text for term in terms):
                     unrelated.append((cluster["id"], ref, text[:80]))
         self.assertEqual(unrelated, [])
+
+
+class ConceptCoverageTest(unittest.TestCase):
+    """A source using one of the model's alternative words covers that concept in full."""
+
+    def test_synonyms_do_not_count_as_separate_requirements(self):
+        from app.services.keyword_search import _coverage_scores, _roots, concept_synonyms
+
+        concepts = [["backbiting", "gossip", "slander", "defamation"], ["tongue"]]
+        terms = _roots([w for group in concepts for w in group])
+        texts = [
+            "do not spy or backbite each other. Would one of you like to eat the flesh of his brother when dead?",
+            "they spread slander and gossip and defamation with their tongues",
+            "a verse about something unrelated",
+        ]
+        weights = {t: 1.0 for t in terms}
+        grouped = _coverage_scores(texts, terms, weights, concept_synonyms(concepts))
+        flat = _coverage_scores(texts, terms, weights)
+        self.assertGreaterEqual(grouped[0], 0.5)  # one of two concepts, whichever synonym it uses
+        self.assertGreater(grouped[0], flat[0])
+        self.assertEqual(grouped[2], 0.0)

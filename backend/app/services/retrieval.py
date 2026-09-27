@@ -144,6 +144,7 @@ def retrieve_for_question(
     context_verse_keys: list[str] | None = None,
     extra_terms: list[str] | None = None,
     semantic_queries: list[str] | None = None,
+    concepts: list[list[str]] | None = None,
 ) -> tuple[list[dict], dict[str, Any]]:
     """extra_terms / semantic_queries come from the LLM rewrite (query_analyzer.rewrite_for_retrieval):
     keywords in the translations' own vocabulary and short phrases for vector search."""
@@ -235,7 +236,7 @@ def retrieve_for_question(
         if semantic_queries and not matched_clusters and _embedding_chunk_count() > 50
         else None
     )
-    kw_chunks, kw_analysis = keyword_retrieve_smart(question, lang, extra_terms)
+    kw_chunks, kw_analysis = keyword_retrieve_smart(question, lang, extra_terms, concepts)
     if not (matched_clusters and kw_analysis.get("intent") == "surah_summary"):
         candidates.extend(kw_chunks)
     analysis = {**kw_analysis, **analysis, "search_terms": analysis["search_terms"]}

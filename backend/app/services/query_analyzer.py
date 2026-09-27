@@ -73,35 +73,58 @@ The retriever matches words, so it can only find what you name in THOSE translat
 
 Return JSON only:
 {
-  "keywords": ["3-8 single words or short terms"],
+  "follow_up": true or false,
+  "standalone": "the current question, rewritten to make sense on its own",
+  "concepts": [["main topic word", "its alternatives"], ["another distinct idea"]],
   "phrases": ["1-3 short English phrases describing what the answer is about"],
   "wants": ["quran" and/or "hadith" and/or "tafsir" and/or "dua"]
 }
 
 Rules:
-- keywords: the topic itself, not the question's framing. Drop words like written, mentioned, where, allowed, Islam, say.
+- follow_up: true only if the current question refers back to the conversation; a new topic is false.
+- standalone: if the current question depends on the conversation ("explain it", "what about women?",
+  "why?", "give another hadith"), fold in what it refers to. If it is a new topic, return it unchanged:
+  never mix an earlier topic into an unrelated question. Concepts and phrases describe the standalone question.
+- concepts: the 1-3 ideas a source must mention to answer the question, most important first.
+  The first is what is actually being asked (overslept Fajr -> ["forget", "sleep"], not ["Fajr"]).
+  Each concept is a list of 1-4 alternative words for that ONE idea, as different translations might
+  word it (["backbite", "slander"], ["fish", "whale"]); a source with any one of them covers the idea.
+  Never split synonyms into separate concepts, and leave out framing ideas any passage could contain
+  (speech, words, time, rules, people): fewer, sharper concepts find the right text.
+- Concept words: the topic itself, not the question's framing. Drop words like written, mentioned, where, allowed, Islam, say.
 - Use root/base forms (backbite, forget, sleep, combine), not inflections (backbiting, forgotten, slept).
 - Skip generic words (brother, people, good, Allah, prayer) unless they ARE the topic; distinctive words find the right text.
-- Use the translations' spellings and names: Jonah (not Yunus), Moses, Abraham, Noah, Joseph, fish (not whale),
+- Use the translations' spellings and names: Jonah (not Yunus), Moses, Abraham, Noah, Joseph, fish (with whale as an alternative),
   Zuhr, Asr, Maghrib, Isha, usury (riba), prostration (sujood), charity/Zakat, Hajj, Umra, fast/fasting (sawm).
 - Add the concrete words a relevant verse or hadith would contain (beard -> beard, moustaches; missed prayer -> forgets, sleep, remembers).
 - The question may be in Urdu, Hindi, Arabic or Roman script: still answer in English terms."""
 
 
-def rewrite_for_retrieval(client: OpenAI, models: list[str], question: str) -> dict[str, list[str]] | None:
+def rewrite_for_retrieval(
+    client: OpenAI, models: list[str], question: str, history: list[dict[str, str]] | None = None
+) -> dict[str, Any] | None:
     """LLM query understanding for retrieval; None when the model is unavailable or returns nothing usable."""
     from app.services.llm import complete
+
+    turns = [
+        f"{'User' if h.get('role') == 'user' else 'Assistant'}: {str(h.get('content', ''))[:300]}"
+        for h in (history or [])[-4:]
+        if h.get("content")
+    ]
+    content = (
+        "Conversation so far:\n" + "\n".join(turns) + f"\n\nCurrent question: {question}" if turns else question
+    )
 
     response = complete(
         client,
         models,
         messages=[
             {"role": "system", "content": REWRITE_PROMPT},
-            {"role": "user", "content": question},
+            {"role": "user", "content": content},
         ],
         response_format={"type": "json_object"},
         temperature=0,
-        max_tokens=300,
+        max_tokens=350,
     )
     try:
         parsed = json.loads(response.choices[0].message.content or "{}")
@@ -116,8 +139,21 @@ def rewrite_for_retrieval(client: OpenAI, models: list[str], question: str) -> d
         out = [str(v).strip() for v in values if isinstance(v, (str, int)) and str(v).strip()]
         return list(dict.fromkeys(out))[:limit]
 
-    keywords = clean(parsed.get("keywords"), 8)
+    raw_concepts = parsed.get("concepts")
+    concepts = [
+        group for group in (clean(c, 4) for c in (raw_concepts if isinstance(raw_concepts, list) else [])[:4]) if group
+    ]
+    keywords = list(dict.fromkeys(word for group in concepts for word in group))[:12]
     if not keywords:
         return None
     wants = [w for w in clean(parsed.get("wants"), 4) if w in ("quran", "hadith", "tafsir", "dua")]
-    return {"keywords": keywords, "phrases": clean(parsed.get("phrases"), 3), "wants": wants}
+    standalone = parsed.get("standalone")
+    standalone = standalone.strip()[:500] if isinstance(standalone, str) and standalone.strip() else question
+    return {
+        "keywords": keywords,
+        "concepts": concepts,
+        "phrases": clean(parsed.get("phrases"), 3),
+        "wants": wants,
+        "standalone": standalone,
+        "follow_up": parsed.get("follow_up") is True,
+    }

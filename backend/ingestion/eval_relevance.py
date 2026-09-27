@@ -25,7 +25,7 @@ CASES: list[dict] = [
     {"q": "Explain Surah Al-Fatiha", "expect": ["Quran 1:"]},
     {"q": "What is the meaning of Ayat al-Kursi?", "expect": ["Quran 2:255"]},
     {"q": "What does Islam say about backbiting?", "expect": ["Quran 49:12"]},
-    {"q": "Tell me the story of Prophet Yunus and the whale", "expect": ["Quran 37:14", "Quran 21:87", "Quran 21:88", "Quran 68:48"]},
+    {"q": "Tell me the story of Prophet Yunus and the whale", "expect": ["Quran 37:139", "Quran 37:14", "Quran 21:87", "Quran 21:88", "Quran 68:48"]},
     {"q": "What does the Quran say about patience?", "expect": ["Quran 2:153", "Quran 2:155", "Quran 3:200", "Quran 2:45"]},
     {"q": "Is taking interest (riba) allowed?", "expect": ["Quran 2:275", "Quran 2:278", "Quran 2:279", "Quran 3:130"]},
     {"q": "Why do Muslims fast in Ramadan?", "expect": ["Quran 2:183", "Quran 2:185"]},
@@ -40,6 +40,42 @@ CASES: list[dict] = [
     {"q": "What is the punishment for lying?", "expect": ["Sahih al-Bukhari 5862", "Quran 40:28", "Quran 16:105", "Quran 39:3"], "forbid": ["menses"]},
     {"q": "kya namaz qasr kar sakte hain safar mein?", "expect": ["Sahih al-Bukhari 10", "Quran 4:101"]},
     {"q": "What does Islam teach about honesty in trade?", "expect": ["Sahih al-Bukhari", "Quran 83:", "Quran 2:282", "Quran 4:29", "Quran 17:35"]},
+    # Conversations. A new topic must be answered on its own, never mixed with the previous one
+    # (the bug behind "Pagans are..." answering a food question); a real follow-up must carry it.
+    {
+        "q": "Which food is halal for muslims?",
+        "history": [
+            {"role": "user", "content": "Who are pagans?"},
+            {"role": "assistant", "content": "Pagans are those who associate partners with Allah [Quran 9:5]."},
+        ],
+        "expect": ["Quran 5:", "Quran 6:145", "Quran 2:168", "Quran 2:172", "Quran 2:173", "Quran 16:114", "Quran 16:115"],
+        "forbid": ["pagan", "polytheist", "could not find"],
+    },
+    {
+        "q": "Is lying ever allowed?",
+        "history": [
+            {"role": "user", "content": "where it is written to have beard ?"},
+            {"role": "assistant", "content": "Cut the moustaches short and leave the beard [Sahih al-Bukhari 5666]."},
+        ],
+        "expect": ["Sahih al-Bukhari 5862", "Sahih al-Bukhari 2692", "Quran 40:28", "Quran 16:105", "Quran 39:3", "Quran 16:106"],
+        "forbid": ["beard", "moustache"],
+    },
+    {
+        "q": "Explain it in more detail",
+        "history": [
+            {"role": "user", "content": "What is Ayat al-Kursi?"},
+            {"role": "assistant", "content": "Ayat al-Kursi is Quran 2:255, about Allah's knowledge and throne."},
+        ],
+        "expect": ["Quran 2:255"],
+    },
+    {
+        "q": "What about while travelling?",
+        "history": [
+            {"role": "user", "content": "How many rakat is Zuhr prayer?"},
+            {"role": "assistant", "content": "Zuhr is four rakat for a resident."},
+        ],
+        "expect": ["Sahih al-Bukhari 10", "Quran 4:101"],
+    },
 ]
 
 
@@ -55,16 +91,18 @@ def _cites(citation: str, expected: str) -> bool:
     return False
 
 
-def run() -> int:
+def run(only: str = "") -> int:
+    """only: run just the cases whose question contains this text (for iterating on a failure)."""
+    cases = [c for c in CASES if only.lower() in c["q"].lower()]
     passed = 0
     llm_used = 0
-    for case in CASES:
+    for case in cases:
         started = time.perf_counter()
         # Bypass the answer cache so every run measures the current pipeline.
         original_get = rag_service.get_cached
         rag_service.get_cached = lambda _key: None
         try:
-            result = chat(case["q"], lang="en", include_transliteration=False)
+            result = chat(case["q"], lang="en", history=case.get("history"), include_transliteration=False)
         finally:
             rag_service.get_cached = original_get
         elapsed = time.perf_counter() - started
@@ -81,9 +119,9 @@ def run() -> int:
         if not ok:
             print(f"        cites={citations[:4]}")
             print(f"        answer={answer[:140]!r}")
-    print(f"\n=== Relevance: {passed}/{len(CASES)} passed · LLM used for {llm_used}/{len(CASES)} ===")
-    return 0 if passed == len(CASES) else 1
+    print(f"\n=== Relevance: {passed}/{len(cases)} passed · LLM used for {llm_used}/{len(cases)} ===")
+    return 0 if passed == len(cases) else 1
 
 
 if __name__ == "__main__":
-    sys.exit(run())
+    sys.exit(run(sys.argv[1] if len(sys.argv) > 1 else ""))

@@ -15,9 +15,9 @@ ROOT = Path(__file__).resolve().parents[1]
 REPO = ROOT.parent
 sys.path.insert(0, str(ROOT))
 
-from ingestion.eval_chat import FOLLOWUP_CONTEXT, score_case  # noqa: E402
+from ingestion.eval_chat import FOLLOWUP_CONTEXT, resolve_known_follow_up, score_case  # noqa: E402
 from ingestion.generate_eval_questions import TARGET_TOTAL, build_cases  # noqa: E402
-from app.services.rag_service import _chat_local, _merge_history_context  # noqa: E402
+from app.services.rag_service import _chat_local  # noqa: E402
 
 from ingestion.library_shards import CANONICAL_ANSWERS, write_answer_shards  # noqa: E402
 
@@ -52,7 +52,7 @@ def build_library(limit: int | None = None, resume: bool = False) -> dict:
 
         question = case["question"]
         history = FOLLOWUP_CONTEXT.get(question, [])
-        standalone, history_verse_keys = _merge_history_context(question, history)
+        standalone, history_verse_keys = resolve_known_follow_up(question, history)
 
         try:
             result = _chat_local(

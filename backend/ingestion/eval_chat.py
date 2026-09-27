@@ -13,7 +13,7 @@ os.environ.setdefault("FORCE_SQLITE", "1")
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.services.rag_service import _chat_local, _merge_history_context
+from app.services.rag_service import _chat_local, _history_verse_keys
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 QUESTIONS_FILE = DATA_DIR / "eval_questions.json"
@@ -72,6 +72,15 @@ def _dua_answer_has_text(answer: str) -> bool:
     )
 
 
+def resolve_known_follow_up(question: str, history: list[dict]) -> tuple[str, list[str]]:
+    """Offline stand-in for the rewrite model on FOLLOWUP_CONTEXT cases, which are follow-ups
+    by construction: fold in the previous question and carry its verses."""
+    if not history:
+        return question, []
+    last_user = next((m["content"] for m in reversed(history) if m["role"] == "user"), "")
+    return f"{last_user} — {question}", _history_verse_keys(history)
+
+
 def score_case(case: dict) -> dict:
     question = case["question"]
     expected_types = case.get("expected_types", [])
@@ -80,7 +89,7 @@ def score_case(case: dict) -> dict:
     history = FOLLOWUP_CONTEXT.get(question, [])
 
     try:
-        standalone, history_verse_keys = _merge_history_context(question, history)
+        standalone, history_verse_keys = resolve_known_follow_up(question, history)
         result = _chat_local(
             question,
             "en",

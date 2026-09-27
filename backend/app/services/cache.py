@@ -9,7 +9,7 @@ from app.db import get_conn, use_sqlite
 
 
 # Bump when retrieval or answer logic changes so answers cached by older code stop being served.
-CACHE_VERSION = "6"
+CACHE_VERSION = "7"
 
 
 def _normalize(text: str) -> str:

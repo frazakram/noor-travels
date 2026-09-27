@@ -26,13 +26,13 @@ def _no_progress(_stage: str, _data: dict[str, Any]) -> None:
     pass
 
 
-def _rewrite_for_retrieval(question: str) -> dict[str, Any]:
+def _rewrite_for_retrieval(question: str, history: list[dict[str, str]] | None = None) -> dict[str, Any]:
     """Model understanding of the question for retrieval; {} (word matching only) if unavailable."""
     from app.services.llm import rewrite_models
     from app.services.query_analyzer import rewrite_for_retrieval
 
     try:
-        rewrite = rewrite_for_retrieval(groq_client(timeout=6.0), rewrite_models(), question)
+        rewrite = rewrite_for_retrieval(groq_client(timeout=6.0), rewrite_models(), question, history)
     except Exception as exc:
         logger.warning(
             "Query rewrite failed; using word matching only: %s",
@@ -42,7 +42,13 @@ def _rewrite_for_retrieval(question: str) -> dict[str, Any]:
         return {}
     if not rewrite:
         return {}
-    return {"llm_keywords": rewrite["keywords"], "llm_phrases": rewrite["phrases"]}
+    return {
+        "llm_keywords": rewrite["keywords"],
+        "llm_concepts": rewrite["concepts"],
+        "llm_phrases": rewrite["phrases"],
+        "llm_standalone": rewrite["standalone"],
+        "llm_follow_up": rewrite["follow_up"],
+    }
 
 SYSTEM_PROMPT = """You are Noor Safar — an Islamic learning chat assistant for travelers.
 
@@ -93,21 +99,12 @@ def _extract_verse_keys_from_text(text: str) -> list[str]:
     return list(dict.fromkeys(keys))
 
 
-def _merge_history_context(question: str, history: list[dict[str, str]]) -> tuple[str, list[str]]:
-    verse_keys: list[str] = []
+def _history_verse_keys(history: list[dict[str, str]]) -> list[str]:
+    """Verses cited earlier in the conversation, for a question the model judged a follow-up."""
+    keys: list[str] = []
     for turn in history[-8:]:
-        verse_keys.extend(_extract_verse_keys_from_text(turn.get("content", "")))
-
-    standalone = question.strip()
-    if history and len(question.split()) < 14:
-        last_user = next((m["content"] for m in reversed(history) if m.get("role") == "user"), "")
-        last_asst = next((m["content"] for m in reversed(history) if m.get("role") == "assistant"), "")
-        if last_user and last_user.strip() != question.strip():
-            standalone = f"{last_user.strip()} — {question.strip()}"
-        elif last_asst:
-            standalone = f"{last_asst[:240].strip()} — {question.strip()}"
-
-    return standalone, list(dict.fromkeys(verse_keys))
+        keys.extend(_extract_verse_keys_from_text(turn.get("content", "")))
+    return list(dict.fromkeys(keys))
 
 
 def _normalize_source_score(score: float) -> float:
@@ -154,7 +151,11 @@ def chat(
     settings = get_settings()
     history = history or []
     out_lang = response_lang or lang
-    standalone, history_verse_keys = _merge_history_context(question, history)
+    # Whether a question continues the conversation is decided in exactly one place: the
+    # rewrite model, which reads the recent turns. Until it says "follow-up", a question stands
+    # alone, so an earlier topic can never leak into a new one.
+    standalone = question.strip()
+    history_verse_keys: list[str] = []
 
     history_tail = " ".join(m["content"] for m in history[-2:])
     cache_key = make_cache_key(question, out_lang, history_tail, include_transliteration)
@@ -173,7 +174,15 @@ def chat(
             _la = {**_la, "themes": []}
         else:
             progress("understanding", {})
-            _la = {**_la, **_rewrite_for_retrieval(standalone)}
+            # The model reads the raw question with the conversation and resolves follow-ups itself.
+            rewrite = _rewrite_for_retrieval(question, history)
+            if history and rewrite.get("llm_follow_up") and rewrite.get("llm_standalone"):
+                standalone = rewrite["llm_standalone"]
+                history_verse_keys = _history_verse_keys(history)
+                _la = analyze_keyword_query(standalone, out_lang)
+                if _la.get("intent") in STRUCTURED_INTENTS:
+                    _la = {**_la, "themes": []}
+            _la = {**_la, **rewrite}
         progress("searching", {"keywords": (_la.get("llm_keywords") or _la.get("search_terms") or [])[:6]})
         local_analysis = {
             **_la,
@@ -523,6 +532,7 @@ def _chat_with_openai(
         context_verse_keys=history_verse_keys,
         extra_terms=analysis.get("llm_keywords"),
         semantic_queries=analysis.get("llm_phrases"),
+        concepts=analysis.get("llm_concepts"),
     )
     chunks = _prioritize_chunks_for_question(standalone or question, chunks)
     chunks = rerank(standalone, chunks, get_settings().rag_final_k)
