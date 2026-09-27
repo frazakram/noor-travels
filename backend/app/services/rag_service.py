@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-from typing import Any
+from typing import Any, Callable
 
 from openai import APIError, OpenAI
 
@@ -16,6 +16,14 @@ from app.services.query_analyzer import analyze_query
 logger = logging.getLogger(__name__)
 
 STRUCTURED_INTENTS = {"surah_summary", "verse_lookup", "verse_range_lookup", "surah_number_lookup"}
+
+# progress(stage, data) reports real pipeline steps to a streaming client:
+# "understanding" → "searching" {keywords} → "found" {sources} → "writing".
+Progress = Callable[[str, dict[str, Any]], None]
+
+
+def _no_progress(_stage: str, _data: dict[str, Any]) -> None:
+    pass
 
 
 def _rewrite_for_retrieval(question: str) -> dict[str, Any]:
@@ -63,6 +71,7 @@ LANGUAGE RULES (strict):
 TRANSLITERATION RULES:
 - If include_transliteration is true: put ALL roman transliterations in the separate "transliteration" field (not in answer).
 - transliteration field: roman Latin script for Arabic quotes and key terms, one per line.
+  Never put source references there (they belong in "citations"); if nothing Arabic is quoted, use "".
 - If include_transliteration is false: leave transliteration as empty string.
 
 Citation format: [Quran 2:255], [Sahih al-Bukhari 431], [Dua travel-4]
@@ -139,6 +148,7 @@ def chat(
     history: list[dict[str, str]] | None = None,
     response_lang: str | None = None,
     include_transliteration: bool = True,
+    progress: Progress = _no_progress,
 ) -> dict[str, Any]:
     settings = get_settings()
     history = history or []
@@ -161,7 +171,9 @@ def chat(
         if _la.get("intent") in STRUCTURED_INTENTS:
             _la = {**_la, "themes": []}
         else:
+            progress("understanding", {})
             _la = {**_la, **_rewrite_for_retrieval(standalone)}
+        progress("searching", {"keywords": (_la.get("llm_keywords") or _la.get("search_terms") or [])[:6]})
         local_analysis = {
             **_la,
             "search_queries_en": _la.get("search_terms") or [standalone],
@@ -180,6 +192,7 @@ def chat(
                 cache_key=cache_key,
                 models=groq_models(),
                 mode="groq",
+                progress=progress,
             )
             result = _apply_validation(question, result)
             set_cached(cache_key, result)
@@ -494,6 +507,7 @@ def _chat_with_openai(
     cache_key: str,
     models: list[str] | None = None,
     mode: str = "openai",
+    progress: Progress = _no_progress,
 ) -> dict[str, Any]:
     analysis = analysis or analyze_query(client, question, out_lang, history)
     search_queries = analysis["search_queries_en"]
@@ -511,6 +525,7 @@ def _chat_with_openai(
     )
     chunks = _prioritize_chunks_for_question(standalone or question, chunks)
     chunks = rerank(standalone, chunks, get_settings().rag_final_k)
+    progress("found", {"sources": [c["source_ref"] for c in chunks[:6]]})
 
     from app.services.keyword_search import extract_search_terms
     from app.services.query_expansion import build_analysis
@@ -567,6 +582,7 @@ def _chat_with_openai(
         ),
     })
 
+    progress("writing", {})
     response = complete(
         client,
         models or [get_settings().chat_model],
@@ -592,7 +608,7 @@ def _chat_with_openai(
     refused = _is_refusal_answer(answer)
 
     citations = [] if refused else _validate_citations(parsed.get("citations", []), chunks)
-    transliteration = parsed.get("transliteration", "") if include_transliteration else ""
+    transliteration = _clean_transliteration(parsed.get("transliteration", "")) if include_transliteration else ""
 
     result = {
         "answer": answer,
@@ -607,6 +623,21 @@ def _chat_with_openai(
 
     set_cached(cache_key, result)
     return result
+
+
+_SOURCE_REF = re.compile(
+    r"\[?\b(?:Quran|Tafsir|Dua|Sahih\s+al-\w+|Sunan\s+\w+(?:\s+\w+)?|Jami`?\s*at-Tirmidhi)\s+[\w:-]+(?:\s*\([^)]*\))?\]?",
+    re.I,
+)
+
+
+def _clean_transliteration(text: Any) -> str:
+    """Transliteration is Arabic in Latin letters. The model sometimes fills it with source
+    references instead; those are already shown as citations, so drop them."""
+    if not isinstance(text, str):
+        return ""
+    lines = (_SOURCE_REF.sub("", line).strip(" ,;·-") for line in text.splitlines())
+    return "\n".join(line for line in lines if re.search(r"[A-Za-z]{2}", line))
 
 
 def ask(query: str, lang: str = "en") -> dict[str, Any]:

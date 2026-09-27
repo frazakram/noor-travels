@@ -2,11 +2,12 @@
 import logging
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from app.core.config import get_settings
 from app.db import DatabaseUnavailable, get_conn, use_sqlite
-from app.services.hybrid_retriever import hybrid_retrieve, rerank
+from app.services.hybrid_retriever import rerank, semantic_retrieve
 from app.services.keyword_search import (
     _hadith_topic_terms,
     _search_hadiths,
@@ -32,6 +33,7 @@ def _is_surah_number_question(question: str) -> bool:
 logger = logging.getLogger(__name__)
 
 _CHUNK_COUNT_TTL_S = 600
+_SEMANTIC_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="semantic")
 _chunk_count_cache: tuple[float, int] | None = None
 
 
@@ -226,6 +228,13 @@ def retrieve_for_question(
         return themed, analysis
 
     candidates: list[dict] = []
+    # Model-written phrases don't depend on keyword results, so their vector search (an
+    # embedding call plus pgvector) runs while the keyword search does.
+    semantic_ahead = (
+        _SEMANTIC_POOL.submit(semantic_retrieve, semantic_queries, source_filter)
+        if semantic_queries and not matched_clusters and _embedding_chunk_count() > 50
+        else None
+    )
     kw_chunks, kw_analysis = keyword_retrieve_smart(question, lang, extra_terms)
     if not (matched_clusters and kw_analysis.get("intent") == "surah_summary"):
         candidates.extend(kw_chunks)
@@ -272,7 +281,10 @@ def retrieve_for_question(
     )
     if need_semantic:
         try:
-            candidates.extend(hybrid_retrieve(semantic_queries or [question], source_filter))
+            if semantic_ahead is not None:
+                candidates.extend(semantic_ahead.result())
+            else:
+                candidates.extend(semantic_retrieve([question], source_filter))
         except DatabaseUnavailable:
             raise
         except Exception:

@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useChat } from "@/components/ChatProvider";
+import { ChatSearchProgress } from "@/components/ChatSearchProgress";
 import { useLang } from "@/components/LangProvider";
 import { NoticeCard } from "@/components/NoticeCard";
 import { api } from "@/lib/api";
+import { StreamUnavailable, streamChat, type ChatStage } from "@/lib/chat-stream";
 import { t, type Lang } from "@/lib/i18n";
 
 type SourceDetail = {
@@ -23,6 +25,8 @@ type ChatMessage = {
   notice?: string;
   confidence?: string;
   responseLang?: Lang;
+  /** Freshly arrived answer: reveal it word by word once. */
+  reveal?: boolean;
 };
 
 type ChatResponse = {
@@ -72,6 +76,37 @@ function ConfidenceBadge({ confidence, sources, lang }: { confidence: string; so
   );
 }
 
+/** Reveals text word by word (a fresh answer "arriving"); instant with reduced motion. */
+function RevealText({ text, animate }: { text: string; animate: boolean }) {
+  const [shown, setShown] = useState(animate ? 0 : text.length);
+
+  useEffect(() => {
+    if (!animate || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setShown(text.length);
+      return;
+    }
+    // Long answers speed up so the reveal never takes more than ~1.4s.
+    const duration = Math.min(1400, Math.max(500, text.length * 4));
+    const start = performance.now();
+    let frame = requestAnimationFrame(function tick(now) {
+      const progress = Math.min(1, (now - start) / duration);
+      const target = Math.floor(text.length * progress);
+      // Cut at the next space so words appear whole.
+      const cut = progress >= 1 ? text.length : text.indexOf(" ", target);
+      setShown(cut === -1 ? text.length : cut);
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [text, animate]);
+
+  return (
+    <p className="whitespace-pre-wrap">
+      {text.slice(0, shown)}
+      {shown < text.length && <span className="ms-0.5 inline-block h-3.5 w-1.5 translate-y-0.5 animate-pulse rounded-sm bg-noor-500/70" aria-hidden />}
+    </p>
+  );
+}
+
 export function ChatWidget() {
   const { lang } = useLang();
   const { isOpen, closeChat } = useChat();
@@ -82,6 +117,7 @@ export function ChatWidget() {
   const [outputLang, setOutputLang] = useState<Lang>(lang);
   const [showTransliteration, setShowTransliteration] = useState(true);
   const [retranslatePending, setRetranslatePending] = useState(false);
+  const [stages, setStages] = useState<ChatStage[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -106,7 +142,7 @@ export function ChatWidget() {
 
   useEffect(() => {
     if (isOpen) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading, isOpen]);
+  }, [messages, loading, isOpen, stages]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -125,19 +161,27 @@ export function ChatWidget() {
     setMessages(nextHistory);
     setInput("");
     setLoading(true);
+    setStages([]);
 
     try {
       const history = messages.map((m) => ({ role: m.role, content: m.content }));
-      const data = await api<ChatResponse>("/api/rag/chat", {
-        method: "POST",
-        body: JSON.stringify({
-          message: text.trim(),
-          lang: answerLang,
-          response_lang: answerLang,
-          include_transliteration: showTransliteration,
-          history,
-        }),
-      });
+      const body = {
+        message: text.trim(),
+        lang: answerLang,
+        response_lang: answerLang,
+        include_transliteration: showTransliteration,
+        history,
+      };
+      let data: ChatResponse;
+      try {
+        data = await streamChat<ChatResponse>(body, (stage) =>
+          setStages((prev) => [...prev.filter((s) => s.stage !== stage.stage), stage]),
+        );
+      } catch (err) {
+        // Older backend or a proxy that refuses the stream: same answer, just without live stages.
+        if (!(err instanceof StreamUnavailable)) throw err;
+        data = await api<ChatResponse>("/api/rag/chat", { method: "POST", body: JSON.stringify(body) });
+      }
       setMessages([
         ...nextHistory,
         {
@@ -149,6 +193,7 @@ export function ChatWidget() {
           notice: data.notice,
           confidence: data.confidence,
           responseLang: answerLang,
+          reveal: true,
         },
       ]);
     } catch {
@@ -300,14 +345,18 @@ export function ChatWidget() {
                   m.role === "user"
                     ? "bg-noor-700 text-white dark:bg-noor-600"
                     : "border border-subtle bg-surface-muted text-noor-900 dark:text-noor-50"
-                }`}
+                } ${m.reveal ? "animate-answer-in" : ""}`}
                 dir={msgDir}
               >
                 {m.role === "assistant" && m.notice && (
                   <p className="mb-2 text-[10px] italic text-faint">{m.notice}</p>
                 )}
 
-                <p className="whitespace-pre-wrap">{m.content}</p>
+                {m.role === "assistant" ? (
+                  <RevealText text={m.content} animate={!!m.reveal} />
+                ) : (
+                  <p className="whitespace-pre-wrap">{m.content}</p>
+                )}
 
                 {m.role === "assistant" && m.confidence && (
                   <ConfidenceBadge confidence={m.confidence} sources={m.sources} lang={lang} />
@@ -351,10 +400,8 @@ export function ChatWidget() {
           })}
 
           {loading && (
-            <div className="flex justify-start">
-              <div className="rounded-2xl border border-subtle bg-surface-muted px-3 py-2 text-xs text-faint">
-                {t(lang, "chatThinking")}
-              </div>
+            <div className="flex justify-start animate-fade-in-up">
+              <ChatSearchProgress stages={stages} lang={lang} />
             </div>
           )}
           <div ref={bottomRef} />
