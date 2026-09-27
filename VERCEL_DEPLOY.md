@@ -55,7 +55,9 @@ cd backend
 export POSTGRES_URL="postgresql://postgres.[ref]:[password]@...pooler.supabase.com:6543/postgres"
 unset FORCE_SQLITE
 
-python ingestion/migrate.py                 # tables (includes 006: embedding -> vector(384))
+python ingestion/migrate.py                 # base tables (001, 003)
+# Later migrations are applied by hand, in order, once each (006 re-run would wipe embeddings):
+#   psql "$POSTGRES_URL" -f migrations/00N_name.sql   for 002, 004–011
 python ingestion/fetch_quran.py
 python ingestion/fetch_hadith.py
 python ingestion/seed_duas.py

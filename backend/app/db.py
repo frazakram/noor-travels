@@ -11,7 +11,6 @@ from typing import Any
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from psycopg2.pool import PoolError, ThreadedConnectionPool
 
 from app.core.config import get_settings
 
@@ -43,22 +42,28 @@ def use_sqlite() -> bool:
     return not get_settings().postgres_url.strip()
 
 
-_pool: ThreadedConnectionPool | None = None
+# Idle connections kept for reuse. psycopg2's own pool closes every returned connection
+# beyond `minconn`, which made each query pay a fresh TLS handshake.
+_idle: list = []
 _pool_lock = threading.Lock()
 _last_used: dict[int, float] = {}
-# Connections opened directly because the pool was full; closed after use, never pooled.
-_overflow: set[int] = set()
 
 
-def _get_pool() -> ThreadedConnectionPool:
-    global _pool
-    if _pool is None:
-        with _pool_lock:
-            if _pool is None:
-                _pool = ThreadedConnectionPool(
-                    0, POOL_MAX, get_settings().database_url, connect_timeout=CONNECT_TIMEOUT_S
-                )
-    return _pool
+def _connect():
+    return psycopg2.connect(get_settings().database_url, connect_timeout=CONNECT_TIMEOUT_S)
+
+
+def _release(conn, broken: bool) -> None:
+    with _pool_lock:
+        if not broken and not conn.closed and len(_idle) < POOL_MAX:
+            _last_used[id(conn)] = time.monotonic()
+            _idle.append(conn)
+            return
+    _last_used.pop(id(conn), None)
+    try:
+        conn.close()
+    except psycopg2.Error:
+        pass
 
 
 def _is_alive(conn) -> bool:
@@ -76,21 +81,20 @@ def _is_alive(conn) -> bool:
 
 
 def _checkout_postgres():
+    # Reuse an idle connection if one is still alive (instances freeze between requests).
+    while True:
+        with _pool_lock:
+            conn = _idle.pop() if _idle else None
+        if conn is None:
+            break
+        if _is_alive(conn):
+            return conn
+        _release(conn, broken=True)
+
     last_error: Exception | None = None
     for attempt in range(CONNECT_ATTEMPTS):
         try:
-            pool = _get_pool()
-            try:
-                conn = pool.getconn()
-            except PoolError:
-                # Pool exhausted means busy, not down — serve this request on its own connection.
-                conn = psycopg2.connect(get_settings().database_url, connect_timeout=CONNECT_TIMEOUT_S)
-                _overflow.add(id(conn))
-                return conn
-            if _is_alive(conn):
-                return conn
-            pool.putconn(conn, close=True)
-            _last_used.pop(id(conn), None)
+            return _connect()
         except psycopg2.Error as exc:
             last_error = exc
             logger.warning("postgres connect failed (attempt %d/%d): %s", attempt + 1, CONNECT_ATTEMPTS, exc)
@@ -141,14 +145,7 @@ def get_conn():
                 broken = True
         raise
     finally:
-        if id(conn) in _overflow:
-            _overflow.discard(id(conn))
-            conn.close()
-        else:
-            _last_used[id(conn)] = time.monotonic()
-            _get_pool().putconn(conn, close=broken)
-            if broken:
-                _last_used.pop(id(conn), None)
+        _release(conn, broken)
 
 
 @contextmanager

@@ -1,6 +1,7 @@
 """Local keyword retrieval when OpenAI embeddings are unavailable."""
 import math
 import re
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from app.core.config import get_settings
@@ -656,13 +657,79 @@ def _concept_groups(terms: list[str]) -> list[list[str]]:
     return groups
 
 
-def _coverage_scores(texts: list[str], terms: list[str]) -> list[float]:
+PREFILTER_LIMIT = 60
+# A term found in more than this share of rows ("sin", "punish" in tafsir) says little about
+# relevance but makes the database recheck thousands of rows; it still adds to the score of
+# rows that match the query's rarer terms, but it can't bring a row in on its own.
+COMMON_TERM_SHARE = 0.04
+# Source tables are only written by ingestion, so a term's document frequency never changes
+# within an instance's lifetime. Keyed by (table, filter, text expression, term).
+_df_cache: dict[tuple[str, str, str, str], int] = {}
+_df_total: dict[tuple[str, str], int] = {}
+_DF_CACHE_MAX = 20_000
+
+
+def _document_frequencies(cur, table: str, text_expr: str, terms: list[str], extra_where: str) -> tuple[int, dict[str, int]]:
+    scope = f" WHERE {extra_where}" if extra_where else ""
+    also = f" AND {extra_where}" if extra_where else ""
+    total_key = (table, extra_where)
+    missing = [t for t in terms if (table, extra_where, text_expr, t.lower()) not in _df_cache]
+    if missing or total_key not in _df_total:
+        # One scalar subquery per term, so each count can use the trigram index (migration 011).
+        df_sql = f"SELECT (SELECT COUNT(*) FROM {table}{scope}) AS n" + "".join(
+            f", (SELECT COUNT(*) FROM {table} WHERE {text_expr} ILIKE ?{also}) AS d{i}"
+            for i in range(len(missing))
+        )
+        _run_query(cur, df_sql, [f"%{t}%" for t in missing])
+        counts = cur.fetchone() or {}
+        if len(_df_cache) > _DF_CACHE_MAX:
+            _df_cache.clear()
+        _df_total[total_key] = int(counts.get("n") or 0)
+        for i, t in enumerate(missing):
+            _df_cache[(table, extra_where, text_expr, t.lower())] = int(counts.get(f"d{i}") or 0)
+    return _df_total[total_key], {t: _df_cache[(table, extra_where, text_expr, t.lower())] for t in terms}
+
+
+def _ranked_rows(
+    table: str, text_expr: str, select_cols: str, terms: list[str], extra_where: str = ""
+) -> tuple[list[dict], dict[str, float]]:
+    """Rank candidates inside the database and return only the top PREFILTER_LIMIT rows.
+
+    Pulling every row that contains any term into Python (thousands for a word like
+    "prayer") made retrieval network-bound. The database computes each term's document
+    frequency over the whole table (IDF), scores rows by the weights of the terms they
+    contain, and sends back the best few; precise scoring then runs on those rows with
+    the same table-wide weights.
+    """
+    if not terms:
+        return [], {}
+    with get_cursor() as cur:
+        total, dfs = _document_frequencies(cur, table, text_expr, terms, extra_where)
+        weights = {t: (math.log(1 + total / (1 + dfs[t])) if dfs[t] else 0.0) for t in terms}
+        live = [t for t in terms if dfs[t]]
+        if not live:
+            return [], weights
+        informative = [t for t in live if dfs[t] <= COMMON_TERM_SHARE * total] or live
+        score_expr = " + ".join(
+            f"(CASE WHEN {text_expr} ILIKE ? THEN {weights[t]:.6f} ELSE 0 END)" for t in live
+        )
+        match_expr = " OR ".join(f"{text_expr} ILIKE ?" for _ in informative)
+        where = f"({match_expr})" + (f" AND {extra_where}" if extra_where else "")
+        sql = (
+            f"SELECT {select_cols}, ({score_expr}) AS prefilter_score FROM {table} "
+            f"WHERE {where} ORDER BY prefilter_score DESC LIMIT {PREFILTER_LIMIT}"
+        )
+        _run_query(cur, sql, [f"%{t}%" for t in live] + [f"%{t}%" for t in informative])
+        return cur.fetchall(), weights
+
+
+def _coverage_scores(texts: list[str], terms: list[str], weights: dict[str, float] | None = None) -> list[float]:
     """Relevance in 0..1: weighted share of the query's concepts a text contains.
 
     Rare terms weigh more (IDF over the candidate set), a word and its stem count once,
     and adjacent query terms found together ("six days") earn a phrase bonus.
     """
-    weights = _term_weights(texts, terms)
+    weights = weights if weights is not None else _term_weights(texts, terms)
     pairs = [f"{a.lower()} {b.lower()}" for a, b in zip(terms, terms[1:])]
     concepts = _concept_groups(terms)
     raw = []
@@ -790,35 +857,18 @@ def _search_ayahs(terms: list[str], limit: int) -> list[dict]:
     if not terms:
         return []
     terms = _roots(terms)
-    clauses = []
-    params: list[Any] = []
-    for t in terms:
-        clauses.append(
-            "(translation_en ILIKE ? OR translation_ur ILIKE ? OR transliteration ILIKE ?)"
-        )
-        pat = f"%{t}%"
-        params.extend([pat, pat, pat])
-
-    # No SQL-level LIMIT here on purpose: it used to truncate the candidate pool BEFORE
-    # relevance scoring ran below, so a correct match past the first N table-order rows
-    # was silently dropped no matter how well it would have scored. ayahs is only 6,236
-    # rows — scoring the full WHERE-matched set in Python is cheap.
-    where = " OR ".join(clauses)
-    sql = f"""
-        SELECT verse_key, arabic, transliteration, translation_en, translation_ur
-        FROM ayahs WHERE {where}
-    """
-
+    rows, weights = _ranked_rows(
+        "ayahs",
+        "(COALESCE(translation_en, '') || ' ' || COALESCE(transliteration, '') || ' ' || COALESCE(translation_ur, ''))",
+        "verse_key, arabic, transliteration, translation_en, translation_ur",
+        terms,
+    )
     results = []
-    with get_cursor() as cur:
-        _run_query(cur, sql, params)
-        rows = cur.fetchall()
-
     fields = [
         _row_fields(row, "verse_key", "arabic", "transliteration", "translation_en", "translation_ur")
         for row in rows
     ]
-    scores = _coverage_scores([f"{en} {tr}" for _vk, _ar, tr, en, _ur in fields], terms)
+    scores = _coverage_scores([f"{en} {tr}" for _vk, _ar, tr, en, _ur in fields], terms, weights)
     for (vk, ar, tr, en, ur), score in zip(fields, scores):
         content = f"Quran {vk}. Arabic: {ar}. English: {en}. Urdu: {ur}."
         if score < 0.2:
@@ -861,25 +911,15 @@ def _search_hadiths(terms: list[str], limit: int) -> list[dict]:
     if not terms:
         return []
     topic_terms = _roots(_hadith_topic_terms(terms))
-    clauses = []
-    params: list[Any] = []
-    for t in topic_terms:
-        clauses.append("(english ILIKE ? OR chapter_en ILIKE ?)")
-        pat = f"%{t}%"
-        params.extend([pat, pat])
-
-    # No SQL-level LIMIT — see _search_ayahs for why. hadiths is ~7,277 rows, cheap to
-    # score fully in Python before slicing to `limit` below.
-    where = " OR ".join(clauses)
-    sql = f"SELECT id, reference, chapter_en, arabic, english FROM hadiths WHERE {where}"
-
+    rows, weights = _ranked_rows(
+        "hadiths",
+        "(COALESCE(chapter_en, '') || ' ' || COALESCE(english, ''))",
+        "id, reference, chapter_en, arabic, SUBSTR(english, 1, 1500) AS english",
+        topic_terms,
+    )
     results = []
-    with get_cursor() as cur:
-        _run_query(cur, sql, params)
-        rows = cur.fetchall()
-
     fields = [_row_fields(row, "id", "reference", "chapter_en", "arabic", "english") for row in rows]
-    scores = _coverage_scores([f"{ch} {en[:1500]}" for _h, _r, ch, _a, en in fields], topic_terms)
+    scores = _coverage_scores([f"{ch} {en[:1500]}" for _h, _r, ch, _a, en in fields], topic_terms, weights)
     for (hid, ref, ch, ar, en), score in zip(fields, scores):
         content = f"{ref}. Chapter: {ch}. English: {en[:1500]}."
         if score < 0.35:
@@ -1005,26 +1045,12 @@ def _search_tafsir(terms: list[str], limit: int) -> list[dict]:
     if not terms:
         return []
     terms = _roots(terms)
-    clauses = []
-    params: list[Any] = []
-    for t in terms:
-        clauses.append("text ILIKE ?")
-        params.append(f"%{t}%")
-
-    # No SQL-level LIMIT — see _search_ayahs for why. tafsir is 6,236 rows.
-    where = " OR ".join(clauses)
-    sql = f"""
-        SELECT verse_key, source, text FROM tafsir
-        WHERE source IN ('ibn_kathir_en', 'maududi_ur') AND ({where})
-    """
-
+    rows, weights = _ranked_rows(
+        "tafsir", "SUBSTR(text, 1, 2000)", "verse_key, source, SUBSTR(text, 1, 2000) AS text", terms, "source IN ('ibn_kathir_en', 'maududi_ur')"
+    )
     results = []
-    with get_cursor() as cur:
-        _run_query(cur, sql, params)
-        rows = cur.fetchall()
-
     fields = [_row_fields(row, "verse_key", "source", "text") for row in rows]
-    scores = _coverage_scores([txt[:2000] for _vk, _src, txt in fields], terms)
+    scores = _coverage_scores([txt[:2000] for _vk, _src, txt in fields], terms, weights)
     for (vk, src, txt), score in zip(fields, scores):
         content = f"Tafsir {src} {vk}: {txt[:2000]}"
         if score < 0.25:
@@ -1152,6 +1178,9 @@ def _fetch_verse_lookup_chunks(verse_key: str) -> list[dict]:
     return chunks
 
 
+_SEARCH_POOL = ThreadPoolExecutor(max_workers=8, thread_name_prefix="kw-search")
+
+
 def keyword_retrieve_smart(
     question: str, lang: str = "en", extra_terms: list[str] | None = None
 ) -> tuple[list[dict], dict[str, Any]]:
@@ -1191,14 +1220,18 @@ def keyword_retrieve_smart(
     candidates.extend(_fetch_ayah_chunks(analysis.get("verse_keys") or []))
     candidates.extend(_fetch_hadith_by_refs(analysis.get("hadith_refs") or []))
 
+    # Each source is an independent database round trip; run them side by side.
+    searches = []
     if "quran" in source_filter:
-        candidates.extend(_search_ayahs(terms, per_source))
+        searches.append(_SEARCH_POOL.submit(_search_ayahs, terms, per_source))
     if "hadith" in source_filter:
-        candidates.extend(_search_hadiths(terms, per_source))
+        searches.append(_SEARCH_POOL.submit(_search_hadiths, terms, per_source))
     if "dua" in source_filter:
-        candidates.extend(_search_duas(terms, per_source, dua_categories or None))
+        searches.append(_SEARCH_POOL.submit(_search_duas, terms, per_source, dua_categories or None))
     if "tafsir" in source_filter:
-        candidates.extend(_search_tafsir(terms, per_source // 2))
+        searches.append(_SEARCH_POOL.submit(_search_tafsir, terms, per_source // 2))
+    for search in searches:
+        candidates.extend(search.result())
 
     seen: dict[str, dict] = {}
     for c in candidates:
