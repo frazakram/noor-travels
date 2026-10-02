@@ -82,7 +82,9 @@ def main() -> None:
     vectors: list[list[float]] = []
     for i in range(0, len(texts), BATCH_SIZE):
         batch = texts[i : i + BATCH_SIZE]
-        vectors.extend(embed_texts(batch))
+        # "query" on both sides: matching a quote to a verse is text-to-text similarity, which
+        # e5-style models encode symmetrically (quran_identify embeds the quote the same way).
+        vectors.extend(embed_texts(batch, kind="query"))
         print(f"  {min(i + BATCH_SIZE, len(texts))}/{len(texts)}", end="\r")
     print()
 

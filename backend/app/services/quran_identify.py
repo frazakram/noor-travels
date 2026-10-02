@@ -35,7 +35,6 @@ from rapidfuzz import fuzz
 if TYPE_CHECKING:
     import numpy as np
 
-from app.core.config import get_settings
 from app.db import get_cursor
 from app.services.embedding_service import embed_texts
 from app.services.text_normalize import normalize_arabic
@@ -53,6 +52,9 @@ ARABIC_QUICK_PREFILTER_N = 40
 
 ENGLISH_SIMILARITY_HIGH = 0.75
 ENGLISH_SIMILARITY_MEDIUM = 0.60
+# Below this a quote isn't treated as matching a verse at all. Separate from chat's
+# rag_min_similarity: quote-to-verse matching and question-to-passage search score differently.
+ENGLISH_SIMILARITY_FLOOR = 0.50
 
 # Floor for the plain-text fuzzy pass over English translations (see _match_english_exact) —
 # same coverage-score scale as the Arabic path, different constant since it's a distinct signal.
@@ -258,7 +260,6 @@ def _match_english_semantic(query_text: str, top_k: int = 5) -> list[dict]:
     try:
         import numpy as np
 
-        settings = get_settings()
         embeddings = embed_texts([_strip_ocr_noise(query_text)])
         if not embeddings:
             return []
@@ -270,14 +271,14 @@ def _match_english_semantic(query_text: str, top_k: int = 5) -> list[dict]:
 
         matrix, verse_keys = _load_english_embeddings()
         similarities = matrix @ query_vec
-        # Grab extra candidates before the floor cut — some may not clear rag_min_similarity.
+        # Grab extra candidates before the floor cut — some may not clear ENGLISH_SIMILARITY_FLOOR.
         top_indices = np.argsort(-similarities)[: top_k * 4]
 
         by_verse_key = _ayah_by_verse_key()
         candidates = []
         for idx in top_indices:
             score = float(similarities[idx])
-            if score < settings.rag_min_similarity:
+            if score < ENGLISH_SIMILARITY_FLOOR:
                 break  # sorted descending, nothing after this clears the floor either
             row = by_verse_key.get(verse_keys[idx])
             if not row:

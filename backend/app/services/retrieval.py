@@ -52,7 +52,10 @@ def _count_embedding_chunks() -> int:
     try:
         with get_conn() as conn:
             cur = conn.cursor()
-            cur.execute("SELECT COUNT(*) FROM document_chunks")
+            # Only vectors from the model /api/embed serves are searchable (see Settings.semantic_model).
+            tag = "json_extract(metadata, '$.embed_model')" if use_sqlite() else "metadata->>'embed_model'"
+            mark = "?" if use_sqlite() else "%s"
+            cur.execute(f"SELECT COUNT(*) FROM document_chunks WHERE {tag} = {mark}", (get_settings().semantic_model,))
             row = cur.fetchone()
             if use_sqlite():
                 return int(row[0] if not isinstance(row, dict) else list(row.values())[0])

@@ -53,14 +53,20 @@ def _embed_auth_header() -> dict[str, str]:
     return {"x-embed-secret": secret} if secret else {}
 
 
-def _embed_via_xenova(texts: list[str]) -> list[list[float]]:
+class EmbeddingModelMismatch(RuntimeError):
+    """/api/embed serves a different model than the backend's index expects (e.g. the frontend
+    and backend deployed at different times). Comparing such vectors gives meaningless scores."""
+
+
+def _embed_via_xenova(texts: list[str], kind: str) -> list[list[float]]:
     """Call Next.js /api/embed in batches of 32."""
-    url = get_settings().embed_url
+    settings = get_settings()
+    url = settings.embed_url
     results: list[list[float]] = []
     batch_size = 32
     for i in range(0, len(texts), batch_size):
         batch = texts[i : i + batch_size]
-        payload = json.dumps({"texts": batch}).encode()
+        payload = json.dumps({"texts": batch, "kind": kind}).encode()
         req = urllib.request.Request(
             url,
             data=payload,
@@ -71,12 +77,19 @@ def _embed_via_xenova(texts: list[str]) -> list[list[float]]:
             data = json.loads(resp.read())
         if "error" in data:
             raise RuntimeError(f"Xenova embed error: {data['error']}")
+        if data.get("model") != settings.semantic_model:
+            raise EmbeddingModelMismatch(
+                f"/api/embed serves {data.get('model') or 'an untagged model'}, expected {settings.semantic_model}"
+            )
         results.extend(data["embeddings"])
     return results
 
 
-def embed_texts(texts: list[str]) -> list[list[float]]:
-    """Embed a batch of texts. Returns list of float vectors."""
+def embed_texts(texts: list[str], kind: str = "query") -> list[list[float]]:
+    """Embed a batch of texts. Returns list of float vectors.
+
+    kind: "query" for questions and for symmetric text-to-text matching, "passage" for corpus
+    text being indexed for question search (the model encodes the two roles differently)."""
     if not texts:
         return []
 
@@ -84,7 +97,7 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
     safe = [truncate_text(t) for t in texts]
 
     if use_xenova_embeddings():
-        return _embed_via_xenova(safe)
+        return _embed_via_xenova(safe, kind)
 
     if use_local_embeddings():
         model = _load_local_model()

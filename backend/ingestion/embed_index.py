@@ -1,26 +1,37 @@
 #!/usr/bin/env python3
-"""Build RAG embeddings for Quran ayahs, hadiths, and duas."""
+"""Build semantic-search vectors for Quran ayahs, hadiths and duas.
+
+Each source gets one row in document_chunks, tagged with the embedding model that produced it
+(metadata.embed_model = Settings.semantic_model). Search only reads rows with the current tag,
+so this script can rebuild the index for a new model while the old rows keep serving: each
+source's row is replaced in place, and a rerun skips sources already done (resumable).
+
+Run it against the same /api/embed route production uses, so stored and query vectors come
+from one model. A local `npm run dev` serves the identical route and is much faster:
+
+    cd backend && EMBEDDING_PROVIDER=xenova EMBED_API_URL=http://localhost:3001/api/embed \\
+      FORCE_SQLITE= .venv/bin/python ingestion/embed_index.py
+"""
 import sys
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from app.core.config import get_settings
 from app.db import get_conn, use_sqlite
-from app.services.embedding_service import embed_texts, use_local_embeddings, use_xenova_embeddings
+from app.services.embedding_service import embed_texts
 from ingestion.embedding_chunks import insert_chunk
 
-BATCH = 32 if (use_local_embeddings() or use_xenova_embeddings()) else 50
-RESUME = "--resume" in sys.argv
+BATCH = 32
 RETRY_DELAYS_S = (5, 20, 60)
-_done: set[str] = set()
 
 
 def _embed_with_retry(texts: list[str]) -> list[list[float]]:
     """A long ingestion run must survive the odd slow or failed embedding call."""
     for attempt, delay in enumerate((*RETRY_DELAYS_S, None)):
         try:
-            return embed_texts(texts)
+            return embed_texts(texts, kind="passage")
         except Exception as exc:
             if delay is None:
                 raise
@@ -29,122 +40,102 @@ def _embed_with_retry(texts: list[str]) -> list[list[float]]:
     raise RuntimeError("unreachable")
 
 
-def _insert_batch(cur, rows, source_type, ref_fn, text_fn, meta_fn, is_sqlite) -> None:
-    rows = [r for r in rows if ref_fn(r) not in _done]
-    if not rows:
-        return
-    texts = [text_fn(r) for r in rows]
-    embeddings = _embed_with_retry(texts)
-    for row, emb, text in zip(rows, embeddings, texts):
-        insert_chunk(cur, source_type, ref_fn(row), text, meta_fn(row), emb, is_sqlite)
+def _done_refs(model: str, is_sqlite: bool) -> set[str]:
+    tag = "json_extract(metadata, '$.embed_model')" if is_sqlite else "metadata->>'embed_model'"
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(f"SELECT source_ref FROM document_chunks WHERE {tag} = {'?' if is_sqlite else '%s'}", (model,))
+        return {r[0] if not isinstance(r, dict) else r["source_ref"] for r in cur.fetchall()}
 
 
-def main():
+def _index(items: list[dict], source_type: str, model: str, done: set[str], is_sqlite: bool) -> None:
+    """items: {"ref", "embed" (text the vector is built from), "content" (text shown/used later), "meta"}."""
+    todo = [it for it in items if it["ref"] not in done]
+    print(f"{source_type}: {len(items) - len(todo)} already embedded by {model}, {len(todo)} to go", flush=True)
+    mark = "?" if is_sqlite else "%s"
+    for i in range(0, len(todo), BATCH):
+        batch = todo[i : i + BATCH]
+        vectors = _embed_with_retry([it["embed"] for it in batch])
+        with get_conn() as conn:  # one transaction per batch: a source is never left without a row
+            cur = conn.cursor()
+            for it, vector in zip(batch, vectors):
+                cur.execute(f"DELETE FROM document_chunks WHERE source_ref = {mark}", (it["ref"],))
+                insert_chunk(cur, source_type, it["ref"], it["content"], {**it["meta"], "embed_model": model}, vector, is_sqlite)
+        print(f"  {source_type} {min(i + BATCH, len(todo))}/{len(todo)}", flush=True)
+
+
+def _rows(sql: str) -> list[tuple]:
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(sql)
+        return [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in cur.fetchall()]
+
+
+def main() -> None:
     is_sqlite = use_sqlite()
-    if use_xenova_embeddings():
-        provider = "Xenova/all-MiniLM-L6-v2 via /api/embed"
-    elif use_local_embeddings():
-        provider = "local bge-m3"
-    else:
-        provider = "OpenAI"
-    print(f"Embedding provider: {provider}")
+    model = get_settings().semantic_model
+    print(f"Embedding model: {model} via {get_settings().embed_url}")
+    done = _done_refs(model, is_sqlite)
 
-    with get_conn() as conn:
-        cur = conn.cursor()
-        if RESUME:
-            cur.execute("SELECT source_ref FROM document_chunks")
-            _done.update(r[0] if not isinstance(r, dict) else r["source_ref"] for r in cur.fetchall())
-            print(f"Resuming: {len(_done)} chunks already embedded", flush=True)
-        elif is_sqlite:
-            cur.execute("DELETE FROM document_chunks")
-        else:
-            cur.execute("TRUNCATE document_chunks RESTART IDENTITY CASCADE")
+    # The vector is built from the English translation only: Arabic and Urdu script in the
+    # same text pulled every vector toward the script instead of the meaning. Multilingual
+    # questions still match, because the model maps languages into one space.
+    ayahs = _rows(
+        "SELECT verse_key, arabic, translation_en, translation_ur FROM ayahs ORDER BY surah_number, ayah_number"
+    )
+    _index(
+        [
+            {
+                "ref": f"Quran {vk}",
+                "embed": en or "",
+                "content": f"Quran {vk}. Arabic: {ar}. English: {en}. Urdu: {ur}.",
+                "meta": {"verse_key": vk},
+            }
+            for vk, ar, en, ur in ayahs
+        ],
+        "quran",
+        model,
+        done,
+        is_sqlite,
+    )
 
-    with get_conn() as conn:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT verse_key, arabic, transliteration, translation_en, translation_ur
-            FROM ayahs ORDER BY surah_number, ayah_number
-            """
-        )
-        ayahs = cur.fetchall()
-        if is_sqlite:
-            ayahs = [tuple(a) for a in ayahs]
+    hadiths = _rows("SELECT id, reference, chapter_en, english FROM hadiths ORDER BY id")
+    _index(
+        [
+            {
+                "ref": ref,
+                "embed": f"{ch}. {en}",
+                "content": f"{ref}. Chapter: {ch}. English: {(en or '')[:1500]}.",
+                "meta": {"hadith_id": hid},
+            }
+            for hid, ref, ch, en in hadiths
+        ],
+        "hadith",
+        model,
+        done,
+        is_sqlite,
+    )
 
-    print(f"Embedding {len(ayahs)} ayahs...")
-    for i in range(0, len(ayahs), BATCH):
-        batch = ayahs[i : i + BATCH]
-        with get_conn() as conn:
-            cur = conn.cursor()
-            _insert_batch(
-                cur,
-                batch,
-                "quran",
-                lambda a: f"Quran {a[0]}",
-                lambda a: (
-                    f"Quran {a[0]}. Arabic: {a[1]}. Transliteration: {a[2]}. "
-                    f"English: {a[3]}. Urdu: {a[4]}"
+    duas = _rows("SELECT id, title_en, arabic, transliteration, translation_en, translation_ur, source FROM duas")
+    _index(
+        [
+            {
+                "ref": f"Dua {did}",
+                "embed": f"{title}. {en}",
+                "content": (
+                    f"Dua {did}: {title}. Arabic: {ar}. Transliteration: {tr}. "
+                    f"English: {en}. Urdu: {ur}. Source: {src}"
                 ),
-                lambda a: {"verse_key": a[0]},
-                is_sqlite,
-            )
-        print(f"  Ayahs {min(i + BATCH, len(ayahs))}/{len(ayahs)}", flush=True)
-        if not use_local_embeddings():
-            time.sleep(0.2)
-
-    with get_conn() as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT id, reference, chapter_en, arabic, english FROM hadiths ORDER BY id")
-        hadiths = cur.fetchall()
-        if is_sqlite:
-            hadiths = [tuple(h) for h in hadiths]
-
-    print(f"Embedding {len(hadiths)} hadiths...")
-    sample = hadiths
-    for i in range(0, len(sample), BATCH):
-        batch = sample[i : i + BATCH]
-        with get_conn() as conn:
-            cur = conn.cursor()
-            _insert_batch(
-                cur,
-                batch,
-                "hadith",
-                lambda h: h[1],
-                lambda h: f"{h[1]}. Chapter: {h[2]}. Arabic: {h[3]}. English: {h[4]}",
-                lambda h: {"hadith_id": h[0]},
-                is_sqlite,
-            )
-        print(f"  Hadiths {min(i + BATCH, len(sample))}/{len(sample)}", flush=True)
-        if not use_local_embeddings():
-            time.sleep(0.2)
-
-    with get_conn() as conn:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT id, title_en, arabic, transliteration, translation_en, translation_ur, source FROM duas"
-        )
-        duas = cur.fetchall()
-        if is_sqlite:
-            duas = [tuple(d) for d in duas]
-
-    print(f"Embedding {len(duas)} duas...")
-    with get_conn() as conn:
-        cur = conn.cursor()
-        _insert_batch(
-            cur,
-            duas,
-            "dua",
-            lambda d: f"Dua {d[0]}",
-            lambda d: (
-                f"Dua {d[0]}: {d[1]}. Arabic: {d[2]}. Transliteration: {d[3]}. "
-                f"English: {d[4]}. Urdu: {d[5]}. Source: {d[6]}"
-            ),
-            lambda d: {"dua_id": d[0]},
-            is_sqlite,
-        )
-
-    print("Embedding index complete. Run: python ingestion/setup_fts.py")
+                "meta": {"dua_id": did},
+            }
+            for did, title, ar, tr, en, ur, src in duas
+        ],
+        "dua",
+        model,
+        done,
+        is_sqlite,
+    )
+    print("Embedding index complete.")
 
 
 if __name__ == "__main__":

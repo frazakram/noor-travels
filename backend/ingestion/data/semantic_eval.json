@@ -1,0 +1,334 @@
+[
+ {
+  "q": "prohibition of backbiting",
+  "expect": [
+   "Quran 49:12"
+  ]
+ },
+ {
+  "q": "forgot or slept through a prayer",
+  "expect": [
+   "Sahih al-Bukhari 583"
+  ]
+ },
+ {
+  "q": "shortening the prayer while travelling",
+  "expect": [
+   "Quran 4:101",
+   "Sahih al-Bukhari 1059"
+  ],
+  "chapter": "Shortening the Prayers"
+ },
+ {
+  "q": "Prophet Jonah swallowed by the fish",
+  "expect": [
+   "Quran 37:139",
+   "Quran 37:140",
+   "Quran 37:141",
+   "Quran 37:142",
+   "Quran 37:143",
+   "Quran 37:144",
+   "Quran 21:87",
+   "Quran 21:88",
+   "Quran 68:48"
+  ]
+ },
+ {
+  "q": "being kind and good to parents",
+  "expect": [
+   "Quran 17:23",
+   "Quran 17:24",
+   "Quran 31:14",
+   "Quran 46:15",
+   "Quran 29:8",
+   "Quran 2:83",
+   "Quran 4:36",
+   "Quran 6:151"
+  ]
+ },
+ {
+  "q": "patience during hardship",
+  "expect": [
+   "Quran 2:153",
+   "Quran 2:155",
+   "Quran 2:156",
+   "Quran 2:45",
+   "Quran 3:200",
+   "Quran 39:10",
+   "Quran 103:3",
+   "Quran 2:177"
+  ]
+ },
+ {
+  "q": "interest and usury are forbidden",
+  "expect": [
+   "Quran 2:275",
+   "Quran 2:276",
+   "Quran 2:278",
+   "Quran 2:279",
+   "Quran 3:130",
+   "Quran 30:39",
+   "Quran 4:161"
+  ]
+ },
+ {
+  "q": "fasting in Ramadan is prescribed",
+  "expect": [
+   "Quran 2:183",
+   "Quran 2:184",
+   "Quran 2:185",
+   "Quran 2:187"
+  ]
+ },
+ {
+  "q": "keep the beard and trim the moustache",
+  "expect": [
+   "Sahih al-Bukhari 5665",
+   "Sahih al-Bukhari 5666",
+   "Sahih al-Bukhari 5661",
+   "Sahih al-Bukhari 5663"
+  ]
+ },
+ {
+  "q": "truthfulness and the sin of lying",
+  "expect": [
+   "Sahih al-Bukhari 5862",
+   "Quran 40:28",
+   "Quran 16:105",
+   "Quran 39:3",
+   "Quran 9:119"
+  ]
+ },
+ {
+  "q": "heavens and earth created in six days",
+  "expect": [
+   "Quran 7:54",
+   "Quran 10:3",
+   "Quran 11:7",
+   "Quran 25:59",
+   "Quran 32:4",
+   "Quran 50:38",
+   "Quran 57:4"
+  ]
+ },
+ {
+  "q": "Allah's throne extends over the heavens and earth, he never sleeps",
+  "expect": [
+   "Quran 2:255"
+  ]
+ },
+ {
+  "q": "forbidden food: dead animals, blood and pork",
+  "expect": [
+   "Quran 5:3",
+   "Quran 2:173",
+   "Quran 6:145",
+   "Quran 16:115"
+  ]
+ },
+ {
+  "q": "giving full measure and weight in trade",
+  "expect": [
+   "Quran 83:1",
+   "Quran 83:2",
+   "Quran 83:3",
+   "Quran 17:35",
+   "Quran 6:152",
+   "Quran 26:181",
+   "Quran 26:182",
+   "Quran 11:85",
+   "Quran 55:9",
+   "Quran 7:85",
+   "Quran 11:84"
+  ]
+ },
+ {
+  "q": "Allah does not burden a soul beyond its capacity",
+  "expect": [
+   "Quran 2:286",
+   "Quran 2:233",
+   "Quran 6:152",
+   "Quran 7:42",
+   "Quran 23:62",
+   "Quran 65:7"
+  ]
+ },
+ {
+  "q": "prohibition of wine, intoxicants and gambling",
+  "expect": [
+   "Quran 2:219",
+   "Quran 5:90",
+   "Quran 5:91"
+  ]
+ },
+ {
+  "q": "washing the face, hands and feet before prayer",
+  "expect": [
+   "Quran 5:6",
+   "Quran 4:43"
+  ]
+ },
+ {
+  "q": "inheritance shares for sons and daughters",
+  "expect": [
+   "Quran 4:11",
+   "Quran 4:12",
+   "Quran 4:176"
+  ]
+ },
+ {
+  "q": "Mary gave birth under a palm tree",
+  "expect": [
+   "Quran 19:22",
+   "Quran 19:23",
+   "Quran 19:24",
+   "Quran 19:25",
+   "Quran 19:26"
+  ]
+ },
+ {
+  "q": "the youths who slept in the cave for years",
+  "expect": [
+   "Quran 18:9",
+   "Quran 18:10",
+   "Quran 18:11",
+   "Quran 18:12",
+   "Quran 18:13",
+   "Quran 18:14",
+   "Quran 18:15",
+   "Quran 18:16",
+   "Quran 18:17",
+   "Quran 18:18",
+   "Quran 18:19",
+   "Quran 18:20",
+   "Quran 18:21",
+   "Quran 18:22",
+   "Quran 18:23",
+   "Quran 18:24",
+   "Quran 18:25",
+   "Quran 18:26"
+  ]
+ },
+ {
+  "q": "pilgrimage to the House is a duty on those able",
+  "expect": [
+   "Quran 3:97",
+   "Quran 2:196",
+   "Quran 22:27",
+   "Quran 2:197"
+  ]
+ },
+ {
+  "q": "do not kill your children for fear of poverty",
+  "expect": [
+   "Quran 6:151",
+   "Quran 17:31",
+   "Quran 6:140"
+  ]
+ },
+ {
+  "q": "the believers are brothers, make peace between them",
+  "expect": [
+   "Quran 49:10",
+   "Quran 49:9"
+  ]
+ },
+ {
+  "q": "lowering the gaze and guarding modesty",
+  "expect": [
+   "Quran 24:30",
+   "Quran 24:31"
+  ]
+ },
+ {
+  "q": "do not consume the property of orphans",
+  "expect": [
+   "Quran 4:2",
+   "Quran 4:6",
+   "Quran 4:10",
+   "Quran 6:152",
+   "Quran 17:34"
+  ]
+ },
+ {
+  "q": "there is no compulsion in religion",
+  "expect": [
+   "Quran 2:256"
+  ]
+ },
+ {
+  "q": "night journey from the Sacred Mosque to the farthest mosque",
+  "expect": [
+   "Quran 17:1"
+  ]
+ },
+ {
+  "q": "Pharaoh and his army drowned in the sea",
+  "expect": [
+   "Quran 10:90",
+   "Quran 10:92",
+   "Quran 2:50",
+   "Quran 7:136",
+   "Quran 20:78",
+   "Quran 26:66",
+   "Quran 28:40",
+   "Quran 17:103",
+   "Quran 43:55",
+   "Quran 44:24",
+   "Quran 8:54"
+  ]
+ },
+ {
+  "q": "Abraham saw in a dream that he was sacrificing his son",
+  "expect": [
+   "Quran 37:102",
+   "Quran 37:103",
+   "Quran 37:104",
+   "Quran 37:105",
+   "Quran 37:106",
+   "Quran 37:107"
+  ]
+ },
+ {
+  "q": "Joseph's brothers threw him into the bottom of a well",
+  "expect": [
+   "Quran 12:10",
+   "Quran 12:15"
+  ]
+ },
+ {
+  "q": "the Night of Decree is better than a thousand months",
+  "expect": [
+   "Quran 97:1",
+   "Quran 97:2",
+   "Quran 97:3",
+   "Quran 97:4",
+   "Quran 97:5"
+  ]
+ },
+ {
+  "q": "spending wealth in charity in secret and in public",
+  "expect": [
+   "Quran 2:271",
+   "Quran 2:274",
+   "Quran 13:22",
+   "Quran 14:31",
+   "Quran 35:29"
+  ]
+ },
+ {
+  "q": "Allah is the light of the heavens and the earth",
+  "expect": [
+   "Quran 24:35"
+  ]
+ },
+ {
+  "q": "say He is Allah, the One, the Eternal",
+  "expect": [
+   "Quran 112:1",
+   "Quran 112:2",
+   "Quran 112:3",
+   "Quran 112:4"
+  ]
+ }
+]

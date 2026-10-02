@@ -63,11 +63,11 @@ python ingestion/fetch_hadith.py
 python ingestion/seed_duas.py
 python ingestion/fetch_khutbahs.py --from-json
 
-# Semantic search vectors, computed by the same production model the chat uses.
-# ~2 hours for ayahs + all hadith; --resume skips chunks already embedded.
+# Semantic search vectors: run `npm run dev` in frontend/ (same /api/embed code as prod), then
+# ~40 min; resumable, replaces rows in place. Check with ingestion/eval_semantic.py.
 EMBEDDING_PROVIDER=xenova EMBED_TIMEOUT_S=120 \
-  EMBED_API_URL=https://noor-travels-chi.vercel.app/api/embed \
-  python ingestion/embed_index.py --resume
+  EMBED_API_URL=http://localhost:3001/api/embed \
+  python ingestion/embed_index.py
 ```
 
 ### Backups

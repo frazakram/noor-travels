@@ -189,12 +189,15 @@ def cosine_similarity(a: list[float], b: list[float]) -> float:
     return dot / (na * nb)
 
 
-def search_embeddings(query_embedding: list[float], min_sim: float, top_k: int) -> list[dict]:
+def search_embeddings(query_embedding: list[float], min_sim: float, top_k: int, model: str) -> list[dict]:
+    """Nearest chunks embedded by `model`; rows from any other model are never compared."""
     with get_conn() as conn:
         if use_sqlite():
             cur = conn.cursor()
             cur.execute(
                 "SELECT source_type, source_ref, content, metadata, embedding FROM document_chunks"
+                " WHERE json_extract(metadata, '$.embed_model') = ?",
+                (model,),
             )
             rows = cur.fetchall()
             scored = []
@@ -221,10 +224,11 @@ def search_embeddings(query_embedding: list[float], min_sim: float, top_k: int) 
                 SELECT source_type, source_ref, content, metadata,
                        1 - (embedding <=> %s::vector) AS similarity
                 FROM document_chunks
-                WHERE 1 - (embedding <=> %s::vector) >= %s
+                WHERE metadata->>'embed_model' = %s
+                  AND 1 - (embedding <=> %s::vector) >= %s
                 ORDER BY embedding <=> %s::vector
                 LIMIT %s
                 """,
-                (embedding_str, embedding_str, min_sim, embedding_str, top_k),
+                (embedding_str, model, embedding_str, min_sim, embedding_str, top_k),
             )
             return [dict(r) for r in cur.fetchall()]

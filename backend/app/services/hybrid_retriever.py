@@ -46,7 +46,8 @@ def semantic_retrieve(queries: list[str], source_filter: list[str]) -> list[dict
     embeddings = embed_texts(queries)  # one round trip for all phrases
     ranked = list(
         _VECTOR_POOL.map(
-            lambda emb: search_embeddings(emb, settings.rag_min_similarity, per_query_k), embeddings
+            lambda emb: search_embeddings(emb, settings.rag_min_similarity, per_query_k, settings.semantic_model),
+            embeddings,
         )
     )
     if source_filter:

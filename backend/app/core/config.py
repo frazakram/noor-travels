@@ -33,7 +33,13 @@ class Settings(BaseSettings):
     embed_api_url: str = ""
     # Shared with the Next.js /api/embed route; when set there, requests without it get 401.
     embed_secret: str = ""
-    rag_min_similarity: float = 0.50
+    # The /api/embed model that semantic search expects. Vectors are tagged with the model that
+    # made them (document_chunks.metadata.embed_model) and only matching rows are searched, so a
+    # model switch can never compare vectors from two different models.
+    semantic_model: str = "all-MiniLM-L6-v2"
+    # Calibrated on English-only passages: correct sources score 0.44-0.98, so 0.50 dropped real
+    # hits; noise is bounded by the per-phrase top-k, not by this floor.
+    rag_min_similarity: float = 0.40
     rag_retrieval_k: int = 20
     rag_final_k: int = 5
     rag_cache_ttl_hours: int = 168
