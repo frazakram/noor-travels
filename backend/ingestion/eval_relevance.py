@@ -68,6 +68,12 @@ CASES: list[dict] = [
         ],
         "expect": ["Quran 2:255"],
     },
+    {"q": "How many rakat is Zuhr prayer while travelling?", "expect": ["Sahih al-Bukhari 10", "Quran 4:101"]},
+    # Must refuse: nothing in the Quran, hadith or duas answers these. Guards against the model
+    # filling gaps from its own knowledge when refusals are made less trigger-happy.
+    {"q": "Who won the 2018 FIFA World Cup?", "refuse": True},
+    {"q": "Give me a recipe for chicken biryani", "refuse": True},
+    {"q": "What is the boiling point of water in Kelvin?", "refuse": True},
     {
         "q": "What about while travelling?",
         "history": [
@@ -109,9 +115,12 @@ def run(only: str = "") -> int:
         citations = result.get("citations") or []
         answer = result.get("answer") or ""
         mode = result.get("mode", "llm")
-        hit = any(_cites(str(c), expected) for c in citations for expected in case["expect"])
-        clean = not any(f.lower() in answer.lower() for f in case.get("forbid", []))
-        ok = hit and clean
+        if case.get("refuse"):
+            ok = not citations and rag_service._is_refusal_answer(answer)
+        else:
+            hit = any(_cites(str(c), expected) for c in citations for expected in case["expect"])
+            clean = not any(f.lower() in answer.lower() for f in case.get("forbid", []))
+            ok = hit and clean
         passed += ok
         llm_used += not str(mode).endswith("_local")
         status = "PASS" if ok else "FAIL"

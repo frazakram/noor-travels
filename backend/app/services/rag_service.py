@@ -52,13 +52,20 @@ def _rewrite_for_retrieval(question: str, history: list[dict[str, str]] | None =
 
 SYSTEM_PROMPT = """You are Noor Safar — an Islamic learning chat assistant for travelers.
 
-STRICT GROUNDING RULES (never break these):
-- Answer ONLY using text explicitly present in the RETRIEVED SOURCES below.
-- Do NOT use your own knowledge of Islam, hadith, or Quran — only the provided sources.
-- Every single factual claim MUST be followed by its citation in brackets.
-- A source that states a general ruling answers the specific cases it covers (e.g. "whoever forgets a prayer should pray it when he remembers" answers "I overslept Fajr"): answer from it and cite it.
-- Only if none of the retrieved sources address the question, respond ONLY with the localized refusal phrase given in the user message (in the requested response language).
-  Do NOT guess, infer, or paraphrase beyond what the sources say.
+YOUR TASK: report what the RETRIEVED SOURCES say about the user's question. Decide which case applies:
+1. The sources answer it, directly or through a general statement that covers the user's case
+   ("the prayer in a journey was kept at two rak'at" covers Zuhr while travelling; "whoever forgets
+   a prayer should pray it when he remembers" covers an overslept Fajr): answer from them.
+2. The sources address part of it or a closely related point: say what they do say, cite it, and say
+   plainly which part they do not settle.
+3. No source is about the question's topic at all: reply with ONLY the refusal phrase given in the user
+   message (in the requested response language).
+Prefer case 1 or 2 whenever a source is about the topic; case 3 is only for sources on other topics.
+
+GROUNDING (never break these):
+- Every fact must come from the retrieved sources, never from your own knowledge of Islam or anything else,
+  and every claim must be followed by its citation in brackets.
+- Attribute what you report ("Aisha narrated that...", "The Quran says..."), in the sources' own terms.
 - Do NOT invent verse numbers, hadith numbers, or dua names.
 - Do NOT issue fatwas, personal rulings, or religious opinions of your own.
 - Report what a narration describes; do not turn an event into a general ruling (a hadith that
@@ -85,7 +92,7 @@ Write plain text: no markdown (no *, **, #, or bullet symbols).
 
 Return JSON:
 {
-  "answer": "explanation in requested language ONLY, strictly from sources",
+  "answer": "explanation in requested language ONLY, every fact from the sources",
   "transliteration": "roman transliterations or empty string",
   "citations": ["only citations that appear verbatim in the retrieved sources"],
   "confidence": "high|medium|low"
@@ -583,13 +590,13 @@ def _chat_with_openai(
         "role": "user",
         "content": (
             f"Response language: {lang_name} ONLY\n"
-            f"Refusal phrase (use exactly if sources are insufficient): {refusal_phrase}\n"
+            f"Refusal phrase (only if no source is about the topic): {refusal_phrase}\n"
             f"Include transliteration field: {include_transliteration}\n"
             f"User question: {standalone}\n"
             f"Original message: {question}\n\n"
             f"RETRIEVED SOURCES (these are the ONLY facts you may use):\n{context}\n\n"
-            "IMPORTANT: Use ONLY the text in RETRIEVED SOURCES above. "
-            "Do not use any outside knowledge. Cite every claim."
+            "Use only facts from the RETRIEVED SOURCES above and cite every claim. "
+            "Refuse only if no source is about this topic."
         ),
     })
 
@@ -600,7 +607,10 @@ def _chat_with_openai(
         messages=llm_messages,
         response_format={"type": "json_object"},
         temperature=0,
-        max_tokens=450,
+        # gpt-oss counts its hidden reasoning against this cap; at 450 a long cited answer was cut
+        # off mid-JSON (json_validate_failed) and chat silently fell back to another model.
+        # Only generated tokens are billed, so the headroom costs nothing on short answers.
+        max_tokens=1000,
     )
 
     try:

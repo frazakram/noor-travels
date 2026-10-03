@@ -49,8 +49,15 @@ _pool_lock = threading.Lock()
 _last_used: dict[int, float] = {}
 
 
+# TCP keepalive: without it, a network drop mid-query left the client waiting on a dead socket
+# indefinitely (seen: an eval stalled 30 min on one commit), and in production the request hangs
+# until the function is killed. With these, a dead peer is detected in ~10 + 5 * 3 = 25 s and
+# raises, which get_conn turns into a retry / DatabaseUnavailable like any other drop.
+_KEEPALIVE = {"keepalives": 1, "keepalives_idle": 10, "keepalives_interval": 5, "keepalives_count": 3}
+
+
 def _connect():
-    return psycopg2.connect(get_settings().database_url, connect_timeout=CONNECT_TIMEOUT_S)
+    return psycopg2.connect(get_settings().database_url, connect_timeout=CONNECT_TIMEOUT_S, **_KEEPALIVE)
 
 
 def _release(conn, broken: bool) -> None:
