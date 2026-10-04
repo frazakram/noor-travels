@@ -76,12 +76,12 @@ function duaCategoryLabel(lang: Lang, category: string): string {
   return category.charAt(0).toUpperCase() + category.slice(1);
 }
 
-function DuaCard({ d }: { d: Dua }) {
+function DuaCard({ d, highlight = false }: { d: Dua; highlight?: boolean }) {
   const { lang } = useLang();
   const title = lang === "ur" ? d.title_ur : lang === "hi" ? d.title_hi : d.title_en;
   const translation = lang === "ur" ? d.translation_ur : lang === "hi" ? d.translation_hi : d.translation_en;
   return (
-    <article className="card">
+    <article id={`dua-${d.id}`} className={`card scroll-mt-24 ${highlight ? "ring-2 ring-noor-500 animate-ayah-glow" : ""}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-accent">{duaCategoryLabel(lang, d.category)}</p>
@@ -195,6 +195,8 @@ export default function HadithPage() {
   const [duas, setDuas] = useState<Dua[]>([]);
   const [duasStatus, setDuasStatus] = useState<"idle" | "loading" | "error" | "done">("idle");
   const [activeDuaCategory, setActiveDuaCategory] = useState<string | null>(null);
+  // ?dua=<id> from a chat citation: open that dua's category and bring the dua into view.
+  const [targetDua, setTargetDua] = useState<string | null>(null);
 
   const openDuas = useCallback((category: string | null = null) => {
     setShowFavorites(false);
@@ -219,11 +221,26 @@ export default function HadithPage() {
     // Suspense boundary around the whole page for a param only needed once at
     // mount — same avoidance already used by app/khutba/page.tsx.
     const params = new URLSearchParams(window.location.search);
-    if (params.get("section") === "duas" || params.get("section") === "travel") {
+    const dua = params.get("dua");
+    if (dua) {
+      setTargetDua(dua);
+      openDuas(null);
+    } else if (params.get("section") === "duas" || params.get("section") === "travel") {
       openDuas(params.get("category") ?? (params.get("section") === "travel" ? "travel" : null));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!targetDua || duasStatus !== "done") return;
+    // The category comes from the data: a dua's id prefix isn't always its category.
+    const d = duas.find((x) => x.id === targetDua);
+    if (!d) return;
+    setActiveDuaCategory(d.category);
+    requestAnimationFrame(() =>
+      document.getElementById(`dua-${d.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+  }, [targetDua, duasStatus, duas]);
 
   const duaCategories = useMemo(() => {
     const counts = new Map<string, number>();
@@ -464,7 +481,7 @@ export default function HadithPage() {
               )}
               <div className="space-y-4">
                 {visibleDuas.map((d) => (
-                  <DuaCard key={d.id} d={d} />
+                  <DuaCard key={d.id} d={d} highlight={d.id === targetDua} />
                 ))}
               </div>
             </>

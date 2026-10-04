@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useChat } from "@/components/ChatProvider";
 import { ChatFeedback } from "@/components/ChatFeedback";
 import { ChatSearchProgress, SearchTrail, type SearchTrailData } from "@/components/ChatSearchProgress";
@@ -8,6 +9,7 @@ import { useLang } from "@/components/LangProvider";
 import { NoticeCard } from "@/components/NoticeCard";
 import { api } from "@/lib/api";
 import { StreamUnavailable, streamChat, type ChatStage } from "@/lib/chat-stream";
+import { citationHref, linkifyCitations } from "@/lib/citation-links";
 import { t, type Lang } from "@/lib/i18n";
 
 type SourceDetail = {
@@ -88,7 +90,27 @@ function ConfidenceBadge({ confidence, sources, lang }: { confidence: string; so
 const nowMs = () => Date.now();
 
 /** Reveals text word by word (a fresh answer "arriving"); instant with reduced motion. */
-function RevealText({ text, animate }: { text: string; animate: boolean }) {
+const CITATION_LINK =
+  "font-medium text-accent underline decoration-dotted underline-offset-2 hover:decoration-solid";
+
+/** Answer text with its [citations] as links to the full verse / hadith / dua in the app. */
+function CitedText({ text, onNavigate }: { text: string; onNavigate: () => void }) {
+  return (
+    <>
+      {linkifyCitations(text).map((seg, i) =>
+        seg.href ? (
+          <Link key={i} href={seg.href} onClick={onNavigate} className={CITATION_LINK}>
+            {seg.text}
+          </Link>
+        ) : (
+          <Fragment key={i}>{seg.text}</Fragment>
+        ),
+      )}
+    </>
+  );
+}
+
+function RevealText({ text, animate, onNavigate }: { text: string; animate: boolean; onNavigate: () => void }) {
   const [shown, setShown] = useState(animate ? 0 : text.length);
 
   useEffect(() => {
@@ -112,7 +134,8 @@ function RevealText({ text, animate }: { text: string; animate: boolean }) {
 
   return (
     <p className="whitespace-pre-wrap">
-      {text.slice(0, shown)}
+      {/* Links appear once the reveal is done, so a citation is never shown half-built. */}
+      {shown < text.length ? text.slice(0, shown) : <CitedText text={text} onNavigate={onNavigate} />}
       {shown < text.length && <span className="ms-0.5 inline-block h-3.5 w-1.5 translate-y-0.5 animate-pulse rounded-sm bg-noor-500/70" aria-hidden />}
     </p>
   );
@@ -379,9 +402,35 @@ export function ChatWidget() {
                 )}
 
                 {m.role === "assistant" ? (
-                  <RevealText text={m.content} animate={!!m.reveal} />
+                  <RevealText text={m.content} animate={!!m.reveal} onNavigate={closeChat} />
                 ) : (
                   <p className="whitespace-pre-wrap">{m.content}</p>
+                )}
+
+                {m.role === "assistant" && (m.citations?.length ?? 0) > 0 && (
+                  // Always-visible links to what the answer cites: the model doesn't reliably put
+                  // [brackets] in its text, but every validated citation is listed here.
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5" dir="ltr">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-faint">{t(lang, "chatCitedSources")}</span>
+                    {m.citations!.map((ref) => {
+                      const label = ref.replace(/^\[|\]$/g, "").replace(/\s*\([a-z_]+\)$/, "");
+                      const href = citationHref(ref);
+                      return href ? (
+                        <Link
+                          key={ref}
+                          href={href}
+                          onClick={closeChat}
+                          className="rounded-full border border-noor-200 bg-white px-2 py-0.5 text-[11px] font-medium text-accent hover:border-noor-400 dark:border-noor-600 dark:bg-noor-800"
+                        >
+                          {label}
+                        </Link>
+                      ) : (
+                        <span key={ref} className="rounded-full border border-subtle px-2 py-0.5 text-[11px] text-muted">
+                          {label}
+                        </span>
+                      );
+                    })}
+                  </div>
                 )}
 
                 {m.role === "assistant" && m.confidence && (
@@ -413,7 +462,13 @@ export function ChatWidget() {
                     <ul className="mt-2 space-y-2">
                       {m.sources.map((s, j) => (
                         <li key={j} className="rounded-lg border border-subtle bg-white p-2 text-[11px] dark:bg-noor-800">
-                          <p className="font-medium text-body">{s.ref}</p>
+                          {citationHref(s.ref) ? (
+                            <Link href={citationHref(s.ref)!} onClick={closeChat} className={CITATION_LINK}>
+                              {s.ref}
+                            </Link>
+                          ) : (
+                            <p className="font-medium text-body">{s.ref}</p>
+                          )}
                           <p className="mt-1 whitespace-pre-wrap text-muted leading-snug">{s.snippet}</p>
                         </li>
                       ))}

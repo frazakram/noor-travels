@@ -138,6 +138,26 @@ def daily_hadith(
     return JSONResponse(row, headers={"Cache-Control": _CACHE_1H})
 
 
+@router.get("/{collection}/{number}")
+def get_hadith_by_number(collection: str, number: int):
+    """One hadith by collection slug and number, e.g. /bukhari/583: the target of citation links
+    in chat answers ("Sahih al-Bukhari 583"). Looked up by number, never by internal row id."""
+    if not collection.isalpha() or not 1 <= number <= 100_000:
+        raise HTTPException(404, "Hadith not found")
+    with get_cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, collection, chapter_en, hadith_number, arabic, english, reference
+            FROM hadiths WHERE collection = %s AND hadith_number = %s
+            """,
+            (collection.lower(), number),
+        )
+        row = cur.fetchone()
+    if not row:
+        raise HTTPException(404, "Hadith not found")
+    return JSONResponse(dict(row), headers={"Cache-Control": _CACHE_1H})
+
+
 @router.get("/{hadith_id}")
 def get_hadith(hadith_id: int):
     with get_cursor() as cur:

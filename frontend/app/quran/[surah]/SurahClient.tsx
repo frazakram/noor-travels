@@ -104,6 +104,8 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
   const lastReadTimer = useRef<number | undefined>(undefined);
   // Target of a ?ayah= deep link; state (not a ref) so the scroll runs after that ayah has rendered.
   const [pendingScrollIndex, setPendingScrollIndex] = useState<number | null>(null);
+  // The ayah a deep link opened on, briefly highlighted so the reader sees which one was meant.
+  const [deepLinkKey, setDeepLinkKey] = useState<string | null>(null);
   const [prefsHydrated, setPrefsHydrated] = useState(false);
 
   const isFollowingPlayback = useCallback(
@@ -415,12 +417,56 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
     };
   }, [surahNumber, translation, startAyah, prefsHydrated, loadAttempt]);
 
-  // Deep links (?ayah=N from shares and continue-reading) scroll to the ayah once loaded.
+  // Deep links (?ayah=N from shares, continue-reading and chat citations). A single smooth scroll
+  // landed early: cards above the target keep growing after it starts (word-by-word rows, fonts;
+  // ~20,000 px in Al-Baqarah). So the target is re-centred every frame until it has stayed put
+  // for a second (at most 8 s), and the loop stops the instant the user scrolls. The page's CSS
+  // smooth scrolling is suspended meanwhile: animated corrections restarted every frame and
+  // never caught up.
+  const settleRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => settleRef.current?.(), []);
   useEffect(() => {
     if (surahLoading || !wordsSettled || studyMode || pendingScrollIndex === null || !ayahs.length) return;
+    const key = ayahs[pendingScrollIndex]?.verse_key;
     setPendingScrollIndex(null);
-    scrollToAyah(pendingScrollIndex);
-  }, [surahLoading, wordsSettled, studyMode, ayahs.length, pendingScrollIndex, scrollToAyah]);
+    if (!key) return;
+    settleRef.current?.();
+    setDeepLinkKey(key);
+    let stopped = false;
+    let stableFrames = 0;
+    const startedAt = performance.now();
+    const root = document.documentElement;
+    const previousBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    const stop = () => {
+      stopped = true;
+      root.style.scrollBehavior = previousBehavior;
+      programmaticScrollRef.current = false;
+      for (const ev of ["wheel", "touchstart", "keydown", "mousedown"]) window.removeEventListener(ev, stop);
+      settleRef.current = null;
+    };
+    for (const ev of ["wheel", "touchstart", "keydown", "mousedown"]) window.addEventListener(ev, stop, { passive: true });
+    settleRef.current = stop;
+    programmaticScrollRef.current = true;
+    const tick = () => {
+      if (stopped) return;
+      const el = ayahRefs.current[key];
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        // Centre it; a card taller than the screen starts just below the sticky toolbar instead.
+        const offset = rect.height > window.innerHeight * 0.8 ? rect.top - 112 : rect.top + rect.height / 2 - window.innerHeight / 2;
+        if (Math.abs(offset) > 2) {
+          window.scrollBy({ top: offset, behavior: "auto" });
+          stableFrames = 0;
+        } else {
+          stableFrames += 1;
+        }
+      }
+      if (stableFrames >= 60 || performance.now() - startedAt > 8000) return stop();
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [surahLoading, wordsSettled, studyMode, ayahs, pendingScrollIndex]);
 
   useEffect(() => {
     if (studyMode || surahLoading || ayahs.length === 0 || renderLimit >= ayahs.length) return;
@@ -1025,7 +1071,7 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
                 isActive
                   ? "scale-[1.008] ring-2 ring-gold-400 shadow-md dark:ring-gold-500"
                   : "hover:border-noor-200 dark:hover:border-noor-600"
-              } ${studyMode ? "animate-fade-in-up" : ""}`}
+              } ${studyMode ? "animate-fade-in-up" : ""} ${a.verse_key === deepLinkKey ? "animate-ayah-glow" : ""}`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-1.5">
