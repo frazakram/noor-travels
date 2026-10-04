@@ -8,7 +8,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from app.api import adhkar, auth, duas, hadith, khutba, quran, quran_audio, rag, recite, salah, tts
+from app.api import adhkar, auth, duas, hadith, khutba, quran, quran_audio, rag, recite, salah, tts, zakat
 from app.core.config import get_settings
 from app.core.limiter import limiter
 from app.core.logging_setup import configure_logging
@@ -92,6 +92,7 @@ app.include_router(tts.router, prefix="/api/tts", tags=["tts"])
 app.include_router(khutba.router, prefix="/api/khutba", tags=["khutba"])
 app.include_router(recite.router, prefix="/api/recite", tags=["recite"])
 app.include_router(salah.router, prefix="/api/salah", tags=["salah"])
+app.include_router(zakat.router, prefix="/api/zakat", tags=["zakat"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 
 

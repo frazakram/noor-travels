@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CitationLink } from "@/components/CitationLink";
 import { useLang } from "@/components/LangProvider";
+import { api } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import {
   computeZakat,
@@ -16,12 +17,16 @@ import {
 // Figures stay on this device only: they are personal financial details.
 const STORAGE_KEY = "noor-zakat-v1";
 
-type Saved = { input: ZakatInput; prices: ZakatPrices; basis: NisabBasis };
+/** "live": rates from /api/zakat/rates; "manual": the user typed their jeweller's rate. */
+type Saved = { input: ZakatInput; prices: ZakatPrices; basis: NisabBasis; priceMode: "live" | "manual" };
+
+type LiveRates = ZakatPrices & { updatedAt: string; importDuty: number };
 
 const EMPTY: Saved = {
   input: { cash: 0, goldGrams: 0, goldKarat: 22, silverGrams: 0, investments: 0, businessStock: 0, receivables: 0, debts: 0 },
   prices: { gold24kPerGram: 0, silverPerGram: 0 },
   basis: "silver",
+  priceMode: "live",
 };
 
 const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
@@ -51,11 +56,21 @@ function NumberField({ label, value, onChange, suffix }: { label: string; value:
 export function ZakatCalculator() {
   const { lang } = useLang();
   const [saved, setSaved] = useState<Saved>(EMPTY);
+  const [live, setLive] = useState<LiveRates | null>(null);
+  const [liveFailed, setLiveFailed] = useState(false);
+
+  useEffect(() => {
+    api<LiveRates>("/api/zakat/rates", { silent: true })
+      .then(setLive)
+      .catch(() => setLiveFailed(true));
+  }, []);
 
   useEffect(() => {
     try {
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
-      if (raw?.input && raw?.prices) setSaved({ ...EMPTY, ...raw, input: { ...EMPTY.input, ...raw.input } });
+      // Older saves had no priceMode: rates someone typed in count as their own.
+      if (raw?.input && raw?.prices)
+        setSaved({ ...EMPTY, ...raw, input: { ...EMPTY.input, ...raw.input }, priceMode: raw.priceMode ?? (raw.prices.gold24kPerGram || raw.prices.silverPerGram ? "manual" : "live") });
     } catch {
       /* start empty */
     }
@@ -70,10 +85,14 @@ export function ZakatCalculator() {
     }
   }
   const setInput = (patch: Partial<ZakatInput>) => update({ ...saved, input: { ...saved.input, ...patch } });
-  const setPrices = (patch: Partial<ZakatPrices>) => update({ ...saved, prices: { ...saved.prices, ...patch } });
+  // Typing a rate means "use my jeweller's rate" from now on, until they choose live again.
+  const setPrices = (patch: Partial<ZakatPrices>) =>
+    update({ ...saved, priceMode: "manual", prices: { ...(saved.priceMode === "live" && live ? live : saved.prices), ...patch } });
+  const prices: ZakatPrices = saved.priceMode === "live" && live ? live : saved.prices;
 
-  const result = useMemo(() => computeZakat(saved.input, saved.prices, saved.basis), [saved]);
-  const basisPrice = saved.basis === "silver" ? saved.prices.silverPerGram : saved.prices.gold24kPerGram;
+  const result = useMemo(() => computeZakat(saved.input, prices, saved.basis), [saved.input, prices, saved.basis]);
+  const basisPrice = saved.basis === "silver" ? prices.silverPerGram : prices.gold24kPerGram;
+  const updated = live?.updatedAt ? new Date(live.updatedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "";
 
   return (
     <div className="space-y-4">
@@ -81,9 +100,22 @@ export function ZakatCalculator() {
 
       <section>
         <h3 className="text-xs font-semibold uppercase tracking-wide text-accent">{t(lang, "zakatPrices")}</h3>
-        <NumberField label={t(lang, "zakatGoldPrice")} value={saved.prices.gold24kPerGram} onChange={(n) => setPrices({ gold24kPerGram: n })} suffix="₹/g" />
-        <NumberField label={t(lang, "zakatSilverPrice")} value={saved.prices.silverPerGram} onChange={(n) => setPrices({ silverPerGram: n })} suffix="₹/g" />
-        <p className="text-[11px] text-faint">{t(lang, "zakatPriceHint")}</p>
+        <NumberField label={t(lang, "zakatGoldPrice")} value={Math.round(prices.gold24kPerGram)} onChange={(n) => setPrices({ gold24kPerGram: n })} suffix="₹/g" />
+        <NumberField label={t(lang, "zakatSilverPrice")} value={Math.round(prices.silverPerGram * 100) / 100} onChange={(n) => setPrices({ silverPerGram: n })} suffix="₹/g" />
+        {saved.priceMode === "live" && live ? (
+          <p className="text-[11px] text-faint">
+            ● {t(lang, "zakatLiveRate")} · {updated} · {t(lang, "zakatLiveBasis").replace("{duty}", String(Math.round(live.importDuty * 100)))}
+          </p>
+        ) : (
+          <p className="flex flex-wrap items-center gap-x-2 text-[11px] text-faint">
+            <span>{liveFailed ? t(lang, "zakatLiveFailed") : saved.priceMode === "manual" ? t(lang, "zakatYourRate") : t(lang, "zakatPriceHint")}</span>
+            {saved.priceMode === "manual" && live && (
+              <button type="button" onClick={() => update({ ...saved, priceMode: "live" })} className="font-medium text-accent">
+                {t(lang, "zakatUseLive")}
+              </button>
+            )}
+          </p>
+        )}
       </section>
 
       <section>
