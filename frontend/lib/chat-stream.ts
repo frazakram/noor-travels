@@ -41,12 +41,16 @@ export function parseEvents(buffer: string): { events: StreamEvent[]; rest: stri
  * question, the keywords searched, the sources found, writing) and resolves with the same
  * payload /api/rag/chat returns.
  */
-export async function streamChat<T>(body: unknown, onStage: (stage: ChatStage) => void): Promise<T> {
+export async function streamChat<T>(
+  body: unknown,
+  onStage: (stage: ChatStage) => void,
+  headers: Record<string, string> = {},
+): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${API}/api/rag/chat/stream`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify(body),
       cache: "no-store",
     });

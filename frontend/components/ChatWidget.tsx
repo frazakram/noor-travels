@@ -1,13 +1,17 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useChat } from "@/components/ChatProvider";
 import { ChatFeedback } from "@/components/ChatFeedback";
+import { ChatHistoryPanel, StarIcon } from "@/components/ChatHistoryPanel";
 import { CitationLink } from "@/components/CitationLink";
 import { ChatSearchProgress, SearchTrail, type SearchTrailData } from "@/components/ChatSearchProgress";
 import { useLang } from "@/components/LangProvider";
 import { NoticeCard } from "@/components/NoticeCard";
 import { api } from "@/lib/api";
+import { AUTH_CHANGED_EVENT, getToken } from "@/lib/auth";
+import { getChat, updateChat } from "@/lib/chat-history";
+import { newConversationId, restoreAnswer } from "@/lib/chat-history-model";
 import { StreamUnavailable, streamChat, type ChatStage } from "@/lib/chat-stream";
 import { citationHref, citationLabel, linkifyCitations } from "@/lib/citation-links";
 import { t, type Lang } from "@/lib/i18n";
@@ -48,6 +52,8 @@ type ChatResponse = {
   notice?: string;
   mode?: string;
   llm_model?: string | null;
+  /** Present when a conversation_id was sent: whether this turn went into the user's history. */
+  history_saved?: boolean;
 };
 
 const SUGGESTIONS: Record<Lang, string[]> = {
@@ -84,6 +90,15 @@ function ConfidenceBadge({ confidence, sources, lang }: { confidence: string; so
       {pct != null ? `${pct}% ${t(lang, "matchLabel")}` : confidence.charAt(0).toUpperCase() + confidence.slice(1)}
     </span>
   );
+}
+
+function subscribeAuth(onChange: () => void) {
+  window.addEventListener(AUTH_CHANGED_EVENT, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(AUTH_CHANGED_EVENT, onChange);
+    window.removeEventListener("storage", onChange);
+  };
 }
 
 /** Wall-clock read for timing a request; outside the component so lint knows it isn't render. */
@@ -153,9 +168,31 @@ export function ChatWidget() {
   const [retranslatePending, setRetranslatePending] = useState(false);
   const [stages, setStages] = useState<ChatStage[]>([]);
   const [startedAt, setStartedAt] = useState(0);
+  // Saved history (signed-in users): the open conversation, its star, and the drawer.
+  const signedIn = useSyncExternalStore(subscribeAuth, () => getToken() !== null, () => false);
+  const [view, setView] = useState<"chat" | "history">("chat");
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [starred, setStarred] = useState(false);
+  const [notSaved, setNotSaved] = useState(false);
+  const [historyVersion, setHistoryVersion] = useState(0);
+  const [openingId, setOpeningId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    // Signing out: this account's conversation must not stay on screen or keep its id.
+    const onAuthChange = () => {
+      if (getToken() === null) {
+        setMessages([]);
+        setConversationId(null);
+        setStarred(false);
+      }
+      setNotSaved(false);
+    };
+    window.addEventListener(AUTH_CHANGED_EVENT, onAuthChange);
+    return () => window.removeEventListener(AUTH_CHANGED_EVENT, onAuthChange);
+  }, []);
 
   useEffect(() => {
     const tr = localStorage.getItem("noor-show-transliteration");
@@ -187,12 +224,22 @@ export function ChatWidget() {
     return () => document.removeEventListener("keydown", onKey);
   }, [isOpen, closeChat]);
 
-  async function sendMessage(text: string, langOverride?: Lang) {
+  /**
+   * base: the conversation before this question (defaults to what is on screen). Regenerating
+   * an answer in another language passes the turns before the replaced one, with replaceLast so
+   * the saved history swaps that turn instead of repeating it.
+   */
+  async function sendMessage(text: string, langOverride?: Lang, base: ChatMessage[] = messages, replaceLast = false) {
     if (!text.trim() || loading) return;
     const answerLang = langOverride ?? outputLang;
     setError("");
     const userMsg: ChatMessage = { role: "user", content: text.trim() };
-    const nextHistory = [...messages, userMsg];
+    const nextHistory = [...base, userMsg];
+    // Signed in: every turn belongs to a saved conversation, created with its first question.
+    const token = getToken();
+    const cid = token ? (conversationId ?? newConversationId()) : null;
+    if (cid && cid !== conversationId) setConversationId(cid);
+    const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
     setMessages(nextHistory);
     setInput("");
     setLoading(true);
@@ -203,24 +250,38 @@ export function ChatWidget() {
     const received: ChatStage[] = [];
 
     try {
-      const history = messages.map((m) => ({ role: m.role, content: m.content }));
+      const history = base.map((m) => ({ role: m.role, content: m.content }));
       const body = {
         message: text.trim(),
         lang: answerLang,
         response_lang: answerLang,
         include_transliteration: showTransliteration,
         history,
+        ...(cid ? { conversation_id: cid, replace_last: replaceLast } : {}),
       };
       let data: ChatResponse;
       try {
-        data = await streamChat<ChatResponse>(body, (stage) => {
-          received.push(stage);
-          setStages((prev) => [...prev.filter((s) => s.stage !== stage.stage), stage]);
-        });
+        data = await streamChat<ChatResponse>(
+          body,
+          (stage) => {
+            received.push(stage);
+            setStages((prev) => [...prev.filter((s) => s.stage !== stage.stage), stage]);
+          },
+          authHeaders,
+        );
       } catch (err) {
         // Older backend or a proxy that refuses the stream: same answer, just without live stages.
         if (!(err instanceof StreamUnavailable)) throw err;
-        data = await api<ChatResponse>("/api/rag/chat", { method: "POST", body: JSON.stringify(body) });
+        data = await api<ChatResponse>("/api/rag/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeaders },
+          body: JSON.stringify(body),
+        });
+      }
+      if (cid) {
+        // An expired session still gets its answer; say plainly that it isn't being kept.
+        setNotSaved(data.history_saved === false);
+        if (data.history_saved) setHistoryVersion((v) => v + 1);
       }
       setMessages([
         ...nextHistory,
@@ -245,7 +306,7 @@ export function ChatWidget() {
       ]);
     } catch {
       setError(t(lang, "chatError"));
-      setMessages(messages);
+      setMessages(base);
     } finally {
       setLoading(false);
       setRetranslatePending(false);
@@ -258,6 +319,50 @@ export function ChatWidget() {
     setInput("");
     setError("");
     setRetranslatePending(false);
+    setConversationId(null);
+    setStarred(false);
+    setNotSaved(false);
+    setView("chat");
+  }
+
+  async function openConversation(id: string) {
+    if (loading || openingId) return;
+    setOpeningId(id);
+    try {
+      const convo = await getChat(id);
+      let question = "";
+      setMessages(
+        convo.messages.map((m): ChatMessage => {
+          if (m.role === "user") {
+            question = m.content;
+            return { role: "user", content: m.content };
+          }
+          return { role: "assistant", content: m.content, question, ...restoreAnswer(m.meta) };
+        }),
+      );
+      setConversationId(convo.id);
+      setStarred(convo.starred);
+      setNotSaved(false);
+      setError("");
+      setRetranslatePending(false);
+      setView("chat");
+    } catch {
+      /* the row stays in the list; tapping again retries */
+    } finally {
+      setOpeningId(null);
+    }
+  }
+
+  async function toggleStar() {
+    if (!conversationId) return;
+    const next = !starred;
+    setStarred(next);
+    try {
+      await updateChat(conversationId, { starred: next });
+      setHistoryVersion((v) => v + 1);
+    } catch {
+      setStarred(!next);
+    }
   }
 
   async function handleOutputLangChange(next: Lang) {
@@ -269,11 +374,11 @@ export function ChatWidget() {
     const hasAssistant = messages.some((m) => m.role === "assistant");
     if (lastUser && hasAssistant) {
       setRetranslatePending(true);
-      const withoutLastAssistant = messages[messages.length - 1]?.role === "assistant"
-        ? messages.slice(0, -1)
-        : messages;
-      setMessages(withoutLastAssistant);
-      await sendMessage(lastUser.content, next);
+      // The turns before the last question; the question is asked again in the new language.
+      const lastUserIndex = messages.lastIndexOf(lastUser);
+      const before = messages.slice(0, lastUserIndex);
+      setMessages(messages.slice(0, lastUserIndex + 1));
+      await sendMessage(lastUser.content, next, before, true);
     }
   }
 
@@ -301,12 +406,36 @@ export function ChatWidget() {
           ${isOpen ? "translate-y-0 opacity-100 pointer-events-auto" : "translate-y-8 opacity-0 pointer-events-none"}`}
       >
         <div className="flex items-center justify-between border-b border-subtle px-4 py-3">
-          <div>
-            <h2 className="font-semibold text-heading">{t(lang, "chat")}</h2>
-            <p className="text-[10px] text-faint">{t(lang, "chatSubtitle")}</p>
+          <div className="min-w-0">
+            <h2 className="font-semibold text-heading">{t(lang, view === "history" ? "chatHistory" : "chat")}</h2>
+            <p className="truncate text-[10px] text-faint">{t(lang, "chatSubtitle")}</p>
           </div>
           <div className="flex items-center gap-1">
-            {messages.length > 0 && (
+            {signedIn && conversationId && !notSaved && messages.length > 0 && view === "chat" && (
+              <button
+                type="button"
+                onClick={() => void toggleStar()}
+                aria-pressed={starred}
+                title={t(lang, starred ? "chatUnstar" : "chatStar")}
+                aria-label={t(lang, starred ? "chatUnstar" : "chatStar")}
+                className={`rounded-lg p-1.5 hover:bg-noor-50 dark:hover:bg-noor-800 ${starred ? "text-gold-500" : "text-faint"}`}
+              >
+                <StarIcon filled={starred} className="h-5 w-5" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setView((v) => (v === "history" ? "chat" : "history"))}
+              aria-pressed={view === "history"}
+              title={t(lang, view === "history" ? "chatHistoryBack" : "chatHistoryOpen")}
+              aria-label={t(lang, view === "history" ? "chatHistoryBack" : "chatHistoryOpen")}
+              className={`rounded-lg p-1.5 hover:bg-noor-50 dark:hover:bg-noor-800 ${view === "history" ? "bg-noor-50 text-accent dark:bg-noor-800" : "text-faint"}`}
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M3.5 12a8.5 8.5 0 1 0 2.5-6M3.5 4v4h4M12 8v4.5l3 1.8" />
+              </svg>
+            </button>
+            {messages.length > 0 && view === "chat" && (
               <button
                 type="button"
                 onClick={handleNewChat}
@@ -332,6 +461,27 @@ export function ChatWidget() {
           </div>
         </div>
 
+        {view === "history" ? (
+          <ChatHistoryPanel
+            lang={lang}
+            signedIn={signedIn}
+            activeId={conversationId}
+            version={historyVersion}
+            openingId={openingId}
+            onOpen={(id) => void openConversation(id)}
+            onNew={handleNewChat}
+            onStarChange={(id, value) => id === conversationId && setStarred(value)}
+            onDeleted={(id) => {
+              if (id === conversationId) {
+                setMessages([]);
+                setConversationId(null);
+                setStarred(false);
+              }
+            }}
+            onLeave={closeChat}
+          />
+        ) : (
+        <>
         <div className="flex flex-wrap items-center gap-2 border-b border-subtle bg-surface-muted px-3 py-2">
           <span className="shrink-0 text-[10px] font-medium uppercase text-faint">{t(lang, "answerIn")}:</span>
           <div className="flex flex-row gap-1">
@@ -378,6 +528,8 @@ export function ChatWidget() {
               </div>
             </div>
           )}
+
+          {notSaved && signedIn && <p className="rounded-lg bg-surface-muted px-3 py-1.5 text-[10px] text-muted">{t(lang, "chatNotSaved")}</p>}
 
           {retranslatePending && (
             <p className="px-3 py-1 text-[10px] text-faint">{t(lang, "retranslateHint")}</p>
@@ -552,6 +704,8 @@ export function ChatWidget() {
             {t(lang, "send")}
           </button>
         </form>
+        </>
+        )}
       </div>
     </>
   );

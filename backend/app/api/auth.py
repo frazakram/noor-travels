@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 from app.core.config import get_settings
 from app.core.limiter import limiter
 from app.db import get_cursor, use_sqlite
+from app.services import chat_history
 
 router = APIRouter()
 
@@ -316,6 +317,7 @@ def delete_account(request: Request, body: DeleteAccountRequest, authorization: 
         _ensure_preferences_table(cur)
         cur.execute("DELETE FROM user_preferences WHERE user_id = %s", (user_id,))
         cur.execute("DELETE FROM user_learn_progress WHERE user_id = %s", (user_id,))
+        chat_history.delete_all_for_user(cur, user_id)
         cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
     return {"deleted": True}
 

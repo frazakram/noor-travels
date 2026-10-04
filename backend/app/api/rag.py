@@ -3,12 +3,14 @@ import logging
 import queue
 import threading
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Header, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from app.api.auth import verify_token
 from app.core.limiter import limiter
 from app.db import DatabaseUnavailable, get_cursor, use_sqlite
+from app.services import chat_history
 from app.services.rag_service import ask, chat
 
 router = APIRouter()
@@ -31,6 +33,10 @@ class ChatRequest(BaseModel):
     response_lang: str | None = None
     include_transliteration: bool = True
     history: list[ChatMessage] = Field(default_factory=list, max_length=20)
+    # Signed-in users: the conversation this turn belongs to (client-made UUID), saved to history.
+    conversation_id: str | None = Field(default=None, pattern=chat_history.UUID_RE.pattern)
+    # The previous answer was regenerated (another language): replace that turn, don't repeat it.
+    replace_last: bool = False
 
 
 class FeedbackRequest(BaseModel):
@@ -59,6 +65,25 @@ _FEEDBACK_UPSERT_SQLITE = """
     ON CONFLICT (id) DO UPDATE SET rating = excluded.rating, comment = excluded.comment,
       updated_at = CURRENT_TIMESTAMP
 """
+
+
+def _save_to_history(body: ChatRequest, authorization: str | None, result: dict) -> dict:
+    """Saves the turn for a signed-in user. Never fails the answer: history is a convenience,
+    so a bad token or a database hiccup only means this turn isn't saved (and says so)."""
+    if not body.conversation_id:
+        return result
+    token = (authorization or "").removeprefix("Bearer ").strip()
+    user_id = verify_token(token) if token else None
+    saved = False
+    if user_id is not None and result.get("answer"):
+        try:
+            saved = chat_history.save_turn(
+                user_id, body.conversation_id, body.message.strip(), result, body.response_lang or body.lang, body.replace_last
+            )
+        except Exception:
+            logger.exception("Saving chat history failed", extra={"event": "chat_history_failed"})
+    # A copy: the result may be the cached object, which must not carry this user's flag.
+    return {**result, "history_saved": saved}
 
 
 @router.post("/feedback", status_code=204)
@@ -90,20 +115,21 @@ def rag_ask(request: Request, body: AskRequest):
 
 @router.post("/chat")
 @limiter.limit("15/minute")
-def rag_chat(request: Request, body: ChatRequest):
+def rag_chat(request: Request, body: ChatRequest, authorization: str | None = Header(default=None)):
     history = [{"role": m.role, "content": m.content} for m in body.history]
-    return chat(
+    result = chat(
         body.message,
         body.lang,
         history,
         response_lang=body.response_lang or body.lang,
         include_transliteration=body.include_transliteration,
     )
+    return _save_to_history(body, authorization, result)
 
 
 @router.post("/chat/stream")
 @limiter.limit("15/minute")
-def rag_chat_stream(request: Request, body: ChatRequest):
+def rag_chat_stream(request: Request, body: ChatRequest, authorization: str | None = Header(default=None)):
     """Same answer as /chat, streamed as NDJSON: progress events while the pipeline runs,
     then {"type": "result", ...}. Lets the client show what is happening during the wait."""
     history = [{"role": m.role, "content": m.content} for m in body.history]
@@ -119,7 +145,7 @@ def rag_chat_stream(request: Request, body: ChatRequest):
                 include_transliteration=body.include_transliteration,
                 progress=lambda stage, data: events.put({"type": "stage", "stage": stage, **data}),
             )
-            events.put({"type": "result", "result": result})
+            events.put({"type": "result", "result": _save_to_history(body, authorization, result)})
         except Exception as exc:
             logger.exception("Streamed chat failed", extra={"event": "chat_stream_failed"})
             events.put({"type": "error", "status": 503 if isinstance(exc, DatabaseUnavailable) else 500})
