@@ -6,6 +6,7 @@ import { useLang } from "@/components/LangProvider";
 import { HijriCalendarModal } from "@/components/home/HijriCalendarModal";
 import { QiblaCompass } from "@/components/home/QiblaCompass";
 import { TasbeehWidget } from "@/components/home/TasbeehWidget";
+import { ZakatCalculator } from "@/components/home/ZakatCalculator";
 import { ToolSheet } from "@/components/home/ToolSheet";
 import type { SalahTimesResponse } from "@/lib/salah";
 import { t } from "@/lib/i18n";
@@ -15,13 +16,14 @@ type Props = {
   times: SalahTimesResponse | null;
 };
 
-type Sheet = "qibla" | "tasbeeh" | "calendar" | null;
+type Sheet = "qibla" | "tasbeeh" | "calendar" | "zakat" | null;
 
 const ICONS = {
   qibla: <><circle cx="12" cy="12" r="9" /><path d="m12 6 2.5 6L12 18l-2.5-6L12 6Z" /></>,
   tasbeeh: <><circle cx="12" cy="5" r="1.6" /><circle cx="17" cy="8" r="1.6" /><circle cx="18.5" cy="13.5" r="1.6" /><circle cx="15.5" cy="18" r="1.6" /><circle cx="9.5" cy="18" r="1.6" /><circle cx="6.5" cy="13.5" r="1.6" /><circle cx="7" cy="8" r="1.6" /></>,
   calendar: <><rect x="3.5" y="5" width="17" height="15" rx="2.5" /><path d="M3.5 10h17M8 3v4M16 3v4" /></>,
   khutba: <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" /></>,
+  zakat: <><ellipse cx="12" cy="6.5" rx="6.5" ry="2.5" /><path d="M5.5 6.5v5c0 1.4 2.9 2.5 6.5 2.5s6.5-1.1 6.5-2.5v-5M5.5 11.5v5c0 1.4 2.9 2.5 6.5 2.5s6.5-1.1 6.5-2.5v-5" /></>,
 };
 
 function ToolIcon({ name }: { name: keyof typeof ICONS }) {
@@ -43,7 +45,7 @@ export function QuickTools({ coords, times }: Props) {
   const item = "group flex flex-col items-center gap-2";
 
   return (
-    <nav aria-label={t(lang, "quickTools")} className="grid grid-cols-4 gap-2 py-1">
+    <nav aria-label={t(lang, "quickTools")} className="grid grid-cols-5 gap-1 py-1">
       <button type="button" className={item} onClick={() => setSheet("qibla")}>
         <ToolIcon name="qibla" />
         <span className={label}>{t(lang, "toolQibla")}</span>
@@ -60,12 +62,19 @@ export function QuickTools({ coords, times }: Props) {
         <ToolIcon name="khutba" />
         <span className={label}>{t(lang, "toolKhutba")}</span>
       </Link>
+      <button type="button" className={item} onClick={() => setSheet("zakat")}>
+        <ToolIcon name="zakat" />
+        <span className={label}>{t(lang, "toolZakat")}</span>
+      </button>
 
       <ToolSheet open={sheet === "qibla"} title={t(lang, "qiblaCompass")} onClose={close}>
         <QiblaCompass coords={coords} />
       </ToolSheet>
       <ToolSheet open={sheet === "tasbeeh"} title={t(lang, "tasbeehCounter")} onClose={close}>
         <TasbeehWidget />
+      </ToolSheet>
+      <ToolSheet open={sheet === "zakat"} title={t(lang, "zakatTitle")} onClose={close}>
+        <ZakatCalculator />
       </ToolSheet>
       <HijriCalendarModal open={sheet === "calendar"} onClose={close} hijri={times?.hijri} />
     </nav>
