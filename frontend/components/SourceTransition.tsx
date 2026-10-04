@@ -1,21 +1,25 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useLang } from "@/components/LangProvider";
 import { t } from "@/lib/i18n";
 
 export type SourceKind = "quran" | "hadith" | "dua";
 
-type Pending = { href: string; kind: SourceKind; label: string; startedAt: number };
+type Origin = { x: number; y: number };
+type Pending = { href: string; kind: SourceKind; label: string; startedAt: number; origin: Origin | null };
+/** What has really happened so far; drives the progress line (never a fake loop). */
+type Stage = "opening" | "arrived" | "ready";
 
 /** Shown at least this long so the opening animation completes instead of flashing. */
-const MIN_VISIBLE_MS = 800;
+const MIN_VISIBLE_MS = 900;
 /** Never block the screen longer than this, even if navigation stalls. */
 const MAX_VISIBLE_MS = 10_000;
-const EXIT_MS = 420;
+const EXIT_MS = 640; // text fade, then the 0.5 s reveal after 0.12 s
 
-const SourceTransitionContext = createContext<(href: string, kind: SourceKind, label: string) => void>(() => {});
+type Open = (href: string, kind: SourceKind, label: string, origin?: Origin | null) => void;
+const SourceTransitionContext = createContext<Open>(() => {});
 
 export function useOpenSource() {
   return useContext(SourceTransitionContext);
@@ -29,21 +33,28 @@ export function sourceKindOf(href: string): SourceKind {
 
 /**
  * Opening a cited source from chat: navigation starts immediately, and this overlay covers the
- * wait with a short "opening the source" scene. It leaves once the destination URL is live and
- * the minimum time has passed, then dissolves into the page.
+ * wait. The scene opens from the tapped citation, tracks real progress (page loaded, then the
+ * verse settled in place), and reveals the page from the centre, where the verse sits.
  */
 export function SourceTransitionProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [pending, setPending] = useState<Pending | null>(null);
+  const [stage, setStage] = useState<Stage>("opening");
   const [leaving, setLeaving] = useState(false);
   const timers = useRef<number[]>([]);
 
-  const open = useCallback(
-    (href: string, kind: SourceKind, label: string) => {
+  const open = useCallback<Open>(
+    (href, kind, label, origin = null) => {
       timers.current.forEach(window.clearTimeout);
       timers.current = [];
       setLeaving(false);
-      setPending({ href, kind, label, startedAt: performance.now() });
+      setStage("opening");
+      setPending({ href, kind, label, startedAt: performance.now(), origin });
+      try {
+        navigator.vibrate?.(8); // a tick under the finger where supported
+      } catch {
+        /* not allowed in this context */
+      }
       router.push(href);
     },
     [router],
@@ -62,11 +73,13 @@ export function SourceTransitionProvider({ children }: { children: ReactNode }) 
     };
     window.addEventListener("noor:ayah-ready", onAyahReady);
     const finish = () => {
+      setStage("ready");
       setLeaving(true);
       timers.current.push(window.setTimeout(() => setPending(null), EXIT_MS));
     };
     const poll = window.setInterval(() => {
       const elapsed = performance.now() - pending.startedAt;
+      if (arrived()) setStage((s) => (s === "opening" ? "arrived" : s));
       if ((arrived() && ayahReady && elapsed >= MIN_VISIBLE_MS) || elapsed >= MAX_VISIBLE_MS) {
         window.clearInterval(poll);
         finish();
@@ -83,7 +96,7 @@ export function SourceTransitionProvider({ children }: { children: ReactNode }) 
   return (
     <SourceTransitionContext.Provider value={open}>
       {children}
-      {pending && <SourceOverlay kind={pending.kind} label={pending.label} leaving={leaving} />}
+      {pending && <SourceOverlay kind={pending.kind} label={pending.label} origin={pending.origin} stage={stage} leaving={leaving} />}
     </SourceTransitionContext.Provider>
   );
 }
@@ -97,41 +110,65 @@ const ARABIC = {
   dua: "رَبَّنَا",
 } as const;
 
-function SourceOverlay({ kind, label, leaving }: { kind: SourceKind; label: string; leaving: boolean }) {
+const PROGRESS: Record<Stage, string> = { opening: "source-progress-opening", arrived: "source-progress-arrived", ready: "source-progress-ready" };
+
+function SourceOverlay({ kind, label, origin, stage, leaving }: { kind: SourceKind; label: string; origin: Origin | null; stage: Stage; leaving: boolean }) {
   const { lang } = useLang();
+  // The portal grows from the tapped citation (or the screen centre without one).
+  const style = {
+    "--ox": origin ? `${origin.x}px` : "50%",
+    "--oy": origin ? `${origin.y}px` : "50%",
+  } as CSSProperties;
   return (
-    <div
-      className={`source-overlay fixed inset-0 z-[90] flex items-center justify-center px-6 ${leaving ? "source-overlay-leave" : ""}`}
-      role="status"
-      aria-live="polite"
-    >
-      <div className="relative flex flex-col items-center text-center">
-        <div className="source-emblem relative h-44 w-44">
-          <span className="source-halo absolute inset-6 rounded-full" aria-hidden />
-          {Array.from({ length: 12 }, (_, i) => (
-            <span key={i} className="source-mote" style={{ ["--a" as string]: `${i * 30}deg`, animationDelay: `${(i % 6) * 70}ms` }} aria-hidden />
-          ))}
-          <svg viewBox="0 0 120 120" className="source-star absolute inset-0 h-full w-full" aria-hidden>
-            <g className="source-star-spin">
-              <rect x="24" y="24" width="72" height="72" rx="3" className="source-stroke" pathLength={100} />
-              <rect x="24" y="24" width="72" height="72" rx="3" className="source-stroke source-stroke-2" pathLength={100} transform="rotate(45 60 60)" />
-              <circle cx="60" cy="60" r="27" className="source-stroke source-stroke-3" pathLength={100} />
+    <div className={`source-overlay fixed inset-0 z-[90] ${leaving ? "source-overlay-leave" : ""}`} style={style} role="status" aria-live="polite">
+      <svg className="source-pattern absolute inset-0 h-full w-full" aria-hidden>
+        <defs>
+          <pattern id="girih" width="72" height="72" patternUnits="userSpaceOnUse" patternTransform="rotate(8)">
+            <g fill="none" stroke="currentColor" strokeWidth="0.8">
+              <rect x="22" y="22" width="28" height="28" />
+              <rect x="22" y="22" width="28" height="28" transform="rotate(45 36 36)" />
+              <path d="M0 36h8M64 36h8M36 0v8M36 64v8" />
             </g>
-            <g className="source-glyph">
-              <SourceGlyph kind={kind} />
-            </g>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#girih)" />
+      </svg>
+
+      <div className="relative flex h-full items-center justify-center px-8">
+        <div className="source-stage relative flex w-full max-w-[19rem] flex-col items-center text-center">
+          {/* Mihrab arch framing the scene, drawn in a gold hairline. */}
+          <svg viewBox="0 0 300 380" className="source-arch absolute -inset-x-2 -top-10 h-[calc(100%+4.5rem)] w-[calc(100%+1rem)]" preserveAspectRatio="none" aria-hidden>
+            <path d="M14 378 V150 C14 70 90 18 150 6 C210 18 286 70 286 150 V378" pathLength={100} />
           </svg>
+
+          <div className="source-emblem relative mt-6 h-36 w-36">
+            <span className="source-halo absolute inset-5 rounded-full" aria-hidden />
+            {Array.from({ length: 12 }, (_, i) => (
+              <span key={i} className="source-mote" style={{ ["--a" as string]: `${i * 30}deg`, animationDelay: `${(i % 6) * 90}ms` }} aria-hidden />
+            ))}
+            <svg viewBox="0 0 120 120" className="absolute inset-0 h-full w-full" aria-hidden>
+              <g className="source-star-spin">
+                <rect x="24" y="24" width="72" height="72" rx="3" className="source-stroke" pathLength={100} />
+                <rect x="24" y="24" width="72" height="72" rx="3" className="source-stroke source-stroke-2" pathLength={100} transform="rotate(45 60 60)" />
+                <circle cx="60" cy="60" r="27" className="source-stroke source-stroke-3" pathLength={100} />
+              </g>
+              <g className="source-glyph">
+                <SourceGlyph kind={kind} />
+              </g>
+            </svg>
+          </div>
+
+          <p className="source-arabic font-arabic mt-3 text-[1.7rem] leading-relaxed" dir="rtl" lang="ar">
+            {ARABIC[kind]}
+          </p>
+          <p className="source-title font-arabic mt-2 text-lg">{t(lang, TITLE_KEY[kind])}</p>
+          <p className="source-label mt-1 text-[11px] font-medium uppercase" dir="ltr">
+            {label}
+          </p>
+          <span className={`source-progress mt-6 block h-px w-44 overflow-hidden ${PROGRESS[stage]}`} aria-hidden>
+            <span className="block h-full" />
+          </span>
         </div>
-        <p className="source-arabic font-arabic mt-2 text-2xl text-gold-600 dark:text-gold-300" dir="rtl" lang="ar">
-          {ARABIC[kind]}
-        </p>
-        <p className="source-title animate-text-shimmer mt-3 text-sm font-semibold">{t(lang, TITLE_KEY[kind])}</p>
-        <p className="source-label mt-1 text-xs text-muted" dir="ltr">
-          {label}
-        </p>
-        <span className="source-progress mt-4 block h-0.5 w-40 overflow-hidden rounded-full bg-noor-200/60 dark:bg-noor-800" aria-hidden>
-          <span className="block h-full w-1/3 rounded-full bg-gradient-to-r from-transparent via-gold-400 to-transparent" />
-        </span>
       </div>
     </div>
   );

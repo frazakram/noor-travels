@@ -25,8 +25,9 @@ export function CitationLink({
   function onClick(e: MouseEvent<HTMLAnchorElement>) {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
     onOpen?.();
-    openSource(href, sourceKindOf(href), label);
+    openSource(href, sourceKindOf(href), label, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
   }
   return (
     <Link href={href} onClick={onClick} className={className}>
