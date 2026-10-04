@@ -6,6 +6,7 @@ import { AppShellDetect } from "@/components/AppShellDetect";
 import { AppTabBar } from "@/components/AppTabBar";
 import { ChatProvider } from "@/components/ChatProvider";
 import { ChatWidget } from "@/components/ChatWidget";
+import { SourceTransitionProvider } from "@/components/SourceTransition";
 import { Footer } from "@/components/Footer";
 import { LangProvider } from "@/components/LangProvider";
 import { Nav } from "@/components/Nav";
@@ -113,6 +114,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <LangProvider>
             <ChatProvider>
+              <SourceTransitionProvider>
               <NavigationProgress />
               <AppShellDetect />
               <Nav />
@@ -131,6 +133,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
               <RegisterServiceWorker />
               <AuthNudge />
+              </SourceTransitionProvider>
             </ChatProvider>
           </LangProvider>
         </ThemeProvider>

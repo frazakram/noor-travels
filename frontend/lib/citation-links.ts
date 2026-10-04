@@ -76,3 +76,17 @@ export function linkifyCitations(text: string): Segment[] {
   if (last < text.length) out.push({ text: text.slice(last) });
   return out;
 }
+
+/** Readable name of a linked source, from its link ("1078" in a list -> "Sahih al-Bukhari 1078"). */
+export function citationLabel(href: string): string {
+  let m = /^\/quran\/(\d+)\?ayah=(\d+)$/.exec(href);
+  if (m) return `Quran ${m[1]}:${m[2]}`;
+  m = /^\/hadith\/([a-z]+)\/(\d+)$/.exec(href);
+  if (m) {
+    const name = Object.entries(HADITH_COLLECTIONS).find(([, slug]) => slug === m![1])?.[0];
+    return name ? `${name} ${m[2]}` : `Hadith ${m[2]}`;
+  }
+  m = /[?&]dua=([^&]+)/.exec(href);
+  if (m) return `Dua ${decodeURIComponent(m[1])}`;
+  return href;
+}

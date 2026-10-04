@@ -1,15 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useChat } from "@/components/ChatProvider";
 import { ChatFeedback } from "@/components/ChatFeedback";
+import { CitationLink } from "@/components/CitationLink";
 import { ChatSearchProgress, SearchTrail, type SearchTrailData } from "@/components/ChatSearchProgress";
 import { useLang } from "@/components/LangProvider";
 import { NoticeCard } from "@/components/NoticeCard";
 import { api } from "@/lib/api";
 import { StreamUnavailable, streamChat, type ChatStage } from "@/lib/chat-stream";
-import { citationHref, linkifyCitations } from "@/lib/citation-links";
+import { citationHref, citationLabel, linkifyCitations } from "@/lib/citation-links";
 import { t, type Lang } from "@/lib/i18n";
 
 type SourceDetail = {
@@ -99,9 +99,9 @@ function CitedText({ text, onNavigate }: { text: string; onNavigate: () => void 
     <>
       {linkifyCitations(text).map((seg, i) =>
         seg.href ? (
-          <Link key={i} href={seg.href} onClick={onNavigate} className={CITATION_LINK}>
+          <CitationLink key={i} href={seg.href} label={citationLabel(seg.href)} onOpen={onNavigate} className={CITATION_LINK}>
             {seg.text}
-          </Link>
+          </CitationLink>
         ) : (
           <Fragment key={i}>{seg.text}</Fragment>
         ),
@@ -416,14 +416,15 @@ export function ChatWidget() {
                       const label = ref.replace(/^\[|\]$/g, "").replace(/\s*\([a-z_]+\)$/, "");
                       const href = citationHref(ref);
                       return href ? (
-                        <Link
+                        <CitationLink
                           key={ref}
                           href={href}
-                          onClick={closeChat}
+                          label={citationLabel(href)}
+                          onOpen={closeChat}
                           className="rounded-full border border-noor-200 bg-white px-2 py-0.5 text-[11px] font-medium text-accent hover:border-noor-400 dark:border-noor-600 dark:bg-noor-800"
                         >
                           {label}
-                        </Link>
+                        </CitationLink>
                       ) : (
                         <span key={ref} className="rounded-full border border-subtle px-2 py-0.5 text-[11px] text-muted">
                           {label}
@@ -463,9 +464,9 @@ export function ChatWidget() {
                       {m.sources.map((s, j) => (
                         <li key={j} className="rounded-lg border border-subtle bg-white p-2 text-[11px] dark:bg-noor-800">
                           {citationHref(s.ref) ? (
-                            <Link href={citationHref(s.ref)!} onClick={closeChat} className={CITATION_LINK}>
+                            <CitationLink href={citationHref(s.ref)!} label={citationLabel(citationHref(s.ref)!)} onOpen={closeChat} className={CITATION_LINK}>
                               {s.ref}
-                            </Link>
+                            </CitationLink>
                           ) : (
                             <p className="font-medium text-body">{s.ref}</p>
                           )}

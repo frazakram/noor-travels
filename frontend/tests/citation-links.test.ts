@@ -57,3 +57,15 @@ describe("linkifyCitations", () => {
     assert.deepEqual(links("[Quran 2:999]"), []);
   });
 });
+
+describe("citationLabel", () => {
+  it("names the source a link opens, including list items", async () => {
+    const { citationLabel } = await import("../lib/citation-links.ts");
+    assert.equal(citationLabel("/hadith/bukhari/1078"), "Sahih al-Bukhari 1078");
+    assert.equal(citationLabel("/quran/10?ayah=3"), "Quran 10:3");
+    assert.equal(citationLabel("/hadith?section=duas&dua=study-2"), "Dua study-2");
+    for (const ref of ["Quran 2:153", "Sahih al-Bukhari 583", "Dua anxiety-1"]) {
+      assert.equal(citationLabel(citationHref(ref)!), ref);
+    }
+  });
+});
