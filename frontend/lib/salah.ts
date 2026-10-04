@@ -22,6 +22,8 @@ export type SalahTimesResponse = {
   school: number;
   timings: Record<string, string>;
   prayers: PrayerSlot[];
+  /** Set when calculated on the device (no connection) rather than fetched from the API. */
+  computedOffline?: boolean;
 };
 
 export type LocationResponse = {

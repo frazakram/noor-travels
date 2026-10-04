@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
+import { OfflinePackCard } from "@/components/settings/OfflinePackCard";
 import { GratitudeJournal } from "@/components/home/GratitudeJournal";
 import { NotificationSettings } from "@/components/home/NotificationSettings";
 import { SalahSettingsPanel } from "@/components/home/SalahSettingsPanel";
@@ -160,6 +161,8 @@ export default function SettingsPage() {
       <NotificationSettings times={salah.times} />
 
       <TravelModeWidget coords={salah.coords} />
+
+      <OfflinePackCard />
 
       <nav className="card divide-y divide-noor-100 overflow-hidden p-0 dark:divide-noor-800">
         {(

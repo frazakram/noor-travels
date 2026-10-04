@@ -224,6 +224,9 @@ export function SalahDashboard({ times, locationLabel, loading, error, onRefresh
           >
             {loading ? t(lang, "salahLocating") : locationLabel || t(lang, "salahYourArea")}
           </p>
+          {times?.computedOffline && (
+            <p className="text-[11px] text-white/70">{t(lang, "salahOfflineNote")}</p>
+          )}
         </div>
       </div>
 

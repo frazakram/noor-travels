@@ -183,8 +183,28 @@ export function useSalah(): SalahState {
       localStorage.setItem(COORDS_KEY, JSON.stringify({ lat, lng }));
       localStorage.setItem(TIMES_KEY, JSON.stringify({ times: prayerTimes, settingsKey: settingsKey(opts) }));
     } catch {
-      // A failed background refresh keeps the times on screen; only a first load shows an error.
-      if (!background) setError("salahErrorLoad");
+      // No connection (or the API is down). Today's times already on screen stay; otherwise
+      // calculate them on the device so prayer times never depend on the network.
+      if (background && shownTimes.current?.date === localTodayDate()) return;
+      try {
+        const { computePrayerTimes } = await import("@/lib/salah-offline");
+        const known = shownTimes.current;
+        const timezone =
+          tzHint ??
+          (known && distanceKm({ lat: known.latitude, lng: known.longitude }, { lat, lng }) < MOVED_KM
+            ? known.timezone
+            : Intl.DateTimeFormat().resolvedOptions().timeZone);
+        const computed = computePrayerTimes(lat, lng, opts, timezone);
+        setTimes(computed);
+        setError("");
+        const starts: Partial<Record<PrayerId, string>> = {};
+        computed.prayers.forEach((p) => {
+          starts[p.id] = p.start;
+        });
+        applyAllNotificationSchedules(loadNotificationPrefs(), starts, computed.timezone);
+      } catch {
+        if (!background) setError("salahErrorLoad");
+      }
     } finally {
       setLoading(false);
     }

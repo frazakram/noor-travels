@@ -21,12 +21,19 @@ function isApiData(req) {
 
 // Bump VERSION to drop every old cache on the next visit. Each cache is capped so a
 // long-lived install can't grow without bound across deploys.
-const VERSION = "v10";
+const VERSION = "v11";
 const SHELL = `noor-shell-${VERSION}`;
 const STATIC = `noor-static-${VERSION}`;
 const PAGES = `noor-pages-${VERSION}`;
 const RUNTIME = `noor-runtime-${VERSION}`;
 const LIMITS = { [STATIC]: 150, [PAGES]: 25, [RUNTIME]: 120 };
+// The offline pack (lib/offline-pack.ts) the user chose to download: Quran pages and data,
+// duas, adhkar. Not versioned and never trimmed or cleared on deploy — only the user removes
+// it. Its pages reference their own build's assets, which are stored alongside them.
+const OFFLINE = "noor-offline-v1";
+// API data the pack provides. Served from the pack only when the network fails, so online
+// users always get fresh data (dynamic API JSON is otherwise never cached — see isApiData).
+const OFFLINE_API = /^\/api\/(quran\/surahs(\/\d+)?|duas\/|adhkar\/)$/;
 const SHELL_ASSETS = ["/", "/quran", "/hadith", "/khutba", "/adhkar", "/logo-sm.png", "/logo-192.png"];
 
 self.addEventListener("install", (event) => {
@@ -35,7 +42,7 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  const keep = new Set([SHELL, STATIC, PAGES, RUNTIME]);
+  const keep = new Set([SHELL, STATIC, PAGES, RUNTIME, OFFLINE]);
   event.waitUntil(
     caches.keys().then((keys) => Promise.all(keys.filter((key) => !keep.has(key)).map((key) => caches.delete(key)))),
   );
@@ -63,7 +70,17 @@ self.addEventListener("fetch", (event) => {
   // RSC payloads belong to one build; caching them serves stale route trees.
   if (req.url.includes("_rsc=")) return;
   const url = new URL(req.url);
-  if (url.origin !== self.location.origin || isApiData(req)) return;
+  if (url.origin !== self.location.origin) return;
+  if (isApiData(req)) {
+    if (OFFLINE_API.test(url.pathname)) {
+      event.respondWith(
+        fetch(req).catch(() =>
+          caches.open(OFFLINE).then((cache) => cache.match(req)).then((hit) => hit || Response.error()),
+        ),
+      );
+    }
+    return;
+  }
   const cacheName = cacheFor(req, url);
 
   // Hashed build assets never change, so serve them from cache when present.
@@ -89,8 +106,13 @@ self.addEventListener("fetch", (event) => {
         return res;
       })
       .catch(() =>
-        caches.match(req).then((cached) => {
+        caches.match(req).then(async (cached) => {
           if (cached) return cached;
+          // A deep link (/quran/2?ayah=5) is the same page as the saved /quran/2.
+          if (req.mode === "navigate") {
+            const page = await caches.match(req, { ignoreSearch: true });
+            if (page) return page;
+          }
           // Only page navigations fall back to the cached app shell. Serving
           // the HTML of "/" for a failed image/script/data request paints
           // broken images (an <img> receiving HTML) instead of letting the
