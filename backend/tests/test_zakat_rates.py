@@ -36,7 +36,8 @@ class ZakatRatesTest(unittest.TestCase):
             body = self.client.get("/api/zakat/rates").json()
         # 3110.35 USD/oz = 100 USD/g; at 96 INR/USD that's 9600 INR/g before duty.
         self.assertAlmostEqual(body["internationalGold24kPerGram"], 9600.0, places=1)
-        self.assertAlmostEqual(body["gold24kPerGram"], 9600.0 * 1.06, places=1)
+        self.assertAlmostEqual(body["gold24kPerGram"], 9600.0 * (1 + zakat.INDIA_IMPORT_DUTY), places=1)
+        self.assertEqual(zakat.INDIA_IMPORT_DUTY, 0.15)  # Customs Notifications 15-18/2026
         self.assertAlmostEqual(body["internationalSilverPerGram"], 96.0, places=2)
         self.assertEqual(body["sources"], ["gold-api.com", "open.er-api.com"])
 
@@ -57,6 +58,20 @@ class ZakatRatesTest(unittest.TestCase):
             self.client.get("/api/zakat/rates")
         with mock.patch.object(zakat._http, "get", side_effect=AssertionError("refetched")):
             self.assertEqual(self.client.get("/api/zakat/rates").status_code, 200)
+
+
+    def test_refresh_rechecks_after_a_minute_but_not_sooner(self):
+        with self._routes():
+            first = self.client.get("/api/zakat/rates").json()
+        # Within a minute: same answer, sources untouched, and never cached downstream.
+        with mock.patch.object(zakat._http, "get", side_effect=AssertionError("refetched too soon")):
+            r = self.client.get("/api/zakat/rates?refresh=true")
+        self.assertEqual(r.json()["checkedAt"], first["checkedAt"])
+        self.assertEqual(r.headers["cache-control"], "no-store")
+        # Older than a minute: refresh goes back to the sources.
+        zakat._cached = (zakat._cached[0] - 61, zakat._cached[1])
+        with self._routes(usd_inr=100.0):
+            self.assertEqual(self.client.get("/api/zakat/rates?refresh=true").json()["usdInr"], 100.0)
 
 
 if __name__ == "__main__":

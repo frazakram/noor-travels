@@ -18,10 +18,14 @@ from app.core.limiter import limiter
 router = APIRouter()
 
 TROY_OUNCE_GRAMS = 31.1034768
-# Basic customs duty on gold and silver: 6% since the Union Budget of July 2024.
-# Update here if the rate changes.
-INDIA_IMPORT_DUTY = 0.06
+# Effective customs duty on gold and silver bullion: 15% from 13 May 2026 (Customs
+# Notifications 15-18/2026, 12 May 2026: basic customs duty plus AIDC), up from the 6% set in
+# July 2024 and kept in the February 2026 budget. Update here when it changes again.
+INDIA_IMPORT_DUTY = 0.15
 _CACHE_S = 30 * 60
+# A refresh request newer than this returns the same answer: tapping Refresh repeatedly must
+# not turn into a stream of calls to the free price service.
+_MIN_REFRESH_S = 60
 
 _http = httpx.Client(timeout=8.0, headers={"User-Agent": "NoorSafar/1.0 (+https://noor-travels-chi.vercel.app)"})
 _lock = Lock()
@@ -61,18 +65,23 @@ def _fetch() -> dict:
         "usdInr": usd_inr,
         "importDuty": INDIA_IMPORT_DUTY,
         "updatedAt": updated,
+        "checkedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "sources": ["gold-api.com", fx_source],
     }
 
 
 @router.get("/rates")
 @limiter.limit("30/minute")
-def rates(request: Request, response: Response):
+def rates(request: Request, response: Response, refresh: bool = False):
+    """refresh=true (the Refresh button) re-checks the sources unless the last check was under a
+    minute ago; its answer is never cached by the CDN or browser."""
     global _cached
     now = time.monotonic()
+    max_age = _MIN_REFRESH_S if refresh else _CACHE_S
+    cache_header = "no-store" if refresh else "public, max-age=600, s-maxage=1800"
     with _lock:
-        if _cached and now - _cached[0] < _CACHE_S:
-            response.headers["Cache-Control"] = "public, max-age=600, s-maxage=1800"
+        if _cached and now - _cached[0] < max_age:
+            response.headers["Cache-Control"] = cache_header
             return _cached[1]
     try:
         data = _fetch()
@@ -80,5 +89,5 @@ def rates(request: Request, response: Response):
         raise HTTPException(503, "Live gold and silver rates are unavailable right now") from exc
     with _lock:
         _cached = (now, data)
-    response.headers["Cache-Control"] = "public, max-age=600, s-maxage=1800"
+    response.headers["Cache-Control"] = cache_header
     return data

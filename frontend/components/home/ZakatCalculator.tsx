@@ -20,7 +20,7 @@ const STORAGE_KEY = "noor-zakat-v1";
 /** "live": rates from /api/zakat/rates; "manual": the user typed their jeweller's rate. */
 type Saved = { input: ZakatInput; prices: ZakatPrices; basis: NisabBasis; priceMode: "live" | "manual" };
 
-type LiveRates = ZakatPrices & { updatedAt: string; importDuty: number };
+type LiveRates = ZakatPrices & { updatedAt: string; checkedAt?: string; importDuty: number };
 
 const EMPTY: Saved = {
   input: { cash: 0, goldGrams: 0, goldKarat: 22, silverGrams: 0, investments: 0, businessStock: 0, receivables: 0, debts: 0 },
@@ -58,11 +58,21 @@ export function ZakatCalculator() {
   const [saved, setSaved] = useState<Saved>(EMPTY);
   const [live, setLive] = useState<LiveRates | null>(null);
   const [liveFailed, setLiveFailed] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  function loadRates(refresh: boolean) {
+    setRefreshing(refresh);
+    return api<LiveRates>(`/api/zakat/rates${refresh ? "?refresh=true" : ""}`, { silent: !refresh })
+      .then((r) => {
+        setLive(r);
+        setLiveFailed(false);
+      })
+      .catch(() => setLiveFailed(true))
+      .finally(() => setRefreshing(false));
+  }
 
   useEffect(() => {
-    api<LiveRates>("/api/zakat/rates", { silent: true })
-      .then(setLive)
-      .catch(() => setLiveFailed(true));
+    void loadRates(false);
   }, []);
 
   useEffect(() => {
@@ -92,7 +102,25 @@ export function ZakatCalculator() {
 
   const result = useMemo(() => computeZakat(saved.input, prices, saved.basis), [saved.input, prices, saved.basis]);
   const basisPrice = saved.basis === "silver" ? prices.silverPerGram : prices.gold24kPerGram;
-  const updated = live?.updatedAt ? new Date(live.updatedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "";
+  const checked = live?.checkedAt ?? live?.updatedAt;
+  const updated = checked ? new Date(checked).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "";
+  const refreshButton = (
+    <button
+      type="button"
+      disabled={refreshing}
+      onClick={() => {
+        // Asking for the latest rate means "use the market rate", even after typing one.
+        if (saved.priceMode === "manual") update({ ...saved, priceMode: "live" });
+        void loadRates(true);
+      }}
+      className="inline-flex items-center gap-1 font-medium text-accent disabled:opacity-60"
+    >
+      <svg viewBox="0 0 24 24" className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden>
+        <path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" />
+      </svg>
+      {refreshing ? t(lang, "zakatRefreshing") : t(lang, "zakatRefresh")}
+    </button>
+  );
 
   return (
     <div className="space-y-4">
@@ -103,9 +131,12 @@ export function ZakatCalculator() {
         <NumberField label={t(lang, "zakatGoldPrice")} value={Math.round(prices.gold24kPerGram)} onChange={(n) => setPrices({ gold24kPerGram: n })} suffix="₹/g" />
         <NumberField label={t(lang, "zakatSilverPrice")} value={Math.round(prices.silverPerGram * 100) / 100} onChange={(n) => setPrices({ silverPerGram: n })} suffix="₹/g" />
         {saved.priceMode === "live" && live ? (
-          <p className="text-[11px] text-faint">
-            ● {t(lang, "zakatLiveRate")} · {updated} · {t(lang, "zakatLiveBasis").replace("{duty}", String(Math.round(live.importDuty * 100)))}
-          </p>
+          <div className="space-y-1 text-[11px] text-faint">
+            <p>
+              ● {t(lang, "zakatLiveRate")} · {updated} · {t(lang, "zakatLiveBasis").replace("{duty}", String(Math.round(live.importDuty * 100)))}
+            </p>
+            {refreshButton}
+          </div>
         ) : (
           <p className="flex flex-wrap items-center gap-x-2 text-[11px] text-faint">
             <span>{liveFailed ? t(lang, "zakatLiveFailed") : saved.priceMode === "manual" ? t(lang, "zakatYourRate") : t(lang, "zakatPriceHint")}</span>
@@ -114,6 +145,7 @@ export function ZakatCalculator() {
                 {t(lang, "zakatUseLive")}
               </button>
             )}
+            {refreshButton}
           </p>
         )}
       </section>
