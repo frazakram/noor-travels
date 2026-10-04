@@ -12,7 +12,7 @@ type Pending = { href: string; kind: SourceKind; label: string; startedAt: numbe
 /** Shown at least this long so the opening animation completes instead of flashing. */
 const MIN_VISIBLE_MS = 800;
 /** Never block the screen longer than this, even if navigation stalls. */
-const MAX_VISIBLE_MS = 8000;
+const MAX_VISIBLE_MS = 10_000;
 const EXIT_MS = 420;
 
 const SourceTransitionContext = createContext<(href: string, kind: SourceKind, label: string) => void>(() => {});
@@ -54,18 +54,28 @@ export function SourceTransitionProvider({ children }: { children: ReactNode }) 
     const target = new URL(pending.href, window.location.origin);
     const arrived = () =>
       window.location.pathname === target.pathname && window.location.search === target.search;
+    // A verse deep in a surah: stay until the reader has it centred (its "noor:ayah-ready"
+    // event), so the user never sees the top of the surah first and then a jump.
+    let ayahReady = !(pending.kind === "quran" && Number(target.searchParams.get("ayah")) > 1);
+    const onAyahReady = () => {
+      ayahReady = true;
+    };
+    window.addEventListener("noor:ayah-ready", onAyahReady);
     const finish = () => {
       setLeaving(true);
       timers.current.push(window.setTimeout(() => setPending(null), EXIT_MS));
     };
     const poll = window.setInterval(() => {
       const elapsed = performance.now() - pending.startedAt;
-      if ((arrived() && elapsed >= MIN_VISIBLE_MS) || elapsed >= MAX_VISIBLE_MS) {
+      if ((arrived() && ayahReady && elapsed >= MIN_VISIBLE_MS) || elapsed >= MAX_VISIBLE_MS) {
         window.clearInterval(poll);
         finish();
       }
     }, 60);
-    return () => window.clearInterval(poll);
+    return () => {
+      window.clearInterval(poll);
+      window.removeEventListener("noor:ayah-ready", onAyahReady);
+    };
   }, [pending]);
 
   useEffect(() => () => timers.current.forEach(window.clearTimeout), []);

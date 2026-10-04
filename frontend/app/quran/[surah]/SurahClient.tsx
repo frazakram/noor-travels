@@ -425,9 +425,16 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
   // smooth scrolling is suspended meanwhile: animated corrections restarted every frame and
   // never caught up.
   const settleRef = useRef<(() => void) | null>(null);
+  // The settle loop starts as soon as the ayahs exist (they come server-rendered), instead of
+  // waiting a couple of seconds for word-by-word data; it simply keeps the target centred
+  // while that data arrives, and only counts as settled once it has.
+  const wordsSettledRef = useRef(wordsSettled);
+  useEffect(() => {
+    wordsSettledRef.current = wordsSettled;
+  }, [wordsSettled]);
   useEffect(() => () => settleRef.current?.(), []);
   useEffect(() => {
-    if (surahLoading || !wordsSettled || studyMode || pendingScrollIndex === null || !ayahs.length) return;
+    if (surahLoading || studyMode || pendingScrollIndex === null || !ayahs.length) return;
     const key = ayahs[pendingScrollIndex]?.verse_key;
     setPendingScrollIndex(null);
     if (!key) return;
@@ -440,11 +447,14 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
     const previousBehavior = root.style.scrollBehavior;
     root.style.scrollBehavior = "auto";
     const stop = () => {
+      if (stopped) return;
       stopped = true;
       root.style.scrollBehavior = previousBehavior;
       programmaticScrollRef.current = false;
       for (const ev of ["wheel", "touchstart", "keydown", "mousedown"]) window.removeEventListener(ev, stop);
       settleRef.current = null;
+      // The opening-the-source scene (SourceTransition) waits for this before revealing the page.
+      window.dispatchEvent(new CustomEvent("noor:ayah-ready", { detail: { key } }));
     };
     for (const ev of ["wheel", "touchstart", "keydown", "mousedown"]) window.addEventListener(ev, stop, { passive: true });
     settleRef.current = stop;
@@ -463,11 +473,11 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
           stableFrames += 1;
         }
       }
-      if (stableFrames >= 60 || performance.now() - startedAt > 8000) return stop();
+      if ((stableFrames >= 30 && wordsSettledRef.current) || performance.now() - startedAt > 10_000) return stop();
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
-  }, [surahLoading, wordsSettled, studyMode, ayahs, pendingScrollIndex]);
+  }, [surahLoading, studyMode, ayahs, pendingScrollIndex]);
 
   useEffect(() => {
     if (studyMode || surahLoading || ayahs.length === 0 || renderLimit >= ayahs.length) return;
