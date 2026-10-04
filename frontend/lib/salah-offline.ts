@@ -114,6 +114,10 @@ export function computePrayerTimes(
 ): SalahTimesResponse {
   const coords = new Coordinates(lat, lng);
   const params = methodParams(settings.method);
+  const hijri = hijriOf(now, timezone);
+  // Umm al-Qura sets Isha 120 min after Maghrib in Ramadan (90 otherwise). AlAdhan applies
+  // it; adhan-js leaves it to the caller, which made offline Isha 30 min early in Ramadan.
+  if (settings.method === 4 && hijri?.month?.number === 9) params.ishaInterval = 120;
   params.madhab = settings.school === 1 ? Madhab.Hanafi : Madhab.Shafi;
   params.highLatitudeRule = highLatitudeRule(settings.latitudeAdjustment);
   const day = calendarDay(now, timezone);
@@ -140,7 +144,7 @@ export function computePrayerTimes(
   const midnightStr = hhmm(midnight, timezone);
   return {
     date: ddmmyyyy(now, timezone),
-    hijri: hijriOf(now, timezone),
+    hijri,
     timezone,
     latitude: lat,
     longitude: lng,

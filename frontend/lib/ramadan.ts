@@ -3,7 +3,8 @@
  * prayer times (AlAdhan, or the device's Umm al-Qura calendar offline), sehri ends at Fajr and
  * iftar is at Maghrib. Pure functions; the UI is components/home/RamadanCard.
  */
-import { parseMinutes, secondsInTz, type SalahTimesResponse } from "@/lib/salah";
+// Relative with extension so the module also loads under node --test (no "@/" alias there).
+import { parseMinutes, secondsInTz, type SalahTimesResponse } from "./salah.ts";
 
 export type RamadanPhase =
   | { kind: "ramadan"; day: number; daysInMonth: number; year: string }
