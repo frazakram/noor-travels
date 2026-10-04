@@ -35,6 +35,7 @@ type SearchResult = {
 const QURAN_TOOLS = [
   { href: "/quran/listen", key: "audiobook" as const, icon: <><path d="M4 14v-2a8 8 0 0 1 16 0v2" /><rect x="3" y="14" width="4" height="6" rx="1.5" /><rect x="17" y="14" width="4" height="6" rx="1.5" /></> },
   { href: "/learn-quran", key: "learnQuran" as const, icon: <><path d="m3 8 9-4 9 4-9 4-9-4Z" /><path d="M7 10v5c2.8 2 7.2 2 10 0v-5" /></> },
+  { href: "/quran/hifz", key: "hifzCardTitle" as const, icon: <><path d="M6 4h9a3 3 0 0 1 3 3v13l-4.5-2.5L9 20V7" /><path d="M6 4a2 2 0 0 0-2 2v2h5" /><path d="m11.5 10 1.5 1.5 3-3" /></> },
   { href: "/recite", key: "recite" as const, icon: <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" /></> },
   { href: "/quran/find", key: "findFromScreenshot" as const, icon: <><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" /><circle cx="12" cy="12" r="3" /></> },
 ];
@@ -175,7 +176,7 @@ export default function QuranPage() {
         </button>
       </form>
 
-      <nav className="grid grid-cols-4 gap-2">
+      <nav className="grid grid-cols-5 gap-1.5">
         {QURAN_TOOLS.map((tool) => (
           <Link
             key={tool.href}

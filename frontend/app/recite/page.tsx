@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { NoticeCard } from "@/components/NoticeCard";
@@ -7,6 +9,7 @@ import { api } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import { displaySurahName, stripLeadingBismillah } from "@/lib/quran-display";
 import type { Ayah } from "@/lib/quran-types";
+import { applyReview, dayKey, gradeFromScore, loadState, previewInterval, saveState, type Grade } from "@/lib/hifz";
 
 const MAX_AYAHS_PER_ATTEMPT = 15;
 const MAX_RECORD_SECONDS = 180;
@@ -78,6 +81,24 @@ export default function RecitePage() {
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const discardRef = useRef(false);
+  const router = useRouter();
+  // Opened from the Hifz planner: ?surah=36&from=1&to=3&hifz=36:1-3. The range is applied after
+  // the surah's default-range reset below, which would otherwise overwrite it.
+  const [hifzId, setHifzId] = useState<string | null>(null);
+  const pendingRange = useRef<{ from: number; to: number } | null>(null);
+  const [hifzSaved, setHifzSaved] = useState(false);
+
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const s = Number(q.get("surah"));
+    const from = Number(q.get("from"));
+    const to = Number(q.get("to"));
+    if (s >= 1 && s <= 114) {
+      setSurah(s);
+      if (from >= 1 && to >= from) pendingRange.current = { from, to };
+      setHifzId(q.get("hifz"));
+    }
+  }, []);
 
   const surahMeta = surahs.find((s) => s.number === surah);
   const ayahCount = surahMeta?.ayah_count ?? ayahs.length ?? 1;
@@ -106,6 +127,13 @@ export default function RecitePage() {
   // Default range: ayah 1 → last ayah (capped at MAX), whenever the surah changes.
   useEffect(() => {
     if (!surahMeta) return;
+    const wanted = pendingRange.current;
+    if (wanted) {
+      pendingRange.current = null;
+      setAyahFrom(Math.min(wanted.from, surahMeta.ayah_count));
+      setAyahTo(Math.min(wanted.to, surahMeta.ayah_count, wanted.from + MAX_AYAHS_PER_ATTEMPT - 1));
+      return;
+    }
     setAyahFrom(1);
     setAyahTo(Math.min(surahMeta.ayah_count, MAX_AYAHS_PER_ATTEMPT));
   }, [surah, surahMeta?.ayah_count]);
@@ -393,6 +421,20 @@ export default function RecitePage() {
         )}
       </div>
 
+      {result?.type === "score" && hifzId && score != null && (
+        <HifzSave
+          id={hifzId}
+          score={score}
+          saved={hifzSaved}
+          onSave={() => {
+            const today = dayKey();
+            saveState(applyReview(loadState(), hifzId, gradeFromScore(score), today, score));
+            setHifzSaved(true);
+            router.push("/quran/hifz");
+          }}
+        />
+      )}
+
       {result?.type === "score" && (
         <div className="card space-y-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -507,6 +549,30 @@ export default function RecitePage() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/** After scoring a Hifz segment: record the score as that segment's review. */
+function HifzSave({ id, score, saved, onSave }: { id: string; score: number; saved: boolean; onSave: () => void }) {
+  const { lang } = useLang();
+  const item = typeof window !== "undefined" ? loadState().items.find((i) => i.id === id) : undefined;
+  if (!item) return null;
+  const grade: Grade = gradeFromScore(score);
+  const days = previewInterval(item, grade);
+  return (
+    <div className="card flex flex-wrap items-center justify-between gap-3 border-noor-300 dark:border-noor-600">
+      <p className="text-sm text-body">
+        {t(lang, "hifzSaveScore").replace("{grade}", t(lang, (["hifzAgain", "hifzHard", "hifzGood", "hifzEasy"] as const)[grade])).replace("{days}", String(days))}
+      </p>
+      <div className="flex gap-2">
+        <Link href="/quran/hifz" className="rounded-xl border border-subtle px-3 py-2 text-sm text-muted">
+          {t(lang, "hifzBack")}
+        </Link>
+        <button type="button" onClick={onSave} disabled={saved} className="btn-primary px-4 py-2 text-sm">
+          {t(lang, "hifzSave")}
+        </button>
+      </div>
     </div>
   );
 }
