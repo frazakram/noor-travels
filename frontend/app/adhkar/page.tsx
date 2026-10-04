@@ -136,6 +136,7 @@ function DhikrCard({
               text: `${title}\n\n${item.arabic}\n\n${translation}\n\n— ${item.source}\n${
                 typeof window !== "undefined" ? window.location.origin + "/adhkar" : ""
               }`,
+              card: { kind: "dua", reference: `${title} · ${item.source}`, arabic: item.arabic, translation },
             })}
             tipSide="top"
           />

@@ -12,6 +12,7 @@ import {
   toggleHadithFavorite,
   type FavoriteHadith,
 } from "@/lib/hadith-library";
+import { citationHref } from "@/lib/citation-links";
 import { t, type Lang } from "@/lib/i18n";
 
 type Hadith = {
@@ -93,7 +94,8 @@ function DuaCard({ d, highlight = false }: { d: Dua; highlight?: boolean }) {
           lang={lang}
           getPayload={() => ({
             title,
-            text: `${title}\n\n${d.arabic}\n\n${translation}\n\n— ${d.source}\n${typeof window !== "undefined" ? window.location.origin + "/hadith?section=duas" : ""}`,
+            text: `${title}\n\n${d.arabic}\n\n${translation}\n\n— ${d.source}\n${typeof window !== "undefined" ? `${window.location.origin}/hadith?section=duas&dua=${encodeURIComponent(d.id)}` : ""}`,
+            card: { kind: "dua", reference: `${title} · ${d.source}`, arabic: d.arabic, translation },
           })}
           tipSide="top"
           className="shrink-0"
@@ -172,8 +174,9 @@ function HadithCard({
 }
 
 function hadithSharePayload(h: Hadith | FavoriteHadith) {
-  const text = `${h.english}\n\n— ${h.reference}\n${typeof window !== "undefined" ? window.location.origin + "/hadith" : ""}`;
-  return { title: h.reference, text };
+  const url = typeof window !== "undefined" ? `${window.location.origin}${citationHref(h.reference) ?? "/hadith"}` : "";
+  const text = `${h.english}\n\n— ${h.reference}\n${url}`;
+  return { title: h.reference, text, url, card: { kind: "hadith" as const, reference: h.reference, translation: h.english } };
 }
 
 export default function HadithPage() {

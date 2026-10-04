@@ -55,6 +55,8 @@ export function HadithDetail({ collection, number, initial }: { collection: stri
               getPayload={() => ({
                 title: hadith.reference,
                 text: `${hadith.english}\n\n— ${hadith.reference}\n${window.location.href}`,
+                url: window.location.href,
+                card: { kind: "hadith", reference: hadith.reference, translation: hadith.english },
               })}
               className="shrink-0"
             />

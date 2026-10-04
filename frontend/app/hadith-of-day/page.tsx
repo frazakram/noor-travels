@@ -174,6 +174,7 @@ export default function HadithOfDayPage() {
               getPayload={() => ({
                 title: hadith?.reference ?? "Hadith",
                 text: `${hadith?.english ?? ""}\n\n— ${hadith?.reference ?? ""}\n${typeof window !== "undefined" ? window.location.href : ""}`,
+                card: hadith ? { kind: "hadith", reference: hadith.reference, translation: hadith.english } : undefined,
               })}
               tipSide="top"
             />

@@ -113,6 +113,7 @@ export function HadithOfTheDay({ lang }: { lang: Lang }) {
                 getPayload={() => ({
                   title: hadith.reference,
                   text: `${hadith.english}\n\n— ${hadith.reference}\n${typeof window !== "undefined" ? window.location.origin + "/hadith-of-day" : ""}`,
+                  card: { kind: "hadith", reference: hadith.reference, translation: hadith.english },
                 })}
                 tipSide="top"
               />

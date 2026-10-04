@@ -1,5 +1,7 @@
 "use client";
 
+import { ayahArabic } from "@/lib/quran-display";
+
 import { useEffect, useState } from "react";
 import { ShareButton } from "@/components/ShareButton";
 import { api } from "@/lib/api";
@@ -79,6 +81,7 @@ export function DailyReflection({ lang }: { lang: Lang }) {
             getPayload={() => ({
               title: `${ayah.name_en ?? "Quran"} ${ayah.verse_key}`,
               text: `${ayah.arabic}\n\n${ayahTranslation}\n\n— ${ayah.name_en ?? "Quran"} ${ayah.verse_key}\n${typeof window !== "undefined" ? window.location.origin + "/quran/" + ayah.verse_key.split(":")[0] + "?ayah=" + ayah.verse_key.split(":")[1] : ""}`,
+              card: { kind: "quran", reference: `${ayah.name_en ?? "Quran"} ${ayah.verse_key}`, arabic: ayahArabic(ayah.verse_key, ayah.arabic), translation: ayahTranslation },
             })}
             tipSide="top"
           />

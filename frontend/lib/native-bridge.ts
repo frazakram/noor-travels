@@ -21,6 +21,9 @@ type NoorAndroidBridge = {
   ) => void;
   scheduleHadithNotification?: (hour: number, minute: number, enabled: boolean) => void;
   share?: (title: string, text: string) => void;
+  /** 1.8+: share a card rendered by the web app (lib/share-card), so its design ships without
+   * an APK release. Older APKs fall back to share(), which draws their built-in native card. */
+  shareImage?: (title: string, caption: string, base64Jpeg: string) => void;
   /** Added for khutba PDF export; absent on APKs built before that shipped. */
   savePdf?: (filename: string, base64: string) => boolean;
   /** "1.2 (3)" — versionName and versionCode of the installed APK. */
@@ -154,6 +157,26 @@ export function nativeSavePdf(filename: string, base64: string): boolean {
     const b = bridge();
     if (!b?.savePdf) return false;
     return b.savePdf(filename, base64) !== false;
+  } catch {
+    return false;
+  }
+}
+
+/** True when the APK can share a web-rendered card image (1.8+). */
+export function nativeCanShareImage(): boolean {
+  try {
+    return typeof bridge()?.shareImage === "function";
+  } catch {
+    return false;
+  }
+}
+
+export function nativeShareImage(title: string, caption: string, base64Jpeg: string): boolean {
+  try {
+    const b = bridge();
+    if (!b?.shareImage) return false;
+    b.shareImage(title, caption, base64Jpeg);
+    return true;
   } catch {
     return false;
   }

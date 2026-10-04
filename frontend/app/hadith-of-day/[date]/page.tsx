@@ -124,6 +124,8 @@ export default async function HadithOfDayDatePage({ params }: Props) {
             payload={{
               title: hadith.reference,
               text: `${hadith.english}\n\n— ${hadith.reference}\n${pageUrl}`,
+              url: pageUrl,
+              card: { kind: "hadith", reference: hadith.reference, translation: hadith.english },
             }}
             tipSide="top"
           />

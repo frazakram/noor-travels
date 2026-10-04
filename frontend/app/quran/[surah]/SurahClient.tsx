@@ -11,9 +11,10 @@ import { IconButton, Icons } from "@/components/IconButton";
 import { emitPageLoading, startRouteProgress } from "@/components/NavigationProgress";
 import { useSurahAudio, type RepeatScope } from "@/hooks/useSurahAudio";
 import { api } from "@/lib/api";
+import { shareContent } from "@/lib/share";
 import { t } from "@/lib/i18n";
 import { isBookmarked, saveLastRead, toggleBookmark } from "@/lib/quran-bookmarks";
-import { cleanQuranText, displaySurahName, stripLeadingBismillah } from "@/lib/quran-display";
+import { ayahArabic, cleanQuranText, displaySurahName } from "@/lib/quran-display";
 import { formatSurahDuration, getSurahDurations } from "@/lib/quran-durations";
 import type { Ayah, TranslationLang } from "@/lib/quran-types";
 import { sourcesForPref, type TafsirPref, type TafsirSource } from "@/lib/tafsir";
@@ -536,23 +537,17 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
       typeof window !== "undefined"
         ? `${window.location.origin}/quran/${surahNumber}?ayah=${a.ayah_number}`
         : "";
-    const text = `${a.arabic}\n\n${tr}\n\n— ${a.verse_key}\n${url}`;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: a.verse_key, text, url });
-      } else {
-        await navigator.clipboard.writeText(text);
-        setShareStatus(t(lang, "copied"));
-        window.setTimeout(() => setShareStatus(""), 1500);
-      }
-    } catch {
-      try {
-        await navigator.clipboard.writeText(text);
-        setShareStatus(t(lang, "copied"));
-        window.setTimeout(() => setShareStatus(""), 1500);
-      } catch {
-        /* ignore */
-      }
+    // Through the shared path: an image card where possible, and the Android app's share sheet
+    // (navigator.share doesn't exist in its WebView, so this used to only copy text there).
+    const result = await shareContent({
+      title: `Quran ${a.verse_key}`,
+      text: `${ayahArabic(a.verse_key, a.arabic)}\n\n${tr}\n\n— ${a.verse_key}\n${url}`,
+      url,
+      card: { kind: "quran", reference: `${surahName ? `${surahName} · ` : ""}Quran ${a.verse_key}`, arabic: ayahArabic(a.verse_key, a.arabic), translation: tr },
+    });
+    if (result === "copied") {
+      setShareStatus(t(lang, "copied"));
+      window.setTimeout(() => setShareStatus(""), 1500);
     }
   }
 
@@ -1124,11 +1119,7 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
                 verseKey={a.verse_key}
                 words={wordsByVerse[a.verse_key]}
                 activeWordIndex={isPlaying ? audio.activeWordIndex : -1}
-                fallbackArabic={
-                  surahNumber !== 1 && surahNumber !== 9 && a.ayah_number === 1
-                    ? stripLeadingBismillah(a.arabic)
-                    : a.arabic
-                }
+                fallbackArabic={ayahArabic(a.verse_key, a.arabic)}
                 isPlaying={isPlaying}
               />
               {showRoman && a.transliteration && (
