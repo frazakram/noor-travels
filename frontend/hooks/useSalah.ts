@@ -1,11 +1,12 @@
 "use client";
 
 import { nativeSetPrayerLocation } from "@/lib/native-bridge";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { applyAllNotificationSchedules } from "@/lib/notification-schedule";
 import { loadNotificationPrefs } from "@/lib/notification-prefs";
 import { DEFAULT_SALAH_SETTINGS, type LocationResponse, type PrayerId, type SalahSettings, type SalahTimesResponse } from "@/lib/salah";
+import { distanceKm, MOVED_KM, settingsKey, usableCachedTimes } from "@/lib/salah-cache";
 
 export type SalahState = {
   loading: boolean;
@@ -26,6 +27,19 @@ const COORDS_KEY = "noor-salah-coords";
 const LABEL_KEY = "noor-salah-label";
 const MANUAL_KEY = "noor-salah-manual-location";
 const SETTINGS_KEY = "noor-salah-settings";
+const TIMES_KEY = "noor-salah-times";
+
+// Prayer times need a town, not a street: a fast network-based fix is plenty, and a recent one
+// is reused. A fresh high-accuracy GPS fix took ~10 s indoors and blocked the whole screen.
+const QUICK_POSITION: PositionOptions = { enableHighAccuracy: false, timeout: 10_000, maximumAge: 30 * 60_000 };
+
+function loadCachedTimes(settings: SalahSettings): SalahTimesResponse | null {
+  try {
+    return usableCachedTimes(JSON.parse(localStorage.getItem(TIMES_KEY) ?? "null"), settings);
+  } catch {
+    return null;
+  }
+}
 
 function localTodayDate(): string {
   const d = new Date();
@@ -118,9 +132,27 @@ export function useSalah(): SalahState {
     return () => window.removeEventListener("noor:prefs-changed", onPrefs);
   }, []);
 
+  // Times currently on screen; a refresh while they are shown happens silently.
+  const shownTimes = useRef<SalahTimesResponse | null>(null);
+  useEffect(() => {
+    shownTimes.current = times;
+  }, [times]);
+
   const fetchForCoords = useCallback(async (lat: number, lng: number, opts = settings, tzHint?: string) => {
-    setLoading(true);
-    setError("");
+    const background = shownTimes.current !== null;
+    if (!background) {
+      setLoading(true);
+      setError("");
+    }
+    // The place name is separate: it must never hold the prayer times back.
+    api<LocationResponse>(`/api/salah/location?lat=${lat}&lng=${lng}`)
+      .then((loc) => {
+        setLocationLabel(loc.label);
+        localStorage.setItem(LABEL_KEY, loc.label);
+      })
+      .catch(() => {
+        /* keep the saved label */
+      });
     try {
       const day = tzHint ? todayDateInTz(tzHint) : localTodayDate();
       const tzParam = tzHint ? `&timezone=${encodeURIComponent(tzHint)}` : "";
@@ -128,14 +160,12 @@ export function useSalah(): SalahState {
       const adjParam = `&fajr_adj=${o.fajr}&dhuhr_adj=${o.dhuhr}&asr_adj=${o.asr}&maghrib_adj=${o.maghrib}&isha_adj=${o.isha}`;
       const latAdj = opts.latitudeAdjustment ?? 0;
       const latAdjParam = latAdj > 0 ? `&latitude_adjustment=${latAdj}` : "";
-      const [loc, prayerTimes] = await Promise.all([
-        api<LocationResponse>(`/api/salah/location?lat=${lat}&lng=${lng}`),
-        api<SalahTimesResponse>(
-          `/api/salah/times?lat=${lat}&lng=${lng}&method=${opts.method}&school=${opts.school}&date=${day}${tzParam}${adjParam}${latAdjParam}`,
-        ),
-      ]);
-      setLocationLabel(loc.label);
+      const prayerTimes = await api<SalahTimesResponse>(
+        `/api/salah/times?lat=${lat}&lng=${lng}&method=${opts.method}&school=${opts.school}&date=${day}${tzParam}${adjParam}${latAdjParam}`,
+        { silent: background },
+      );
       setTimes(prayerTimes);
+      setError("");
       const starts: Partial<Record<PrayerId, string>> = {};
       prayerTimes.prayers.forEach((p) => {
         starts[p.id] = p.start;
@@ -151,9 +181,10 @@ export function useSalah(): SalahState {
         timezone: prayerTimes.timezone,
       });
       localStorage.setItem(COORDS_KEY, JSON.stringify({ lat, lng }));
-      localStorage.setItem(LABEL_KEY, loc.label);
+      localStorage.setItem(TIMES_KEY, JSON.stringify({ times: prayerTimes, settingsKey: settingsKey(opts) }));
     } catch {
-      setError("salahErrorLoad");
+      // A failed background refresh keeps the times on screen; only a first load shows an error.
+      if (!background) setError("salahErrorLoad");
     } finally {
       setLoading(false);
     }
@@ -187,6 +218,16 @@ export function useSalah(): SalahState {
   }, []);
 
   useEffect(() => {
+    // 1. Today's saved times appear immediately; everything below refreshes them.
+    const saved = loadCachedTimes(settings);
+    if (saved) {
+      setTimes(saved);
+      shownTimes.current = saved;
+      setLoading(false);
+      const savedLabel = localStorage.getItem(LABEL_KEY);
+      if (savedLabel) setLocationLabel(savedLabel);
+    }
+
     const manual = loadManualLocation();
     if (manual) {
       setPermission("granted");
@@ -196,44 +237,48 @@ export function useSalah(): SalahState {
       return;
     }
 
+    // 2. The last known place is used straight away; the phone's position is checked in the
+    //    background and only matters if it has moved meaningfully.
+    const cached = loadCachedCoords();
+    if (cached) {
+      setCoords(cached);
+      const cachedLabel = localStorage.getItem(LABEL_KEY);
+      if (cachedLabel) setLocationLabel(cachedLabel);
+      void fetchForCoords(cached.lat, cached.lng);
+    }
+
     if (!navigator.geolocation) {
       setPermission("unsupported");
-      const cached = loadCachedCoords();
-      if (cached) {
-        setCoords(cached);
-        void fetchForCoords(cached.lat, cached.lng);
-      } else {
+      if (!cached) {
         setLoading(false);
         setError("salahErrorUnsupported");
       }
       return;
     }
 
+    let active = true;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (!active) return;
         setPermission("granted");
-        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
-        setCoords({ lat, lng });
-        void fetchForCoords(lat, lng);
-        if (accuracy > 500) {
-          setError("");
-        }
+        const here = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        if (cached && distanceKm(cached, here) < MOVED_KM) return;
+        setCoords(here);
+        void fetchForCoords(here.lat, here.lng);
       },
       (err) => {
+        if (!active) return;
         setPermission(err.code === err.PERMISSION_DENIED ? "denied" : "prompt");
-        const cached = loadCachedCoords();
-        const cachedLabel = localStorage.getItem(LABEL_KEY);
-        if (cached) {
-          setCoords(cached);
-          if (cachedLabel) setLocationLabel(cachedLabel);
-          void fetchForCoords(cached.lat, cached.lng);
-        } else {
+        if (!cached) {
           setLoading(false);
           setError("salahErrorPermission");
         }
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60_000 },
+      QUICK_POSITION,
     );
+    return () => {
+      active = false;
+    };
   }, [fetchForCoords, tick, settings]);
 
   // Refresh when the calendar day changes in the user's prayer timezone
