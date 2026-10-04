@@ -11,7 +11,7 @@ export type SalahTimesResponse = {
   hijri?: {
     date?: string;
     day?: string;
-    month?: { number?: number; en?: string; ar?: string };
+    month?: { number?: number; en?: string; ar?: string; days?: number };
     year?: string;
     holidays?: string[];
   };
@@ -111,7 +111,7 @@ export function minutesInTz(date: Date, tz: string): number {
 }
 
 /** Seconds since midnight in the zone; IANA offsets are whole minutes, so seconds are zone-independent. */
-function secondsInTz(date: Date, tz: string): number {
+export function secondsInTz(date: Date, tz: string): number {
   return minutesInTz(date, tz) * 60 + date.getUTCSeconds();
 }
 

@@ -6,6 +6,7 @@ import { FridayKhutbaCard } from "@/components/home/FridayKhutbaCard";
 import { GetTheAppCard } from "@/components/home/GetTheAppCard";
 import { Onboarding } from "@/components/home/Onboarding";
 import { QuickTools } from "@/components/home/QuickTools";
+import { RamadanCard } from "@/components/home/RamadanCard";
 import { SalahDashboard } from "@/components/home/SalahDashboard";
 import { TimeOfDayHero } from "@/components/home/TimeOfDayHero";
 import { TodayCard } from "@/components/home/TodayCard";
@@ -59,6 +60,7 @@ export default function HomePage() {
         />
       </TimeOfDayHero>
 
+      <RamadanCard times={salah.times} />
       <QuickTools coords={salah.coords} times={salah.times} />
 
       <FridayKhutbaCard timeZone={tz} />
