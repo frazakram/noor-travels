@@ -904,118 +904,83 @@ html.dark.high-contrast .ayah-word-active {
   }
 }
 
-/* ── Opening a cited source (SourceTransition) ─────────────────────────────────
-   A portal of light onto the source: it opens from the tapped citation, a mihrab arch is
-   drawn in gold, the Arabic is inked right to left, progress follows the real stages, and the
-   page is revealed from the centre, where the verse sits. Transform / opacity / clip / mask
-   only, so it stays on the compositor. Same deep green in light and dark themes, like the
-   share cards: it is the app's "manuscript" moment. */
-/* Starts at -15% so the mask is fully opaque until the reveal begins (its soft edge is 14%
-   wide; at 0% the centre would already be see-through). */
-@property --reveal {
-  syntax: "<percentage>";
-  inherits: false;
-  initial-value: -15%;
-}
-
+/* ── Opening a cited source (SourceTransition): the rocket ────────────────────────
+   Ignition on the pad (smoke, rumble, flame), lift-off to mid-screen, cruise through a
+   streaking night sky while the page loads (determinate progress below), and blast-off
+   out of the top when the destination is ready, then the sky clears onto the page.
+   Transform and opacity only, so every frame stays on the compositor. */
 .source-overlay {
-  --ink: #f3e3b5;
-  --gold: #e0bc6a;
-  --gold-soft: rgb(224 188 106 / 0.55);
-  color: var(--ink);
-  background:
-    radial-gradient(60% 45% at 50% 42%, rgb(224 188 106 / 0.13), transparent 70%),
-    radial-gradient(120% 90% at 50% 40%, #1a3c36, #0d221f 70%);
-  clip-path: circle(0 at var(--ox) var(--oy));
-  animation: source-portal 0.55s cubic-bezier(0.7, 0, 0.2, 1) forwards;
+  color: #fff;
+  background: radial-gradient(130% 85% at 50% 100%, #1f5246 0%, #0d221f 55%, #07130f 100%);
 }
-.source-pattern {
-  color: var(--gold);
-  opacity: 0.07;
-  animation: source-drift 24s linear infinite;
-}
-.source-stage {
-  animation: source-rise 0.5s 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-.source-arch path {
-  fill: none;
-  stroke: var(--gold-soft);
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
-  stroke-dasharray: 100;
-  stroke-dashoffset: 100;
-  animation: source-draw 1.1s 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-.source-emblem {
-  animation: source-emblem-in 0.6s 0.2s cubic-bezier(0.2, 1.2, 0.4, 1) both;
-}
-.source-star-spin {
-  transform-origin: 60px 60px;
-  animation: source-spin 18s linear infinite;
-}
-.source-stroke {
-  fill: none;
-  stroke: var(--gold);
-  stroke-width: 1.6;
-  stroke-linejoin: round;
-  stroke-dasharray: 100;
-  stroke-dashoffset: 100;
-  animation: source-draw 0.8s 0.3s ease-out forwards;
-}
-.source-stroke-2 {
-  animation-delay: 0.42s;
-}
-.source-stroke-3 {
-  stroke: #8bc5b3;
-  stroke-width: 1;
-  animation-delay: 0.55s;
-}
-.source-icon path {
-  fill: none;
-  stroke: var(--ink);
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-dasharray: 100;
-  stroke-dashoffset: 100;
-  animation: source-draw 0.7s 0.65s ease-out forwards;
-}
-.source-halo {
-  background: radial-gradient(circle, rgb(224 188 106 / 0.35), rgb(224 188 106 / 0) 68%);
-  animation: source-halo 2s ease-in-out infinite;
-}
-.source-mote {
+.source-star-dot {
   position: absolute;
-  left: calc(50% - 2px);
-  top: calc(50% - 2px);
-  height: 4px;
-  width: 4px;
   border-radius: 9999px;
-  background: var(--gold);
-  box-shadow: 0 0 10px 2px rgb(224 188 106 / 0.55);
-  opacity: 0;
-  animation: source-gather 1.6s 0.4s ease-in infinite;
+  background: #fff;
+  opacity: 0.35;
+  animation: source-twinkle 2.2s ease-in-out infinite;
 }
-/* Arabic is written right to left: the ink is revealed from the right edge. */
-.source-arabic {
-  color: var(--gold);
-  clip-path: inset(0 0 0 100%);
-  animation: source-ink 0.9s 0.45s cubic-bezier(0.5, 0, 0.2, 1) forwards;
+.source-streak {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(rgb(255 255 255 / 0), rgb(255 255 255 / 0.55));
+  opacity: 0;
+  animation-name: source-streak;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+.source-rocket {
+  position: absolute;
+  top: 0;
+  transform: translateY(calc(100vh - 13rem));
+  animation: source-liftoff 0.85s 0.35s cubic-bezier(0.5, 0, 0.25, 1) forwards;
+}
+.source-rumble {
+  animation:
+    source-shake 0.07s linear 0s 6,
+    source-hover 1.5s 1.3s ease-in-out infinite alternate;
+}
+.source-flame {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  animation:
+    source-ignite 0.35s ease-out both,
+    source-flicker 0.11s 0.35s ease-in-out infinite alternate;
+}
+.source-flame-core {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  animation: source-flicker 0.09s ease-in-out infinite alternate-reverse;
+}
+.source-puff {
+  position: absolute;
+  left: -34px;
+  top: -64px;
+  width: 68px;
+  height: 68px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 40% 40%, rgb(255 255 255 / 0.85), rgb(220 228 224 / 0.5) 60%, rgb(220 228 224 / 0) 72%);
+  opacity: 0;
+  animation: source-puff 1.15s ease-out 2 both;
+}
+/* Text arrives once the rocket has cleared it (it starts on the pad, behind the text). */
+.source-copy {
+  animation: source-fade-up 0.4s 0.85s ease-out both;
 }
 .source-title {
-  animation: source-fade-up 0.5s 0.7s ease-out both;
+  letter-spacing: 0.01em;
 }
 .source-label {
-  color: rgb(243 227 181 / 0.78);
-  letter-spacing: 0.22em;
-  animation: source-fade-up 0.5s 0.8s ease-out both;
+  color: #e0bc6a;
+  letter-spacing: 0.24em;
 }
-/* Determinate progress: each real stage moves it on; "opening" creeps so it never stalls. */
 .source-progress {
-  background: rgb(224 188 106 / 0.18);
+  background: rgb(255 255 255 / 0.12);
 }
 .source-progress > span {
-  background: linear-gradient(90deg, rgb(224 188 106 / 0.4), var(--gold));
+  background: linear-gradient(90deg, #8bc5b3, #e0bc6a);
   transform-origin: left;
   transform: scaleX(0.04);
   transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -1029,118 +994,119 @@ html.dark.high-contrast .ayah-word-active {
 .source-progress-ready > span {
   transform: scaleX(1);
 }
-/* Exit: light opens from the centre outward, onto the verse centred there. */
+
+/* Blast-off: the rocket accelerates out of the top, the flame stretches, then the sky clears. */
+.source-overlay-leave .source-rocket {
+  animation: source-blastoff 0.5s cubic-bezier(0.6, 0, 0.95, 0.4) forwards;
+}
+.source-overlay-leave .source-flame {
+  animation: source-boost 0.2s ease-out forwards;
+}
+.source-overlay-leave .source-copy {
+  animation: source-out 0.2s ease-in forwards;
+}
 .source-overlay-leave {
-  clip-path: none;
-  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent var(--reveal), #000 calc(var(--reveal) + 14%));
-  mask-image: radial-gradient(circle at 50% 50%, transparent var(--reveal), #000 calc(var(--reveal) + 14%));
-  animation: source-reveal 0.5s 0.12s cubic-bezier(0.6, 0, 0.3, 1) both;
-}
-/* The scene's text clears first, so only the green surround opens around the page:
-   otherwise its title and arch sit on top of the verse showing through. */
-.source-overlay-leave .source-stage {
-  animation: source-out 0.18s ease-in forwards;
-}
-.source-overlay-leave .source-pattern {
-  animation: source-out 0.3s ease-in forwards;
-}
-@supports not (mask-image: radial-gradient(circle, transparent 0%, #000 1%)) {
-  .source-overlay-leave {
-    animation: source-out 0.45s ease-in forwards;
-  }
+  animation: source-out 0.3s 0.42s ease-in forwards;
 }
 
-@keyframes source-portal {
-  to {
-    clip-path: circle(150% at var(--ox) var(--oy));
-  }
-}
-@keyframes source-reveal {
+@keyframes source-liftoff {
   from {
-    --reveal: -15%;
-  }
-  70% {
-    opacity: 1;
+    transform: translateY(calc(100vh - 13rem));
   }
   to {
-    --reveal: 120%;
-    opacity: 0;
+    transform: translateY(26vh);
   }
 }
-@keyframes source-out {
-  to {
-    opacity: 0;
-  }
-}
-@keyframes source-drift {
-  to {
-    transform: translate3d(-72px, -36px, 0);
-  }
-}
-@keyframes source-rise {
+@keyframes source-blastoff {
   from {
-    opacity: 0;
-    transform: translateY(14px);
+    transform: translateY(26vh);
   }
   to {
-    opacity: 1;
-    transform: none;
+    transform: translateY(-75vh);
   }
 }
-@keyframes source-emblem-in {
-  from {
-    opacity: 0;
-    transform: scale(0.72);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-@keyframes source-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@keyframes source-draw {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-@keyframes source-halo {
+@keyframes source-shake {
   0%,
   100% {
-    opacity: 0.55;
-    transform: scale(0.88);
+    transform: translate(0, 0);
   }
-  50% {
-    opacity: 1;
-    transform: scale(1.08);
+  25% {
+    transform: translate(-1.5px, 1px);
+  }
+  75% {
+    transform: translate(1.5px, -1px);
   }
 }
-/* Motes of light drift in from a ring around the star and gather at its centre. */
-@keyframes source-gather {
+@keyframes source-hover {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-10px);
+  }
+}
+@keyframes source-ignite {
+  from {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+@keyframes source-flicker {
+  from {
+    transform: scale(0.94, 0.9);
+  }
+  to {
+    transform: scale(1.06, 1.12);
+  }
+}
+@keyframes source-boost {
+  to {
+    transform: scale(1.15, 2.1);
+  }
+}
+@keyframes source-puff {
   0% {
     opacity: 0;
-    transform: rotate(var(--a)) translateX(84px) scale(1);
+    transform: translate(0, 0) scale(0.3);
   }
-  30% {
+  20% {
     opacity: 0.95;
   }
   100% {
     opacity: 0;
-    transform: rotate(var(--a)) translateX(12px) scale(0.3);
+    transform: translate(var(--dx), -26px) scale(1.7);
   }
 }
-@keyframes source-ink {
-  to {
-    clip-path: inset(0 0 0 0);
+@keyframes source-twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+@keyframes source-streak {
+  0% {
+    opacity: 0;
+    transform: translateY(-20vh);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(115vh);
   }
 }
 @keyframes source-fade-up {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -1152,42 +1118,35 @@ html.dark.high-contrast .ayah-word-active {
     transform: scaleX(0.62);
   }
 }
+@keyframes source-out {
+  to {
+    opacity: 0;
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .source-overlay,
-  .source-stage,
-  .source-emblem,
-  .source-title,
-  .source-label,
-  .source-arabic,
-  .source-overlay-leave .source-stage {
+  .source-rocket {
+    animation: none !important;
+    transform: translateY(26vh);
+  }
+  .source-rumble,
+  .source-flame,
+  .source-flame-core,
+  .source-star-dot,
+  .source-progress-opening > span,
+  .source-overlay-leave .source-rocket,
+  .source-overlay-leave .source-flame {
+    animation: none !important;
+  }
+  .source-streak,
+  .source-puff {
+    display: none;
+  }
+  .source-copy {
     animation-duration: 0.01ms !important;
     animation-delay: 0s !important;
   }
-  .source-overlay {
-    clip-path: none;
-  }
   .source-overlay-leave {
-    -webkit-mask-image: none;
-    mask-image: none;
     animation: source-out 0.2s ease-in forwards !important;
-  }
-  .source-star-spin,
-  .source-halo,
-  .source-pattern,
-  .source-progress-opening > span {
-    animation: none !important;
-  }
-  .source-mote {
-    display: none;
-  }
-  .source-arch path,
-  .source-stroke,
-  .source-icon path {
-    animation: none !important;
-    stroke-dashoffset: 0;
-  }
-  .source-arabic {
-    clip-path: none;
   }
 }

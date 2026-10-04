@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useLang } from "@/components/LangProvider";
 import { t } from "@/lib/i18n";
 
@@ -12,11 +12,11 @@ type Pending = { href: string; kind: SourceKind; label: string; startedAt: numbe
 /** What has really happened so far; drives the progress line (never a fake loop). */
 type Stage = "opening" | "arrived" | "ready";
 
-/** Shown at least this long so the opening animation completes instead of flashing. */
-const MIN_VISIBLE_MS = 900;
+/** Shown at least this long so the launch (ignition and lift-off) always plays out in full. */
+const MIN_VISIBLE_MS = 1500;
 /** Never block the screen longer than this, even if navigation stalls. */
 const MAX_VISIBLE_MS = 10_000;
-const EXIT_MS = 640; // text fade, then the 0.5 s reveal after 0.12 s
+const EXIT_MS = 760; // blast-off, then the sky clears
 
 type Open = (href: string, kind: SourceKind, label: string, origin?: Origin | null) => void;
 const SourceTransitionContext = createContext<Open>(() => {});
@@ -103,101 +103,98 @@ export function SourceTransitionProvider({ children }: { children: ReactNode }) 
 
 const TITLE_KEY = { quran: "openingQuran", hadith: "openingHadith", dua: "openingDua" } as const;
 
-// Opening words of each kind of text, shown in calligraphic type as the scene builds.
-const ARABIC = {
-  hadith: "قَالَ رَسُولُ ٱللَّهِ ﷺ",
-  quran: "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ",
-  dua: "رَبَّنَا",
-} as const;
-
 const PROGRESS: Record<Stage, string> = { opening: "source-progress-opening", arrived: "source-progress-arrived", ready: "source-progress-ready" };
 
-function SourceOverlay({ kind, label, origin, stage, leaving }: { kind: SourceKind; label: string; origin: Origin | null; stage: Stage; leaving: boolean }) {
+/** Fixed pseudo-random layout so the sky looks scattered but renders the same every time. */
+function scatter(count: number, seed: number) {
+  let x = seed;
+  const next = () => {
+    x = (x * 9301 + 49297) % 233280;
+    return x / 233280;
+  };
+  return Array.from({ length: count }, () => ({ left: next() * 100, top: next() * 100, size: next(), delay: next() }));
+}
+const STARS = scatter(36, 7);
+const STREAKS = scatter(16, 11);
+const PUFFS = Array.from({ length: 9 }, (_, i) => ({ dx: (i - 4) * 22, delay: (i % 3) * 70 }));
+
+function SourceOverlay({ kind, label, stage, leaving }: { kind: SourceKind; label: string; origin: Origin | null; stage: Stage; leaving: boolean }) {
   const { lang } = useLang();
-  // The portal grows from the tapped citation (or the screen centre without one).
-  const style = {
-    "--ox": origin ? `${origin.x}px` : "50%",
-    "--oy": origin ? `${origin.y}px` : "50%",
-  } as CSSProperties;
   return (
-    <div className={`source-overlay fixed inset-0 z-[90] ${leaving ? "source-overlay-leave" : ""}`} style={style} role="status" aria-live="polite">
-      <svg className="source-pattern absolute inset-0 h-full w-full" aria-hidden>
-        <defs>
-          <pattern id="girih" width="72" height="72" patternUnits="userSpaceOnUse" patternTransform="rotate(8)">
-            <g fill="none" stroke="currentColor" strokeWidth="0.8">
-              <rect x="22" y="22" width="28" height="28" />
-              <rect x="22" y="22" width="28" height="28" transform="rotate(45 36 36)" />
-              <path d="M0 36h8M64 36h8M36 0v8M36 64v8" />
-            </g>
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#girih)" />
-      </svg>
+    <div className={`source-overlay fixed inset-0 z-[90] overflow-hidden ${leaving ? "source-overlay-leave" : ""}`} role="status" aria-live="polite">
+      {/* Night sky: twinkling stars, then speed streaks once the rocket is moving. */}
+      <div className="source-sky absolute inset-0" aria-hidden>
+        {STARS.map((s, i) => (
+          <span
+            key={i}
+            className="source-star-dot"
+            style={{ left: `${s.left}%`, top: `${s.top}%`, width: 1 + s.size * 2.2, height: 1 + s.size * 2.2, animationDelay: `${s.delay * 2}s` }}
+          />
+        ))}
+        {STREAKS.map((s, i) => (
+          <span
+            key={i}
+            className="source-streak"
+            style={{ left: `${4 + s.left * 92}%`, height: 50 + s.size * 110, animationDuration: `${0.55 + s.delay * 0.7}s`, animationDelay: `${0.5 + s.top * 0.6}s` }}
+          />
+        ))}
+      </div>
 
-      <div className="relative flex h-full items-center justify-center px-8">
-        <div className="source-stage relative flex w-full max-w-[19rem] flex-col items-center text-center">
-          {/* Mihrab arch framing the scene, drawn in a gold hairline. */}
-          <svg viewBox="0 0 300 380" className="source-arch absolute -inset-x-2 -top-10 h-[calc(100%+4.5rem)] w-[calc(100%+1rem)]" preserveAspectRatio="none" aria-hidden>
-            <path d="M14 378 V150 C14 70 90 18 150 6 C210 18 286 70 286 150 V378" pathLength={100} />
-          </svg>
-
-          <div className="source-emblem relative mt-6 h-36 w-36">
-            <span className="source-halo absolute inset-5 rounded-full" aria-hidden />
-            {Array.from({ length: 12 }, (_, i) => (
-              <span key={i} className="source-mote" style={{ ["--a" as string]: `${i * 30}deg`, animationDelay: `${(i % 6) * 90}ms` }} aria-hidden />
-            ))}
-            <svg viewBox="0 0 120 120" className="absolute inset-0 h-full w-full" aria-hidden>
-              <g className="source-star-spin">
-                <rect x="24" y="24" width="72" height="72" rx="3" className="source-stroke" pathLength={100} />
-                <rect x="24" y="24" width="72" height="72" rx="3" className="source-stroke source-stroke-2" pathLength={100} transform="rotate(45 60 60)" />
-                <circle cx="60" cy="60" r="27" className="source-stroke source-stroke-3" pathLength={100} />
+      <div className="source-rocket-lane absolute left-1/2 top-0 h-full w-0" aria-hidden>
+        <div className="source-rocket">
+          <div className="source-rumble">
+            <svg viewBox="0 0 120 210" className="h-[11.5rem] w-auto -translate-x-1/2 overflow-visible">
+              <defs>
+                <linearGradient id="rocket-flame" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#fff7d6" />
+                  <stop offset="0.35" stopColor="#f4c75a" />
+                  <stop offset="0.75" stopColor="#e07a2e" stopOpacity="0.85" />
+                  <stop offset="1" stopColor="#e07a2e" stopOpacity="0" />
+                </linearGradient>
+                <linearGradient id="rocket-body" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0" stopColor="#ffffff" />
+                  <stop offset="0.55" stopColor="#faf8f5" />
+                  <stop offset="1" stopColor="#d9cfbf" />
+                </linearGradient>
+              </defs>
+              {/* Flame: two flickering layers under the nozzle. */}
+              <g className="source-flame">
+                <path d="M60 128 C80 150 74 182 60 208 C46 182 40 150 60 128 Z" fill="url(#rocket-flame)" />
+                <path className="source-flame-core" d="M60 130 C70 146 67 166 60 182 C53 166 50 146 60 130 Z" fill="#fffbe9" />
               </g>
-              <g className="source-glyph">
-                <SourceGlyph kind={kind} />
-              </g>
+              {/* Fins */}
+              <path d="M34 88 L12 134 L36 126 Z" fill="#2d7060" />
+              <path d="M86 88 L108 134 L84 126 Z" fill="#1f5246" />
+              {/* Body and nose */}
+              <path d="M60 6 C86 30 92 72 88 124 L32 124 C28 72 34 30 60 6 Z" fill="url(#rocket-body)" />
+              <path d="M60 6 C71 16 78 27 81 38 L39 38 C42 27 49 16 60 6 Z" fill="#e0bc6a" />
+              <rect x="31" y="112" width="58" height="8" rx="2" fill="#c49a3c" />
+              {/* Porthole with a crescent */}
+              <circle cx="60" cy="72" r="16" fill="#0d221f" stroke="#e0bc6a" strokeWidth="4" />
+              <path d="M64 63 a10 10 0 1 0 0 18 a8 8 0 1 1 0 -18 Z" fill="#e0bc6a" />
+              <path d="M52 124 L68 124 L65 132 L55 132 Z" fill="#3d8c78" />
+              <path d="M60 96 L60 124" stroke="#2d7060" strokeWidth="5" strokeLinecap="round" />
             </svg>
           </div>
-
-          <p className="source-arabic font-arabic mt-3 text-[1.7rem] leading-relaxed" dir="rtl" lang="ar">
-            {ARABIC[kind]}
-          </p>
-          <p className="source-title font-arabic mt-2 text-lg">{t(lang, TITLE_KEY[kind])}</p>
-          <p className="source-label mt-1 text-[11px] font-medium uppercase" dir="ltr">
-            {label}
-          </p>
-          <span className={`source-progress mt-6 block h-px w-44 overflow-hidden ${PROGRESS[stage]}`} aria-hidden>
-            <span className="block h-full" />
-          </span>
         </div>
       </div>
-    </div>
-  );
-}
 
-/** Line icon at the star's centre: open mushaf on a stand, a scroll, or raised hands. */
-function SourceGlyph({ kind }: { kind: SourceKind }) {
-  if (kind === "quran") {
-    return (
-      <g className="source-icon">
-        <path d="M60 52 C53 48 46 48 41 50 V68 C46 66 53 66 60 70 C67 66 74 66 79 68 V50 C74 48 67 48 60 52 Z" pathLength={100} />
-        <path d="M60 52 V70" pathLength={100} />
-        <path d="M46 72 L74 80 M74 72 L46 80" pathLength={100} />
-      </g>
-    );
-  }
-  if (kind === "dua") {
-    return (
-      <g className="source-icon">
-        <path d="M52 76 C47 70 45 62 46 54 C46.5 50 50 50 50.5 54 L51.5 61 M51.5 61 V48 C51.5 45 55 45 55 48 V62 M55 62 V46 C55 43 58.5 43 58.5 46 V64 C58.5 70 56 74 52 76" pathLength={100} />
-        <path d="M68 76 C73 70 75 62 74 54 C73.5 50 70 50 69.5 54 L68.5 61 M68.5 61 V48 C68.5 45 65 45 65 48 V62 M65 62 V46 C65 43 61.5 43 61.5 46 V64 C61.5 70 64 74 68 76" pathLength={100} />
-      </g>
-    );
-  }
-  return (
-    <g className="source-icon">
-      <path d="M46 47 H72 C75 47 76 49 76 51 V73 C76 75 75 77 72 77 H48" pathLength={100} />
-      <path d="M46 47 C43 47 42 49 42 51 C42 53 43 55 46 55 H50 V73 C50 75 49 77 47 77 C45 77 44 75 44 73" pathLength={100} />
-      <path d="M56 56 H70 M56 62 H70 M56 68 H66" pathLength={100} />
-    </g>
+      {/* Launch-pad smoke: stays on the ground and billows out as the rocket lifts away. */}
+      <div className="source-ground absolute bottom-0 left-1/2 h-0 w-0" aria-hidden>
+        {PUFFS.map((p, i) => (
+          <span key={i} className="source-puff" style={{ ["--dx" as string]: `${p.dx}px`, animationDelay: `${p.delay}ms` }} />
+        ))}
+      </div>
+
+      <div className="source-copy absolute inset-x-0 bottom-[14%] flex flex-col items-center px-8 text-center">
+        <p className="source-title text-lg font-semibold">{t(lang, TITLE_KEY[kind])}</p>
+        <p className="source-label mt-1 text-xs font-semibold uppercase" dir="ltr">
+          {label}
+        </p>
+        <span className={`source-progress mt-5 block h-1 w-48 overflow-hidden rounded-full ${PROGRESS[stage]}`} aria-hidden>
+          <span className="block h-full rounded-full" />
+        </span>
+      </div>
+    </div>
   );
 }
