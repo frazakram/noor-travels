@@ -1,6 +1,8 @@
+import hashlib
 import json
 import logging
 import re
+import time
 from typing import Any, Callable
 
 from openai import APIError, OpenAI
@@ -154,6 +156,64 @@ def chat(
     response_lang: str | None = None,
     include_transliteration: bool = True,
     progress: Progress = _no_progress,
+) -> dict[str, Any]:
+    """Answer a question; every answer, whichever path produced it, is logged as chat_answer."""
+    started = time.perf_counter()
+    marks: dict[str, float] = {}
+
+    def timed(stage: str, data: dict[str, Any]) -> None:
+        marks.setdefault(stage, time.perf_counter())
+        progress(stage, data)
+
+    result = _answer(question, lang, history, response_lang, include_transliteration, timed)
+    _log_answer(question, response_lang or lang, history or [], result, started, marks)
+    return result
+
+
+# Step durations come from the progress marks: each step runs until the next mark. A step that
+# didn't happen (cached answer, structured lookup without the model) has no entry.
+_STEPS = (("understanding", "rewrite_ms"), ("searching", "retrieve_ms"), ("found", "prepare_ms"), ("writing", "answer_ms"))
+
+
+def _log_answer(
+    question: str, lang: str, history: list, result: dict[str, Any], started: float, marks: dict[str, float]
+) -> None:
+    """One line per answer: what produced it, whether it refused, and where the time went.
+    No question text (it can contain personal details), only a fingerprint to count repeats."""
+    end = time.perf_counter()
+    points = sorted([*((marks[stage], name) for stage, name in _STEPS if stage in marks)])
+    steps = {}
+    for i, (at, name) in enumerate(points):
+        steps[name] = round(((points[i + 1][0] if i + 1 < len(points) else end) - at) * 1000)
+    if points:
+        steps["analyze_ms"] = round((points[0][0] - started) * 1000)
+    sources = result.get("sources") or []
+    data = {
+        "mode": result.get("mode", "unknown"),
+        "llm_model": result.get("llm_model"),
+        "cached": bool(result.get("from_cache")),
+        "refused": _is_refusal_answer(result.get("answer") or ""),
+        "confidence": result.get("confidence"),
+        "sources": len(sources),
+        "source_types": sorted({s.get("type") for s in sources if s.get("type")}),
+        "citations": len(result.get("citations") or []),
+        "lang": lang,
+        "history_turns": len(history),
+        "q_fingerprint": hashlib.sha256(" ".join(question.lower().split()).encode()).hexdigest()[:12],
+        "q_chars": len(question),
+        "total_ms": round((end - started) * 1000),
+        **steps,
+    }
+    logger.info("chat answer", extra={"event": "chat_answer", "data": data})
+
+
+def _answer(
+    question: str,
+    lang: str,
+    history: list[dict[str, str]] | None,
+    response_lang: str | None,
+    include_transliteration: bool,
+    progress: Progress,
 ) -> dict[str, Any]:
     settings = get_settings()
     history = history or []
@@ -640,6 +700,8 @@ def _chat_with_openai(
         "analysis": _public_analysis(analysis),
         "from_cache": False,
         "mode": mode,
+        # The model that actually answered: differs from GROQ_CHAT_MODEL when it fell back.
+        "llm_model": getattr(response, "model", None),
     }
 
     set_cached(cache_key, result)

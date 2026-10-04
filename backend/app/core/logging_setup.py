@@ -17,6 +17,10 @@ class _JsonFormatter(logging.Formatter):
         for key in ("event", "provider", "model", "reason", "path", "status", "duration_ms"):
             if hasattr(record, key):
                 payload[key] = getattr(record, key)
+        # Structured metrics for one event (e.g. chat_answer), flattened so each is searchable.
+        data = getattr(record, "data", None)
+        if isinstance(data, dict):
+            payload.update({k: v for k, v in data.items() if k not in payload})
         if record.exc_info:
             payload["exc"] = self.formatException(record.exc_info)
         return json.dumps(payload, ensure_ascii=False)

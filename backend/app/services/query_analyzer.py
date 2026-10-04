@@ -76,7 +76,7 @@ Return JSON only:
   "follow_up": true or false,
   "standalone": "the current question, rewritten to make sense on its own",
   "concepts": [["main topic word", "its alternatives"], ["another distinct idea"]],
-  "phrases": ["1-3 short English phrases describing what the answer is about"],
+  "phrases": ["1-3 sentences written the way a relevant verse or hadith itself reads"],
   "wants": ["quran" and/or "hadith" and/or "tafsir" and/or "dua"]
 }
 
@@ -91,6 +91,11 @@ Rules:
   word it (["backbite", "slander"], ["fish", "whale"]); a source with any one of them covers the idea.
   Never split synonyms into separate concepts, and leave out framing ideas any passage could contain
   (speech, words, time, rules, people): fewer, sharper concepts find the right text.
+- phrases: write each one as the source text itself would read, not as a description of the topic.
+  Sources often teach through a story or a concrete case, so name the well-known verse or hadith you
+  expect and write it in the translation's style: kindness to animals -> "A man gave water to a thirsty
+  dog and Allah forgave him"; missed prayer -> "If anyone forgets a prayer he should pray it when he
+  remembers it". These only steer the search: the answer is built from what is actually retrieved.
 - Concept words: the topic itself, not the question's framing. Drop words like written, mentioned, where, allowed, Islam, say.
 - Use root/base forms (backbite, forget, sleep, combine), not inflections (backbiting, forgotten, slept).
 - Skip generic words (brother, people, good, Allah, prayer) unless they ARE the topic; distinctive words find the right text.

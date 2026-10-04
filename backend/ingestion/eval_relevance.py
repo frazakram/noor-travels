@@ -68,6 +68,9 @@ CASES: list[dict] = [
         ],
         "expect": ["Quran 2:255"],
     },
+    # Sources that teach through a story (the thirsty dog, the cat) share no words with the
+    # abstract question; found only when the rewrite writes phrases in the sources' own style.
+    {"q": "What does Islam say about kindness to animals?", "expect": ["Sahih al-Bukhari 173", "Sahih al-Bukhari 2269", "Sahih al-Bukhari 2271", "Sahih al-Bukhari 2370"]},
     {"q": "How many rakat is Zuhr prayer while travelling?", "expect": ["Sahih al-Bukhari 10", "Quran 4:101"]},
     # Must refuse: nothing in the Quran, hadith or duas answers these. Guards against the model
     # filling gaps from its own knowledge when refusals are made less trigger-happy.

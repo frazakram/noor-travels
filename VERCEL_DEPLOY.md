@@ -44,6 +44,10 @@ Never set `FORCE_SQLITE` on Vercel (it's for local dev only).
   This is what catches a decommissioned Groq model or a DB outage.
 - Logs are JSON lines; filter on `event` (`chat_degraded`, `llm_fallback`, `llm_model_failed`,
   `semantic_degraded`, `db_unavailable`, `health_failed`, `config_warning`).
+- Every chat answer logs one `chat_answer` line: `mode`, `llm_model` (the model that actually
+  answered — not `openai/gpt-oss-20b` means a fallback), `cached`, `refused`, `sources`,
+  `citations`, `total_ms` and per-step `rewrite_ms` / `retrieve_ms` / `answer_ms`. No question
+  text, only `q_fingerprint` to count repeats. Refusal rate = `refused:true` / all `chat_answer`.
 
 ## Database
 
