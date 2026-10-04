@@ -59,9 +59,7 @@ cd backend
 export POSTGRES_URL="postgresql://postgres.[ref]:[password]@...pooler.supabase.com:6543/postgres"
 unset FORCE_SQLITE
 
-python ingestion/migrate.py                 # base tables (001, 003)
-# Later migrations are applied by hand, in order, once each (006 re-run would wipe embeddings):
-#   psql "$POSTGRES_URL" -f migrations/00N_name.sql   for 002, 004–011
+python ingestion/migrate.py --apply         # every migration, in order, tracked in app_migrations
 python ingestion/fetch_quran.py
 python ingestion/fetch_hadith.py
 python ingestion/seed_duas.py
@@ -87,6 +85,13 @@ pg_dump "$POSTGRES_URL" --data-only \
   -t users -t user_learn_progress -t user_preferences \
   > "noor-accounts-$(date +%F).sql"
 ```
+
+### Schema changes
+
+`ingestion/migrate.py` records applied migrations in `app_migrations` (production was baselined
+at 011 and is tracked from 012). Run it without flags to see what's pending, `--apply` to apply.
+A new migration needs both `NNN_name.sql` and `NNN_name_sqlite.sql`. The runner refuses to touch
+a database that has tables but no history (001 drops tables); see `--baseline` in its help.
 
 ## Python dependencies
 

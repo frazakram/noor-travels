@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useChat } from "@/components/ChatProvider";
+import { ChatFeedback } from "@/components/ChatFeedback";
 import { ChatSearchProgress, SearchTrail, type SearchTrailData } from "@/components/ChatSearchProgress";
 import { useLang } from "@/components/LangProvider";
 import { NoticeCard } from "@/components/NoticeCard";
@@ -29,6 +30,10 @@ type ChatMessage = {
   reveal?: boolean;
   /** How the answer was found (streamed stages), shown as a summary above it. */
   trail?: SearchTrailData;
+  /** For feedback: the question this answer replied to, and what produced it. */
+  question?: string;
+  mode?: string;
+  llmModel?: string | null;
 };
 
 type ChatResponse = {
@@ -40,6 +45,7 @@ type ChatResponse = {
   from_cache?: boolean;
   notice?: string;
   mode?: string;
+  llm_model?: string | null;
 };
 
 const SUGGESTIONS: Record<Lang, string[]> = {
@@ -77,6 +83,9 @@ function ConfidenceBadge({ confidence, sources, lang }: { confidence: string; so
     </span>
   );
 }
+
+/** Wall-clock read for timing a request; outside the component so lint knows it isn't render. */
+const nowMs = () => Date.now();
 
 /** Reveals text word by word (a fresh answer "arriving"); instant with reduced motion. */
 function RevealText({ text, animate }: { text: string; animate: boolean }) {
@@ -165,7 +174,7 @@ export function ChatWidget() {
     setInput("");
     setLoading(true);
     setStages([]);
-    const started = Date.now();
+    const started = nowMs();
     setStartedAt(started);
     // Collected alongside state so the finished message can keep them.
     const received: ChatStage[] = [];
@@ -202,9 +211,12 @@ export function ChatWidget() {
           confidence: data.confidence,
           responseLang: answerLang,
           reveal: true,
+          question: text.trim(),
+          mode: data.mode,
+          llmModel: data.llm_model,
           // Cached answers skip the pipeline, so there is nothing to show.
           trail: received.some((s) => s.stage === "found")
-            ? { stages: received, ms: Date.now() - started }
+            ? { stages: received, ms: nowMs() - started }
             : undefined,
         },
       ]);
@@ -407,6 +419,21 @@ export function ChatWidget() {
                       ))}
                     </ul>
                   </details>
+                )}
+
+                {m.role === "assistant" && m.question && (
+                  <ChatFeedback
+                    lang={lang}
+                    target={{
+                      question: m.question,
+                      answer: m.content,
+                      citations: m.citations ?? [],
+                      source_refs: (m.sources ?? []).map((src) => src.ref),
+                      lang: m.responseLang,
+                      mode: m.mode,
+                      llm_model: m.llmModel,
+                    }}
+                  />
                 )}
               </div>
             </div>

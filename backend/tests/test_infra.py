@@ -104,3 +104,14 @@ class PrayerTimesCacheTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CacheSwitchTest(unittest.TestCase):
+    def test_disabled_cache_never_touches_the_database(self):
+        from app.services import cache
+
+        with mock.patch.dict("os.environ", {"RAG_CACHE_DISABLED": "1"}), mock.patch.object(
+            cache, "get_conn", side_effect=AssertionError("cache hit the database")
+        ):
+            self.assertIsNone(cache.get_cached("k"))
+            cache.set_cached("k", {"answer": "x"})

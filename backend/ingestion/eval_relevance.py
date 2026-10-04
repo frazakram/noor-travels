@@ -15,6 +15,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.environ.setdefault("FORCE_SQLITE", "1")
+# Measure the live pipeline: no cached answers in, no test answers written to the shared cache.
+os.environ["RAG_CACHE_DISABLED"] = "1"
 
 from app.services import rag_service  # noqa: E402
 from app.services.rag_service import chat  # noqa: E402
@@ -107,13 +109,7 @@ def run(only: str = "") -> int:
     llm_used = 0
     for case in cases:
         started = time.perf_counter()
-        # Bypass the answer cache so every run measures the current pipeline.
-        original_get = rag_service.get_cached
-        rag_service.get_cached = lambda _key: None
-        try:
-            result = chat(case["q"], lang="en", history=case.get("history"), include_transliteration=False)
-        finally:
-            rag_service.get_cached = original_get
+        result = chat(case["q"], lang="en", history=case.get("history"), include_transliteration=False)
         elapsed = time.perf_counter() - started
         citations = result.get("citations") or []
         answer = result.get("answer") or ""

@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 import re
 import time
 from typing import Any
@@ -26,11 +27,19 @@ def make_cache_key(
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
+def cache_disabled() -> bool:
+    """RAG_CACHE_DISABLED=1: evals measure the live pipeline and must neither read cached answers
+    nor write their test answers into the shared (production) cache."""
+    return os.getenv("RAG_CACHE_DISABLED", "").lower() in ("1", "true", "yes")
+
+
 def _ttl_seconds() -> int:
     return get_settings().rag_cache_ttl_hours * 3600
 
 
 def get_cached(key: str) -> dict[str, Any] | None:
+    if cache_disabled():
+        return None
     ttl = _ttl_seconds()
     with get_conn() as conn:
         cur = conn.cursor()
@@ -54,6 +63,8 @@ def get_cached(key: str) -> dict[str, Any] | None:
 
 
 def set_cached(key: str, response: dict[str, Any]) -> None:
+    if cache_disabled():
+        return
     now = time.time()
     payload = json.dumps(response, ensure_ascii=False)
     with get_conn() as conn:

@@ -9,6 +9,7 @@ const SECTIONS = [
   ["privacyDeviceT", "privacyDeviceB"],
   ["privacyLocationT", "privacyLocationB"],
   ["privacyAskT", "privacyAskB"],
+  ["privacyFeedbackT", "privacyFeedbackB"],
   ["privacyAudioT", "privacyAudioB"],
   ["privacyOtherT", "privacyOtherB"],
   ["privacyAccountT", "privacyAccountB"],
