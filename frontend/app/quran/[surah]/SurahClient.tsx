@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { SurahAudioDownload } from "@/components/SurahAudioDownload";
+import { SurahAudioDownload, SurahAudioDownloadButton } from "@/components/SurahAudioDownload";
 import { AudioNoticeToast } from "@/components/AudioNoticeToast";
 import { AutoplayToggle } from "@/components/AutoplayToggle";
 import { AyahWordText, type AyahWord } from "@/components/AyahWordText";
@@ -644,9 +644,17 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
       <div className="card sticky-below-header space-y-3 sticky-toolbar py-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h1 className="text-xl font-bold text-heading">
-              {surahNumber}. {surahName}
-            </h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-bold text-heading">
+                {surahNumber}. {surahName}
+              </h1>
+              <SurahAudioDownloadButton
+                surahNumber={surahNumber}
+                reciter={reciter}
+                translation={audioLang}
+                onOpenOptions={() => setShowAudioOpts(true)}
+              />
+            </div>
             {surahDurationSec != null && (
               <p className="text-xs text-faint">{formatSurahDuration(surahDurationSec, lang)}</p>
             )}
