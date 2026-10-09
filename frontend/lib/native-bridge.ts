@@ -30,6 +30,12 @@ type NoorAndroidBridge = {
   appVersion?: () => string;
   /** 1.7+: lets the APK refresh adhan times itself when the app isn't opened. */
   setPrayerLocation?: (json: string) => void;
+  /** 1.8+: offline surah audio. The native queue plays the saved copy of any URL it has. */
+  downloadQuranAudio?: (key: string, urlsJson: string) => void;
+  cancelQuranAudioDownload?: (key: string) => void;
+  deleteQuranAudio?: (key: string) => void;
+  /** JSON {key: {state, done, total, bytes, error}} — see lib/offline-audio.ts. */
+  quranAudioStatus?: () => string;
 };
 
 function bridge(): NoorAndroidBridge | null {
@@ -192,5 +198,50 @@ export function nativeShare(title: string, text: string): boolean {
     return true;
   } catch {
     return false;
+  }
+}
+
+/** True only on APKs that can save surah audio (1.8+); older ones lack the methods. */
+export function nativeSupportsOfflineAudio(): boolean {
+  const b = bridge();
+  return !!(b?.downloadQuranAudio && b.quranAudioStatus);
+}
+
+export function nativeDownloadQuranAudio(key: string, urls: string[]): boolean {
+  try {
+    const b = bridge();
+    if (!b?.downloadQuranAudio) return false;
+    b.downloadQuranAudio(key, JSON.stringify(urls));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function nativeCancelQuranAudio(key: string): void {
+  try {
+    bridge()?.cancelQuranAudioDownload?.(key);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function nativeDeleteQuranAudio(key: string): void {
+  try {
+    bridge()?.deleteQuranAudio?.(key);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function nativeQuranAudioStatus(): Record<
+  string,
+  { state: "saved" | "downloading" | "failed"; done: number; total: number; bytes: number; error?: string | null }
+> | null {
+  try {
+    const raw = bridge()?.quranAudioStatus?.();
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
   }
 }

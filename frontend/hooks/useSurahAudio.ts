@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { loadSavedManifest, trLangFor } from "@/lib/offline-audio";
 import {
   acquireWakeLock,
   clearMediaSession,
@@ -60,6 +61,17 @@ function dedupeReciters(list: Reciter[]): Reciter[] {
   }
   return out;
 }
+
+type AudioPayload = {
+  ayahs: AudioAyah[];
+  playback_mode?: "ayah" | "surah";
+  surah_audio_available?: boolean;
+  bismillah_audio?: string | null;
+  needs_bismillah?: boolean;
+  embedded_bismillah?: boolean;
+  embedded_bismillah_duration_ms?: number;
+  embedded_bismillah_segments?: WordSegment[];
+};
 
 type AudioAyah = {
   ayah_number: number;
@@ -387,21 +399,21 @@ export function useSurahAudio({
       // Always request translation audio when the spoken-translation toggle is on,
       // so switching reciter never drops Urdu/English verse audio.
       const trParam = includeTranslation ? `&translation_lang=${translation}` : "";
-      const [editions, audio] = await Promise.all([
-        api<{ reciters: Reciter[] }>("/api/quran/audio/editions"),
-        api<{
-          ayahs: AudioAyah[];
-          playback_mode?: "ayah" | "surah";
-          surah_audio_available?: boolean;
-          bismillah_audio?: string | null;
-          needs_bismillah?: boolean;
-          embedded_bismillah?: boolean;
-          embedded_bismillah_duration_ms?: number;
-          embedded_bismillah_segments?: WordSegment[];
-        }>(
-          `/api/quran/audio/surahs/${surahNumber}?reciter=${encodeURIComponent(reciter)}${trParam}`
-        ),
-      ]);
+      // Editions only feed the reciter picker, so losing them offline is harmless.
+      const editionsReq = api<{ reciters: Reciter[] }>("/api/quran/audio/editions").catch(
+        () => ({ reciters: [] as Reciter[] })
+      );
+      const audioReq = api<AudioPayload>(
+        `/api/quran/audio/surahs/${surahNumber}?reciter=${encodeURIComponent(reciter)}${trParam}`
+      ).catch(async (err) => {
+        // Offline (or the backend is down): use the manifest saved with a surah download.
+        const saved = isNativeApp()
+          ? await loadSavedManifest(surahNumber, reciter, trLangFor(includeTranslation, translation))
+          : null;
+        if (!saved) throw err;
+        return saved as unknown as AudioPayload;
+      });
+      const [editions, audio] = await Promise.all([editionsReq, audioReq]);
       if (gen !== loadGenRef.current) {
         return {
           ayahs: [],
@@ -413,7 +425,7 @@ export function useSurahAudio({
           mode: "ayah",
         };
       }
-      setReciters(dedupeReciters(editions.reciters || []));
+      if (editions.reciters?.length) setReciters(dedupeReciters(editions.reciters));
       const mode = audio.playback_mode ?? "ayah";
       setPlaybackMode(mode);
       setSurahAudioAvailable(audio.surah_audio_available ?? true);

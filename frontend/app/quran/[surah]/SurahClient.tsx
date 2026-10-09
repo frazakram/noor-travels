@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { SurahAudioDownload } from "@/components/SurahAudioDownload";
 import { AudioNoticeToast } from "@/components/AudioNoticeToast";
 import { AutoplayToggle } from "@/components/AutoplayToggle";
 import { AyahWordText, type AyahWord } from "@/components/AyahWordText";
@@ -793,6 +794,7 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
                 ))}
               </div>
             )}
+            <SurahAudioDownload surahNumber={surahNumber} reciter={reciter} translation={audioLang} />
             <label className="flex items-center gap-2 text-xs">
               <input
                 type="checkbox"
