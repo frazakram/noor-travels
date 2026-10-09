@@ -13,6 +13,9 @@ export function AppShellDetect() {
     if (standalone || androidShell) {
       document.documentElement.classList.add("app-shell");
     }
+    // APK 1.8+ reserves the status bar itself (a solid strip above the WebView), so the web
+    // side must not add its own status-bar padding on top of it.
+    if (/NoorSafarInsets/i.test(ua)) document.documentElement.classList.add("native-insets");
   }, []);
 
   return null;

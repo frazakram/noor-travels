@@ -91,6 +91,19 @@
     }
   }
 
+  /* The native shell already sits below the status bar: no extra padding in any layout. */
+  html.app-shell.native-insets .pt-safe {
+    padding-top: 8px;
+  }
+
+  html.app-shell.native-insets .top-safe-header {
+    top: calc(8px + 3.5rem);
+  }
+
+  html.app-shell.native-insets .sticky-below-header {
+    top: calc(8px + 3.5rem + 0.25rem);
+  }
+
   .h-below-safe-header {
     height: calc(100dvh - max(env(safe-area-inset-top, 0px), 8px) - 3.5rem);
   }
