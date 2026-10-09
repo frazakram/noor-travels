@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useLang } from "@/components/LangProvider";
 import { nativeSupportsOfflineAudio } from "@/lib/native-bridge";
 import {
   cancelSurahDownload,
   downloadKey,
-  readDownloadStates,
+  getDownloadStatesSnapshot,
+  getServerDownloadStates,
+  subscribeDownloadStates,
   removeSurahDownload,
   startSurahDownload,
   trLangFor,
@@ -14,12 +16,12 @@ import {
 } from "@/lib/offline-audio";
 import { t } from "@/lib/i18n";
 
-const POLL_MS = 700;
+
+const noopSubscribe = () => () => {};
 
 /** Download state for one surah + reciter + spoken language, polled from the native side. */
 export function useSurahAudioDownload(surahNumber: number, reciter: string, translation: string) {
   const [supported, setSupported] = useState(false);
-  const [state, setState] = useState<AudioDownloadState | undefined>();
   const [startError, setStartError] = useState(false);
 
   // Translation audio is part of the download; Hindi has no recording, so it is left out.
@@ -30,14 +32,14 @@ export function useSurahAudioDownload(surahNumber: number, reciter: string, tran
     setSupported(nativeSupportsOfflineAudio());
   }, []);
 
-  useEffect(() => {
-    if (!supported) return;
-    setStartError(false);
-    const read = () => setState(readDownloadStates()[key]);
-    read();
-    const id = window.setInterval(read, POLL_MS);
-    return () => window.clearInterval(id);
-  }, [supported, key]);
+  const states = useSyncExternalStore(
+    supported ? subscribeDownloadStates : noopSubscribe,
+    getDownloadStatesSnapshot,
+    getServerDownloadStates,
+  );
+  const state: AudioDownloadState | undefined = supported ? states[key] : undefined;
+
+  useEffect(() => setStartError(false), [key]);
 
   async function save() {
     setStartError(false);
@@ -181,4 +183,63 @@ export function SurahAudioDownload({
       )}
     </div>
   );
+}
+
+/**
+ * Per-row control in the surah list. Tap to save; shows progress while saving (tap to cancel);
+ * a filled check once saved (tap, then confirm, to remove). Renders nothing outside APK 1.8+.
+ */
+export function SurahListDownload({
+  surahNumber,
+  reciter,
+  translation,
+}: {
+  surahNumber: number;
+  reciter: string;
+  translation: string;
+}) {
+  const { lang } = useLang();
+  const dl = useSurahAudioDownload(surahNumber, reciter, translation);
+  if (!dl.supported) return null;
+
+  const base =
+    "flex h-9 min-w-9 shrink-0 items-center justify-center rounded-full border px-2 text-xs font-semibold tabular-nums";
+  const idle = "border-noor-200 text-noor-700 hover:bg-noor-50 dark:border-noor-600 dark:text-noor-200 dark:hover:bg-noor-800";
+
+  let label = t(lang, "audioOfflineSave");
+  let onClick: () => void = () => void dl.save();
+  let className = `${base} ${idle}`;
+  let content: React.ReactNode = ICON_DOWNLOAD;
+
+  if (dl.state?.state === "downloading") {
+    const pct = Math.round((dl.state.done / Math.max(1, dl.state.total)) * 100);
+    label = t(lang, "feedbackCancel");
+    onClick = dl.cancel;
+    content = `${pct}%`;
+  } else if (dl.state?.state === "saved") {
+    label = t(lang, "offlineRemove");
+    onClick = () => {
+      if (window.confirm(t(lang, "audioOfflineRemoveAsk"))) void dl.remove();
+    };
+    className = `${base} border-noor-700 bg-noor-700 text-white dark:border-noor-500 dark:bg-noor-600`;
+    content = "✓";
+  } else if (dl.failed) {
+    label = t(lang, "tryAgain");
+    className = `${base} border-red-300 text-red-700 dark:border-red-500 dark:text-red-300`;
+  }
+
+  return (
+    <button type="button" onClick={onClick} className={className} aria-label={label} title={label}>
+      {content}
+    </button>
+  );
+}
+
+/** One line above the list explaining the per-row buttons. Renders nothing outside APK 1.8+. */
+export function SurahListOfflineHint() {
+  const { lang } = useLang();
+  const [supported, setSupported] = useState(false);
+  useEffect(() => setSupported(nativeSupportsOfflineAudio()), []);
+  if (!supported) return null;
+  return <p className="text-xs text-muted">{t(lang, "audioOfflineListHint")}</p>;
 }

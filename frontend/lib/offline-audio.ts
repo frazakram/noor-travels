@@ -95,5 +95,39 @@ export function readDownloadStates(): Record<string, AudioDownloadState> {
   return nativeQuranAudioStatus() ?? {};
 }
 
+// One shared poller for every subscriber (the surah list mounts 114 buttons): the status call
+// is local and cheap, but there is no reason to run it 114 times a tick.
+const EMPTY_STATES: Record<string, AudioDownloadState> = {};
+const POLL_MS = 700;
+const listeners = new Set<() => void>();
+let snapshot: Record<string, AudioDownloadState> = EMPTY_STATES;
+let timer: ReturnType<typeof setInterval> | undefined;
+
+function tick() {
+  const next = readDownloadStates();
+  if (JSON.stringify(next) !== JSON.stringify(snapshot)) {
+    snapshot = next;
+    listeners.forEach((l) => l());
+  }
+}
+
+export function subscribeDownloadStates(listener: () => void): () => void {
+  listeners.add(listener);
+  if (timer === undefined) {
+    tick();
+    timer = setInterval(tick, POLL_MS);
+  }
+  return () => {
+    listeners.delete(listener);
+    if (!listeners.size && timer !== undefined) {
+      clearInterval(timer);
+      timer = undefined;
+    }
+  };
+}
+
+export const getDownloadStatesSnapshot = () => snapshot;
+export const getServerDownloadStates = () => EMPTY_STATES;
+
 export { downloadKey, trLangFor } from "@/lib/offline-audio-keys";
 export type { AudioDownloadState, AudioManifest, TrLang } from "@/lib/offline-audio-keys";

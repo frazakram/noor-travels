@@ -11,6 +11,7 @@ import { api, apiStatic } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import { cleanQuranText, displaySurahName } from "@/lib/quran-display";
 import { loadBookmarks, loadLastRead, type QuranBookmark, type QuranLastRead } from "@/lib/quran-bookmarks";
+import { SurahListDownload, SurahListOfflineHint } from "@/components/SurahAudioDownload";
 import { formatSurahDuration, getPreferredReciter, getSurahDurations } from "@/lib/quran-durations";
 
 type Surah = {
@@ -53,10 +54,16 @@ export default function QuranPage() {
   const [lastRead, setLastRead] = useState<QuranLastRead | null>(null);
   const [bookmarks, setBookmarks] = useState<QuranBookmark[]>([]);
   const [durations, setDurations] = useState<Record<string, number>>({});
+  // Same preferences the reader uses, so a download here is the one the reader looks for.
+  const [reciter, setReciter] = useState("ar.alafasy");
+  const [audioLang, setAudioLang] = useState("en");
 
   useEffect(() => {
     setLastRead(loadLastRead());
     setBookmarks(loadBookmarks());
+    setReciter(getPreferredReciter());
+    const savedLang = localStorage.getItem("noor-quran-audio-lang") || localStorage.getItem("noor-quran-translation");
+    if (savedLang === "en" || savedLang === "ur" || savedLang === "hi") setAudioLang(savedLang);
     getSurahDurations(getPreferredReciter()).then(setDurations);
     apiStatic<{ surahs: Surah[] }>("/api/quran/surahs")
       .then((d) => {
@@ -242,40 +249,47 @@ export default function QuranPage() {
         <p className="text-sm text-faint">{t(lang, "noResults")}</p>
       )}
 
+      <SurahListOfflineHint />
+
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {filteredSurahs.map((s) => (
-          <Link
+          <div
             key={s.number}
-            href={`/quran/${s.number}`}
-            prefetch={false}
-            onClick={() => setActiveSurah(s.number)}
-            className={`card flex items-center justify-between transition hover:border-noor-300 dark:hover:border-noor-500 ${
+            className={`card flex items-center gap-2 transition hover:border-noor-300 dark:hover:border-noor-500 ${
               activeSurah === s.number
                 ? "border-noor-400 bg-noor-50 dark:border-noor-500 dark:bg-noor-800/60"
                 : ""
             }`}
           >
-            <div className="min-w-0">
-              <p className="font-medium text-heading">
-                {s.number}. {displaySurahName(s.number, s.name_en)}
-                {bookmarkedSurahs.has(s.number) ? " ★" : ""}
-                {lastRead?.surah === s.number ? " · ▶" : ""}
-              </p>
-              <p className="text-xs text-faint">
-                {s.name_en_translation} · {s.ayah_count} {t(lang, "ayahs")}
-                {durations[String(s.number)] ? ` · ${formatSurahDuration(durations[String(s.number)], lang)}` : ""}
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {activeSurah === s.number ? (
-                <LoadingGlass size="sm" />
-              ) : (
-                <p className="font-arabic text-body" dir="rtl">
-                  {s.name_ar}
+            <Link
+              href={`/quran/${s.number}`}
+              prefetch={false}
+              onClick={() => setActiveSurah(s.number)}
+              className="flex min-w-0 flex-1 items-center justify-between gap-2"
+            >
+              <div className="min-w-0">
+                <p className="font-medium text-heading">
+                  {s.number}. {displaySurahName(s.number, s.name_en)}
+                  {bookmarkedSurahs.has(s.number) ? " ★" : ""}
+                  {lastRead?.surah === s.number ? " · ▶" : ""}
                 </p>
-              )}
-            </div>
-          </Link>
+                <p className="text-xs text-faint">
+                  {s.name_en_translation} · {s.ayah_count} {t(lang, "ayahs")}
+                  {durations[String(s.number)] ? ` · ${formatSurahDuration(durations[String(s.number)], lang)}` : ""}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {activeSurah === s.number ? (
+                  <LoadingGlass size="sm" />
+                ) : (
+                  <p className="font-arabic text-body" dir="rtl">
+                    {s.name_ar}
+                  </p>
+                )}
+              </div>
+            </Link>
+            <SurahListDownload surahNumber={s.number} reciter={reciter} translation={audioLang} />
+          </div>
         ))}
       </div>
     </div>
