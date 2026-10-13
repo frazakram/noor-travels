@@ -166,6 +166,12 @@
     top: max(env(safe-area-inset-top, 0px), 2rem);
   }
 
+  /* APK 1.8+ reserves the status bar natively (see native-insets above), so the page starts
+     below it: the bar belongs at the very top, not 2rem down across the header. */
+  html.app-shell.native-insets .nav-progress-bar {
+    top: 0;
+  }
+
   .ayah-card {
     content-visibility: auto;
     contain-intrinsic-size: auto 220px;
