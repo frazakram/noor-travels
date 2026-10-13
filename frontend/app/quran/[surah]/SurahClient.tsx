@@ -12,6 +12,7 @@ import { IconButton, Icons } from "@/components/IconButton";
 import { emitPageLoading, startRouteProgress } from "@/components/NavigationProgress";
 import { useSurahAudio, type RepeatScope } from "@/hooks/useSurahAudio";
 import { api } from "@/lib/api";
+import { fetchSurahWords } from "@/lib/surah-words";
 import { shareContent } from "@/lib/share";
 import { t } from "@/lib/i18n";
 import { isBookmarked, saveLastRead, toggleBookmark } from "@/lib/quran-bookmarks";
@@ -357,9 +358,7 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
   useEffect(() => {
     let cancelled = false;
     setWordsSettled(false);
-    api<{ ayahs: { verse_key: string; words: AyahWord[] }[] }>(
-      `/api/quran/surahs/${surahNumber}/words`
-    )
+    fetchSurahWords(surahNumber)
       .then((d) => {
         if (cancelled) return;
         const map: Record<string, AyahWord[]> = {};

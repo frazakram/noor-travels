@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
 
 export type AyahWord = {
   ar: string;
@@ -30,26 +29,11 @@ export function AyahWordText({
   const [words, setWords] = useState<AyahWord[] | null>(wordsProp ?? null);
   const [hovered, setHovered] = useState<number | null>(null);
 
+  // The reader supplies the words once its single surah-wide request resolves; until then the
+  // plain Arabic is shown. (A per-ayah fetch here used to request the whole surah once per ayah.)
   useEffect(() => {
-    if (wordsProp) {
-      setWords(wordsProp);
-      return;
-    }
-    let cancelled = false;
-    // Lazy single-ayah fetch if parent map not ready yet
-    api<{ ayahs: { verse_key: string; words: AyahWord[] }[] }>(
-      `/api/quran/surahs/${verseKey.split(":")[0]}/words`
-    )
-      .then((d) => {
-        if (cancelled) return;
-        const row = d.ayahs?.find((a) => a.verse_key === verseKey);
-        if (row) setWords(row.words);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [verseKey, wordsProp]);
+    setWords(wordsProp ?? null);
+  }, [wordsProp]);
 
   if (!words?.length) {
     return (

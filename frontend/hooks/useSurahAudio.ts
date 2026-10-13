@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { fetchSurahWords } from "@/lib/surah-words";
 import { loadSavedManifest, trLangFor } from "@/lib/offline-audio";
 import {
   acquireWakeLock,
@@ -299,9 +300,7 @@ export function useSurahAudio({
       return map;
     };
 
-    api<{ ayahs: { verse_key: string; words: unknown[] }[] }>(
-      `/api/quran/surahs/${surahNumber}/words`
-    )
+    fetchSurahWords(surahNumber)
       .then((d) => {
         if (cancelled) return;
         const counts: Record<string, number> = {};
