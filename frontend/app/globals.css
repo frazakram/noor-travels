@@ -142,8 +142,12 @@
     @apply active:scale-[0.97] active:opacity-75;
   }
 
+  /* "backwards", not "both": with a forwards fill the finished animation stays in effect, and
+     the browser keeps the whole page (Al-Baqarah: ~48,000 px tall) as one GPU layer for as long
+     as it is open, pulling every ayah card into another — ~200 MB of GPU memory in the APK.
+     The last keyframe equals the natural style, so nothing visible changes. */
   .page-enter {
-    animation: pageEnter 0.22s ease-out both;
+    animation: pageEnter 0.22s ease-out backwards;
   }
 
   .nav-progress-bar {

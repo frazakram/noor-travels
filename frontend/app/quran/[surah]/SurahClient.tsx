@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { AYAH_CHUNK, extendDown, extendUp, includeIndex, initialWindow, type AyahWindow } from "@/lib/ayah-window";
 import { SurahAudioDownload, SurahAudioDownloadButton } from "@/components/SurahAudioDownload";
 import { AudioNoticeToast } from "@/components/AudioNoticeToast";
 import { AutoplayToggle } from "@/components/AutoplayToggle";
@@ -23,7 +24,6 @@ import { sourcesForPref, type TafsirPref, type TafsirSource } from "@/lib/tafsir
 
 const MAX_REPEAT = 5;
 const MAX_SURAH = 114;
-const AYAH_RENDER_CHUNK = 18;
 /** After the user scrolls during playback, resume auto-follow once idle this long. */
 const FOLLOW_RESUME_MS = 5000;
 const BISMILLAH_WORDS: AyahWord[] = [
@@ -93,7 +93,8 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
   const [surahLoading, setSurahLoading] = useState(!initialAyahs?.length);
   const [surahError, setSurahError] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
-  const [renderLimit, setRenderLimit] = useState(AYAH_RENDER_CHUNK);
+  // Mounted ayahs: a bounded window, see lib/ayah-window.ts.
+  const [win, setWin] = useState<AyahWindow>({ start: 0, end: AYAH_CHUNK });
   const [wordsByVerse, setWordsByVerse] = useState<Record<string, AyahWord[]>>({});
   // Word-by-word data makes every ayah card taller; deep-link scrolling waits for it.
   const [wordsSettled, setWordsSettled] = useState(false);
@@ -102,6 +103,7 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
   const ayahRefs = useRef<Record<string, HTMLElement | null>>({});
   const bismillahRef = useRef<HTMLDivElement | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const loadEarlierRef = useRef<HTMLDivElement | null>(null);
   const lastUserScrollAt = useRef(0);
   const programmaticScrollRef = useRef(false);
   const lastReadTimer = useRef<number | undefined>(undefined);
@@ -123,9 +125,7 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
       const key = ayahs[index]?.verse_key;
       if (!key) return;
       // Progressive render: ensure the target ayah is mounted before scrolling.
-      if (index >= renderLimit) {
-        setRenderLimit((limit) => Math.min(ayahs.length, Math.max(limit, index + 6)));
-      }
+      setWin((w) => includeIndex(w, index, ayahs.length));
       programmaticScrollRef.current = true;
       requestAnimationFrame(() => {
         const el = ayahRefs.current[key];
@@ -137,7 +137,7 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
         }, 700);
       });
     },
-    [studyMode, ayahs, renderLimit, isFollowingPlayback]
+    [studyMode, ayahs, isFollowingPlayback]
   );
 
   const audio = useSurahAudio({
@@ -217,13 +217,13 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
   }, [audio.playing]);
 
   // Retry scroll once progressive rendering catches up to the playing ayah.
-  const prevRenderLimitRef = useRef(renderLimit);
+  const prevWinRef = useRef(win);
   useEffect(() => {
-    const grew = renderLimit > prevRenderLimitRef.current;
-    prevRenderLimitRef.current = renderLimit;
-    if (!grew || !audio.playing || !isFollowingPlayback()) return;
-    if (audio.playIndex < renderLimit) scrollToAyah(audio.playIndex);
-  }, [renderLimit, audio.playIndex, audio.playing, scrollToAyah, isFollowingPlayback]);
+    const moved = win !== prevWinRef.current;
+    prevWinRef.current = win;
+    if (!moved || !audio.playing || !isFollowingPlayback()) return;
+    if (audio.playIndex >= win.start && audio.playIndex < win.end) scrollToAyah(audio.playIndex);
+  }, [win, audio.playIndex, audio.playing, scrollToAyah, isFollowingPlayback]);
 
   useEffect(() => {
     const saved = localStorage.getItem("noor-quran-translation") as TranslationLang | null;
@@ -384,7 +384,7 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
     if (useServerAyahs) {
       const nextIndex = Math.min(idx, Math.max(0, ayahs.length - 1));
       setViewIndex(nextIndex);
-      setRenderLimit(Math.min(ayahs.length, Math.max(AYAH_RENDER_CHUNK, nextIndex + 6)));
+      setWin(initialWindow(nextIndex, ayahs.length));
       setPendingScrollIndex(nextIndex > 0 ? nextIndex : null);
       return;
     }
@@ -394,7 +394,7 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
     setSurahLoading(true);
     setSurahError(false);
     setAyahs([]);
-    setRenderLimit(AYAH_RENDER_CHUNK);
+    setWin({ start: 0, end: AYAH_CHUNK });
     api<{ surah: { name_en: string }; ayahs: Ayah[] }>(
       `/api/quran/surahs/${surahNumber}?translation=${translation}`
     )
@@ -404,7 +404,7 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
         setAyahs(d.ayahs);
         const nextIndex = Math.min(idx, Math.max(0, d.ayahs.length - 1));
         setViewIndex(nextIndex);
-        setRenderLimit(Math.min(d.ayahs.length, Math.max(AYAH_RENDER_CHUNK, nextIndex + 6)));
+        setWin(initialWindow(nextIndex, d.ayahs.length));
         setPendingScrollIndex(nextIndex > 0 ? nextIndex : null);
       })
       .catch(() => {
@@ -479,20 +479,54 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
     requestAnimationFrame(tick);
   }, [surahLoading, studyMode, ayahs, pendingScrollIndex]);
 
+  // After every window change, keep going while a sentinel is still within reach. The
+  // IntersectionObservers below only report crossings, and a sentinel can land inside the
+  // viewport without crossing (cards mounted/removed above it while the page is at its end):
+  // scrolling then stalled mid-surah (seen at Al-Baqarah 2:90 on a phone).
   useEffect(() => {
-    if (studyMode || surahLoading || ayahs.length === 0 || renderLimit >= ayahs.length) return;
+    if (studyMode || surahLoading || ayahs.length === 0) return;
+    const id = requestAnimationFrame(() => {
+      const below = loadMoreRef.current?.getBoundingClientRect();
+      if (below && below.top < window.innerHeight + 240) {
+        setWin((w) => extendDown(w, ayahs.length));
+        return;
+      }
+      const above = loadEarlierRef.current?.getBoundingClientRect();
+      if (above && above.bottom > -240) setWin((w) => extendUp(w, ayahs.length));
+    });
+    return () => cancelAnimationFrame(id);
+  }, [win, studyMode, surahLoading, ayahs.length]);
+
+  // Sentinels below and above the mounted window move it as the reader scrolls.
+  useEffect(() => {
+    if (studyMode || surahLoading || ayahs.length === 0 || win.end >= ayahs.length) return;
     const node = loadMoreRef.current;
     if (!node) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries[0]?.isIntersecting) return;
-        setRenderLimit((limit) => Math.min(ayahs.length, limit + AYAH_RENDER_CHUNK));
+        setWin((w) => extendDown(w, ayahs.length));
       },
       { rootMargin: "240px" }
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [studyMode, surahLoading, ayahs.length, renderLimit]);
+  }, [studyMode, surahLoading, ayahs.length, win.end]);
+
+  useEffect(() => {
+    if (studyMode || surahLoading || ayahs.length === 0 || win.start === 0) return;
+    const node = loadEarlierRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return;
+        setWin((w) => extendUp(w, ayahs.length));
+      },
+      { rootMargin: "240px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [studyMode, surahLoading, ayahs.length, win.start]);
 
   useEffect(() => {
     emitPageLoading(surahLoading);
@@ -625,14 +659,13 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
       ? -1
       : audio.playIndex
     : viewIndex;
-  const visibleAyahs = studyMode && ayahs.length ? [ayahs[viewIndex]] : ayahs.slice(0, renderLimit);
+  const visibleAyahs = studyMode && ayahs.length ? [ayahs[viewIndex]] : ayahs.slice(win.start, win.end);
 
+  // Keep the active ayah (playing, or the one navigated to) mounted. Runs only when it changes,
+  // so scrolling away from it doesn't pull the window back.
   useEffect(() => {
-    if (studyMode || ayahs.length === 0) return;
-    setRenderLimit((limit) => {
-      const needed = Math.min(ayahs.length, Math.max(limit, activeIndex + 8));
-      return needed === limit ? limit : needed;
-    });
+    if (studyMode || ayahs.length === 0 || activeIndex < 0) return;
+    setWin((w) => includeIndex(w, activeIndex, ayahs.length, 8));
   }, [activeIndex, ayahs.length, studyMode]);
 
   return (
@@ -1058,7 +1091,12 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
             </button>
           </div>
         )}
-        {!surahLoading && surahNumber !== 1 && surahNumber !== 9 && (!studyMode || viewIndex === 0) && (
+        {!surahLoading && !studyMode && win.start > 0 && (
+          <div ref={loadEarlierRef} className="py-3 text-center text-xs text-faint">
+            {t(lang, "loading")}… ({win.start + 1}–{win.end}/{ayahs.length})
+          </div>
+        )}
+        {!surahLoading && surahNumber !== 1 && surahNumber !== 9 && (studyMode ? viewIndex === 0 : win.start === 0) && (
           <div
             ref={bismillahRef}
             className="scroll-mt-28 py-2 text-heading"
@@ -1076,7 +1114,7 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
         )}
         {!surahLoading &&
           visibleAyahs.filter(Boolean).map((a, localIdx) => {
-          const idx = studyMode ? viewIndex : localIdx;
+          const idx = studyMode ? viewIndex : win.start + localIdx;
           const isActive = idx === activeIndex;
           const isPlaying =
             audio.playing && !audio.isPlayingBismillah && idx === audio.playIndex;
@@ -1203,9 +1241,9 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
             </article>
           );
         })}
-        {!surahLoading && !studyMode && renderLimit < ayahs.length && (
+        {!surahLoading && !studyMode && win.end < ayahs.length && (
           <div ref={loadMoreRef} className="py-3 text-center text-xs text-faint">
-            {t(lang, "loading")}… ({renderLimit}/{ayahs.length})
+            {t(lang, "loading")}… ({win.end}/{ayahs.length})
           </div>
         )}
       </div>

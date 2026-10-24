@@ -56,7 +56,7 @@ Monorepo deployed as **two Vercel Services** (defined in root `vercel.json`): `f
 
 ### Frontend (`frontend/`)
 
-- Next.js 16 App Router, React 19, Tailwind. Pages: `/` (home dashboard widgets in `components/home/`), `/quran/[surah]` (reader — `SurahClient.tsx`, progressive rendering 18 ayahs at a time), `/quran/listen` (audiobook), `/ask`, `/duas`, `/hadith`, `/khutba`, `/learn-quran` (course + quizzes), `/library`, `/recite` (recitation scoring), `/travel-duas`, `/hadith-of-day`, `/settings`, `/account`.
+- Next.js 16 App Router, React 19, Tailwind. Pages: `/` (home dashboard widgets in `components/home/`), `/quran/[surah]` (reader — `SurahClient.tsx`, a bounded window of ≤54 mounted ayahs, `lib/ayah-window.ts`), `/quran/listen` (audiobook), `/ask`, `/duas`, `/hadith`, `/khutba`, `/learn-quran` (course + quizzes), `/library`, `/recite` (recitation scoring), `/travel-duas`, `/hadith-of-day`, `/settings`, `/account`.
 - `lib/i18n.ts` — all UI strings as an EN/UR/HI translations object; every user-facing string must go through it.
 - `lib/native-bridge.ts` — `NoorAndroid` JS bridge for the Android WebView APK (audio playback queue, prayer/hadith alarm scheduling). Guard calls: the bridge only exists inside the APK. The Android Studio project is separate (`~/AndroidStudioProjects/noortravels`, not a git repo).
 - Prayer-time stack: `hooks/useSalah.ts` (fetch + timezone-aware midnight refresh) + `lib/salah.ts`, `lib/salah-streak.ts`, `lib/notification-schedule.ts`/`notification-prefs.ts`.
