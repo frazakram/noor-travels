@@ -1,0 +1,245 @@
+{
+  "slug": "tayammum",
+  "order": 4,
+  "group": "purification",
+  "title": {
+    "en": "Tayammum (Dry Ablution)",
+    "ur": "تیمم",
+    "hi": "तयम्मुम"
+  },
+  "summary": {
+    "en": "Purifying with clean earth when there is no water or you cannot use it.",
+    "ur": "پانی نہ ہونے یا استعمال نہ کر سکنے کی صورت میں پاک مٹی سے پاکی حاصل کرنا۔",
+    "hi": "पानी न होने या इस्तेमाल न कर सकने की सूरत में पाक मिट्टी से पाकी हासिल करना।"
+  },
+  "madhhab": "hanafi",
+  "status": "draft",
+  "sections": [
+    {
+      "id": "when",
+      "title": {
+        "en": "When tayammum is allowed",
+        "ur": "تیمم کب جائز ہے",
+        "hi": "तयम्मुम कब जायज़ है"
+      },
+      "kind": "list",
+      "items": [
+        {
+          "id": "no-water",
+          "text": {
+            "en": "When no water can be found nearby (about 1.6 km / one mile), or there is only enough to drink.",
+            "ur": "جب قریب (تقریباً ایک میل) پانی نہ ملے، یا صرف پینے بھر کا ہو۔",
+            "hi": "जब क़रीब (लगभग एक मील) पानी न मिले, या सिर्फ़ पीने भर का हो।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "5:6",
+              "quote": "do not find water, then seek clean earth"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "illness",
+          "text": {
+            "en": "When using water would cause or worsen an illness.",
+            "ur": "جب پانی کے استعمال سے بیماری ہونے یا بڑھنے کا خطرہ ہو۔",
+            "hi": "जब पानी के इस्तेमाल से बीमारी होने या बढ़ने का ख़तरा हो।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "5:6",
+              "quote": "if you are ill or on a journey"
+            }
+          ]
+        },
+        {
+          "id": "both",
+          "text": {
+            "en": "It replaces both wudu and ghusl.",
+            "ur": "یہ وضو اور غسل دونوں کی جگہ کافی ہے۔",
+            "hi": "यह वुज़ू और ग़ुस्ल दोनों की जगह काफ़ी है।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 334,
+              "quote": "I became Junub but no water was available"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "steps",
+      "title": {
+        "en": "How to perform tayammum",
+        "ur": "تیمم کا طریقہ",
+        "hi": "तयम्मुम का तरीक़ा"
+      },
+      "kind": "steps",
+      "items": [
+        {
+          "id": "intention",
+          "ruling": "fard",
+          "text": {
+            "en": "Make the intention to purify yourself for prayer, and say Bismillah.",
+            "ur": "نماز کے لیے پاکی کی نیت کریں اور بسم اللہ پڑھیں۔",
+            "hi": "नमाज़ के लिए पाकी की नीयत करें और बिस्मिल्लाह पढ़ें।"
+          },
+          "note": {
+            "en": "Hanafi: unlike wudu, the intention is obligatory for tayammum.",
+            "ur": "حنفی: وضو کے برخلاف تیمم میں نیت فرض ہے۔",
+            "hi": "हनफ़ी: वुज़ू के बरख़िलाफ़ तयम्मुम में नीयत फ़र्ज़ है।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1,
+              "quote": "The reward of deeds depends upon the intentions"
+            }
+          ]
+        },
+        {
+          "id": "strike1",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Strike both palms lightly on clean earth (soil, sand or stone) and blow off the excess dust.",
+            "ur": "دونوں ہتھیلیاں پاک مٹی (مٹی، ریت یا پتھر) پر ہلکے سے ماریں اور زائد غبار پھونک دیں۔",
+            "hi": "दोनों हथेलियाँ पाक मिट्टी (मिट्टी, रेत या पत्थर) पर हल्के से मारें और ज़्यादा ग़ुबार फूँक दें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 334,
+              "quote": "stroked lightly the earth with his hands and then blew off the dust"
+            }
+          ]
+        },
+        {
+          "id": "face",
+          "ruling": "fard",
+          "text": {
+            "en": "Wipe your whole face with both palms.",
+            "ur": "دونوں ہتھیلیوں سے پورے چہرے کا مسح کریں۔",
+            "hi": "दोनों हथेलियों से पूरे चेहरे का मसह करें।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "5:6",
+              "quote": "wipe over your faces and hands with it"
+            }
+          ]
+        },
+        {
+          "id": "strike2",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Strike the earth a second time.",
+            "ur": "دوسری بار مٹی پر ہاتھ ماریں۔",
+            "hi": "दूसरी बार मिट्टी पर हाथ मारें।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling (other schools differ)",
+                "ur": "حنفی مسلک (دوسرے مسالک کی رائے مختلف ہے)",
+                "hi": "हनफ़ी मसलक (दूसरे मसलकों की राय अलग है)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "arms",
+          "ruling": "fard",
+          "text": {
+            "en": "Wipe the right arm up to and including the elbow with the left hand, then the left arm with the right hand.",
+            "ur": "بائیں ہاتھ سے دائیں بازو کا کہنی سمیت مسح کریں، پھر دائیں ہاتھ سے بائیں بازو کا۔",
+            "hi": "बाएँ हाथ से दाएँ बाज़ू का कोहनी समेत मसह करें, फिर दाएँ हाथ से बाएँ बाज़ू का।"
+          },
+          "note": {
+            "en": "Hanafi: two strikes, and the arms are wiped up to the elbows. In the hadith of 'Ammar the Prophet ﷺ wiped the face and the backs of the hands; some schools follow that.",
+            "ur": "حنفی: دو بار ہاتھ مارنا اور کہنیوں تک مسح۔ حضرت عمارؓ کی حدیث میں نبی ﷺ نے چہرے اور ہاتھوں کی پشت کا مسح فرمایا؛ بعض مسالک اسی پر عمل کرتے ہیں۔",
+            "hi": "हनफ़ी: दो बार हाथ मारना और कोहनियों तक मसह। हज़रत अम्मार रज़ि. की हदीस में नबी ﷺ ने चेहरे और हाथों की पुश्त का मसह फ़रमाया; कुछ मसलक उसी पर अमल करते हैं।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "5:6",
+              "quote": "wipe over your faces and hands with it"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling (other schools differ)",
+                "ur": "حنفی مسلک (دوسرے مسالک کی رائے مختلف ہے)",
+                "hi": "हनफ़ी मसलक (दूसरे मसलकों की राय अलग है)"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "breaks",
+      "title": {
+        "en": "What breaks tayammum",
+        "ur": "تیمم توڑنے والی چیزیں",
+        "hi": "तयम्मुम तोड़ने वाली चीज़ें"
+      },
+      "kind": "list",
+      "items": [
+        {
+          "id": "nullifiers",
+          "text": {
+            "en": "Everything that breaks wudu (or makes ghusl necessary).",
+            "ur": "ہر وہ چیز جس سے وضو ٹوٹتا ہے (یا غسل فرض ہوتا ہے)۔",
+            "hi": "हर वह चीज़ जिससे वुज़ू टूटता है (या ग़ुस्ल फ़र्ज़ होता है)।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "water-found",
+          "text": {
+            "en": "Finding water and being able to use it.",
+            "ur": "پانی مل جانا اور اس کے استعمال پر قادر ہو جانا۔",
+            "hi": "पानी मिल जाना और उसके इस्तेमाल पर क़ादिर हो जाना।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

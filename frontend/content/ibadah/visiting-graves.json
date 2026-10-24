@@ -1,0 +1,153 @@
+{
+  "slug": "visiting-graves",
+  "order": 20,
+  "group": "life",
+  "title": {
+    "en": "Visiting Graves",
+    "ur": "قبرستان کی زیارت",
+    "hi": "क़ब्रिस्तान की ज़ियारत"
+  },
+  "summary": {
+    "en": "The sunnah way to visit graves: greeting the dead, making dua for them and remembering the Hereafter.",
+    "ur": "قبرستان جانے کا مسنون طریقہ: مردوں کو سلام، ان کے لیے دعا اور آخرت کی یاد۔",
+    "hi": "क़ब्रिस्तान जाने का मसनून तरीक़ा: मुर्दों को सलाम, उनके लिए दुआ और आख़िरत की याद।"
+  },
+  "madhhab": "hanafi",
+  "status": "draft",
+  "sections": [
+    {
+      "id": "steps",
+      "title": {
+        "en": "How to visit",
+        "ur": "زیارت کا طریقہ",
+        "hi": "ज़ियारत का तरीक़ा"
+      },
+      "kind": "steps",
+      "items": [
+        {
+          "id": "greet",
+          "ruling": "sunnah",
+          "text": {
+            "en": "When you enter the graveyard, greet the dead.",
+            "ur": "قبرستان میں داخل ہوں تو مردوں کو سلام کریں۔",
+            "hi": "क़ब्रिस्तान में दाख़िल हों तो मुर्दों को सलाम करें।"
+          },
+          "arabic": "السَّلَامُ عَلَيْكُمْ أَهْلَ الدِّيَارِ مِنَ الْمُؤْمِنِينَ وَالْمُسْلِمِينَ، وَإِنَّا إِنْ شَاءَ اللَّهُ بِكُمْ لَلَاحِقُونَ، نَسْأَلُ اللَّهَ لَنَا وَلَكُمُ الْعَافِيَةَ",
+          "transliteration": "As-salamu 'alaikum ahlad-diyari minal-mu'minina wal-muslimin, wa inna in sha'Allahu bikum la-lahiqun, nas'alullaha lana wa lakumul-'afiyah",
+          "meaning": {
+            "en": "Peace be upon you, O believing and Muslim people of these dwellings. We will, if Allah wills, join you. We ask Allah for well-being for us and for you.",
+            "ur": "اے ان گھروں کے مومن اور مسلمان باشندو! تم پر سلامتی ہو۔ ہم بھی ان شاء اللہ تم سے ملنے والے ہیں۔ ہم اللہ سے اپنے اور تمہارے لیے عافیت مانگتے ہیں۔",
+            "hi": "ऐ इन घरों के मोमिन और मुसलमान बाशिंदो! तुम पर सलामती हो। हम भी इन शा अल्लाह तुमसे मिलने वाले हैं। हम अल्लाह से अपने और तुम्हारे लिए आफ़ियत माँगते हैं।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Narrated in Sahih Muslim (to be verified by a scholar)",
+                "ur": "صحیح مسلم میں روایت (کسی عالم سے تصدیق باقی)",
+                "hi": "सहीह मुस्लिम में रिवायत (किसी आलिम से तसदीक़ बाक़ी)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "dua",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Make dua for them: ask Allah to forgive them and have mercy on them.",
+            "ur": "ان کے لیے دعا کریں: اللہ سے ان کی مغفرت اور رحمت مانگیں۔",
+            "hi": "उनके लिए दुआ करें: अल्लाह से उनकी मग़फ़िरत और रहमत माँगें।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Narrated in Sunan Abi Dawud and Jami' at-Tirmidhi (to be verified by a scholar)",
+                "ur": "سنن ابی داؤد اور جامع ترمذی میں روایت (کسی عالم سے تصدیق باقی)",
+                "hi": "सुनन अबी दाऊद और जामे तिर्मिज़ी में रिवायत (किसी आलिम से तसदीक़ बाक़ी)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "remember",
+          "text": {
+            "en": "Remember that every soul will taste death, and let the visit soften your heart.",
+            "ur": "یاد رکھیں کہ ہر جان کو موت کا مزہ چکھنا ہے، اور اس زیارت سے دل نرم کریں۔",
+            "hi": "याद रखें कि हर जान को मौत का मज़ा चखना है, और इस ज़ियारत से दिल नरम करें।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "3:185",
+              "quote": "Every soul will taste death"
+            }
+          ]
+        },
+        {
+          "id": "patience",
+          "text": {
+            "en": "If you grieve, be patient; the Prophet ﷺ told a woman weeping at a grave to fear Allah and be patient.",
+            "ur": "غم ہو تو صبر کریں؛ نبی ﷺ نے قبر پر روتی عورت سے فرمایا: اللہ سے ڈرو اور صبر کرو۔",
+            "hi": "ग़म हो तो सब्र करें; नबी ﷺ ने क़ब्र पर रोती औरत से फ़रमाया: अल्लाह से डरो और सब्र करो।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1214,
+              "quote": "Fear Allah and be patient"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "respect",
+      "title": {
+        "en": "Respecting graves",
+        "ur": "قبروں کا احترام",
+        "hi": "क़ब्रों का एहतेराम"
+      },
+      "kind": "list",
+      "items": [
+        {
+          "id": "sit",
+          "text": {
+            "en": "Do not sit, walk or step on graves.",
+            "ur": "قبروں پر نہ بیٹھیں، نہ چلیں، نہ پاؤں رکھیں۔",
+            "hi": "क़ब्रों पर न बैठें, न चलें, न पैर रखें।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Narrated in Sahih Muslim (to be verified by a scholar)",
+                "ur": "صحیح مسلم میں روایت (کسی عالم سے تصدیق باقی)",
+                "hi": "सहीह मुस्लिम में रिवायत (किसी आलिम से तसदीक़ बाक़ी)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "women",
+          "text": {
+            "en": "Hanafi: visiting is permitted for women too, provided they avoid wailing and other forbidden things.",
+            "ur": "حنفی: عورتوں کے لیے بھی زیارت جائز ہے بشرطیکہ نوحہ اور دوسری ممنوع باتوں سے بچیں۔",
+            "hi": "हनफ़ी: औरतों के लिए भी ज़ियारत जायज़ है बशर्ते कि नौहा और दूसरी मना बातों से बचें।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling (other schools differ)",
+                "ur": "حنفی مسلک (دوسرے مسالک کی رائے مختلف ہے)",
+                "hi": "हनफ़ी मसलक (दूसरे मसलकों की राय अलग है)"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

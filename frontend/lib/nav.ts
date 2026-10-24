@@ -17,7 +17,7 @@ export const NAV_TABS: NavTab[] = [
     href: "/hadith",
     key: "navHadithDuas",
     icon: "hadith",
-    sections: ["/hadith", "/hadith-of-day", "/adhkar", "/dhikr", "/duas", "/travel-duas"],
+    sections: ["/hadith", "/hadith-of-day", "/adhkar", "/dhikr", "/duas", "/travel-duas", "/ibadah"],
   },
   { href: "/library", key: "ask", icon: "ask", sections: ["/library", "/ask"] },
   { href: "/settings", key: "navYou", icon: "you", sections: ["/settings", "/account", "/about", "/support", "/privacy"] },

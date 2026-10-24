@@ -1,0 +1,161 @@
+{
+  "slug": "qasr",
+  "order": 12,
+  "group": "prayer",
+  "title": {
+    "en": "Qasr (Travel Prayer)",
+    "ur": "قصر نماز (سفر)",
+    "hi": "क़स्र नमाज़ (सफ़र)"
+  },
+  "summary": {
+    "en": "Shortening the four-rak'ah prayers to two when travelling: when it applies and how long.",
+    "ur": "سفر میں چار رکعت والی نمازوں کو دو پڑھنا: کب لاگو ہوتا ہے اور کتنی مدت تک۔",
+    "hi": "सफ़र में चार रकअत वाली नमाज़ों को दो पढ़ना: कब लागू होता है और कितनी मुद्दत तक।"
+  },
+  "madhhab": "hanafi",
+  "status": "draft",
+  "sections": [
+    {
+      "id": "rules",
+      "title": {
+        "en": "When you are a traveller (Hanafi)",
+        "ur": "مسافر کب ہیں (حنفی)",
+        "hi": "मुसाफ़िर कब हैं (हनफ़ी)"
+      },
+      "kind": "list",
+      "items": [
+        {
+          "id": "distance",
+          "text": {
+            "en": "You become a traveller when you set out intending a journey of about 78 km (48 miles) or more, once you leave your town's limits.",
+            "ur": "جب آپ تقریباً ۷۸ کلومیٹر (۴۸ میل) یا زیادہ کے سفر کی نیت سے نکلیں اور شہر کی حد سے باہر ہو جائیں تو مسافر ہیں۔",
+            "hi": "जब आप लगभग 78 किलोमीटर (48 मील) या ज़्यादा के सफ़र की नीयत से निकलें और शहर की हद से बाहर हो जाएँ तो मुसाफ़िर हैं।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "4:101",
+              "quote": "there is no blame upon you for shortening the prayer"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling (other schools differ)",
+                "ur": "حنفی مسلک (دوسرے مسالک کی رائے مختلف ہے)",
+                "hi": "हनफ़ी मसलक (दूसरे मसलकों की राय अलग है)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "stay",
+          "text": {
+            "en": "If you intend to stay somewhere for fewer than 15 days, keep shortening; if 15 days or more, pray in full.",
+            "ur": "اگر کسی جگہ ۱۵ دن سے کم ٹھہرنے کی نیت ہو تو قصر جاری رکھیں؛ ۱۵ دن یا زیادہ کی نیت ہو تو پوری نماز پڑھیں۔",
+            "hi": "अगर किसी जगह 15 दिन से कम ठहरने की नीयत हो तो क़स्र जारी रखें; 15 दिन या ज़्यादा की नीयत हो तो पूरी नमाज़ पढ़ें।"
+          },
+          "note": {
+            "en": "Ibn 'Abbas held nineteen days; the schools differ on the length.",
+            "ur": "ابن عباسؓ انیس دن کے قائل تھے؛ مدت کے بارے میں مسالک میں اختلاف ہے۔",
+            "hi": "इब्न अब्बास रज़ि. उन्नीस दिन के क़ाइल थे; मुद्दत के बारे में मसलकों में इख़्तिलाफ़ है।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling (other schools differ)",
+                "ur": "حنفی مسلک (دوسرے مسالک کی رائے مختلف ہے)",
+                "hi": "हनफ़ी मसलक (दूसरे मसलकों की राय अलग है)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "evidence-19",
+          "text": {
+            "en": "Ibn 'Abbas reported that the Prophet ﷺ stayed nineteen days and shortened his prayers.",
+            "ur": "ابن عباسؓ نے بتایا کہ نبی ﷺ انیس دن ٹھہرے اور قصر نماز پڑھی۔",
+            "hi": "इब्न अब्बास रज़ि. ने बताया कि नबी ﷺ उन्नीस दिन ठहरे और क़स्र नमाज़ पढ़ी।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1049,
+              "quote": "stayed for nineteen days and prayed shortened prayers"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "how",
+      "title": {
+        "en": "How to pray while travelling",
+        "ur": "سفر میں نماز کا طریقہ",
+        "hi": "सफ़र में नमाज़ का तरीक़ा"
+      },
+      "kind": "steps",
+      "items": [
+        {
+          "id": "shorten",
+          "ruling": "wajib",
+          "text": {
+            "en": "Pray Zuhr, Asr and Isha as two rak'ahs each. Fajr (2) and Maghrib (3) stay the same.",
+            "ur": "ظہر، عصر اور عشاء کی دو دو رکعت پڑھیں۔ فجر (۲) اور مغرب (۳) ویسی ہی رہیں گی۔",
+            "hi": "ज़ुहर, अस्र और इशा की दो-दो रकअत पढ़ें। फ़ज्र (2) और मग़रिब (3) वैसी ही रहेंगी।"
+          },
+          "note": {
+            "en": "Hanafi: shortening is wajib for a traveller, not just allowed.",
+            "ur": "حنفی: مسافر کے لیے قصر واجب ہے، صرف جائز نہیں۔",
+            "hi": "हनफ़ी: मुसाफ़िर के लिए क़स्र वाजिब है, सिर्फ़ जायज़ नहीं।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1058,
+              "quote": "two rak`at at Dhul-Hulaifa"
+            }
+          ]
+        },
+        {
+          "id": "sunnah",
+          "text": {
+            "en": "Sunnah prayers may be left when in a hurry; keep the two rak'ahs before Fajr and the Witr.",
+            "ur": "جلدی میں سنتیں چھوڑ سکتے ہیں؛ فجر کی دو سنتیں اور وتر نہ چھوڑیں۔",
+            "hi": "जल्दी में सुन्नतें छोड़ सकते हैं; फ़ज्र की दो सुन्नतें और वित्र न छोड़ें।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "behind-imam",
+          "text": {
+            "en": "Behind a resident imam, pray the full four rak'ahs with him.",
+            "ur": "مقیم امام کے پیچھے پوری چار رکعت اس کے ساتھ پڑھیں۔",
+            "hi": "मुक़ीम इमाम के पीछे पूरी चार रकअत उसके साथ पढ़ें।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

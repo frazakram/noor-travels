@@ -1,0 +1,350 @@
+{
+  "slug": "hajj",
+  "order": 14,
+  "group": "hajj",
+  "title": {
+    "en": "Hajj",
+    "ur": "حج",
+    "hi": "हज"
+  },
+  "summary": {
+    "en": "The days of Hajj (Tamattu', as most pilgrims from India perform it), from the 8th to the 13th of Dhul-Hijjah.",
+    "ur": "حج کے دن (تمتع، جیسے ہندوستان سے اکثر حاجی کرتے ہیں)، ۸ سے ۱۳ ذوالحجہ تک۔",
+    "hi": "हज के दिन (तमत्तो, जैसे भारत से ज़्यादातर हाजी करते हैं), 8 से 13 ज़िल-हिज्जा तक।"
+  },
+  "madhhab": "hanafi",
+  "status": "draft",
+  "sections": [
+    {
+      "id": "before",
+      "title": {
+        "en": "Before the days of Hajj",
+        "ur": "حج کے دنوں سے پہلے",
+        "hi": "हज के दिनों से पहले"
+      },
+      "kind": "list",
+      "items": [
+        {
+          "id": "obligation",
+          "text": {
+            "en": "Hajj is fard once in a lifetime on every adult Muslim who is able to make the journey.",
+            "ur": "حج ہر اس بالغ مسلمان پر زندگی میں ایک بار فرض ہے جو سفر کی استطاعت رکھتا ہو۔",
+            "hi": "हज हर उस बालिग़ मुसलमान पर ज़िंदगी में एक बार फ़र्ज़ है जो सफ़र की इस्तिताअत रखता हो।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "3:97",
+              "quote": "a pilgrimage to the House - for whoever is able to find thereto a way"
+            }
+          ]
+        },
+        {
+          "id": "tamattu",
+          "text": {
+            "en": "For Tamattu': perform Umrah first (see the Umrah guide), leave ihram, and enter ihram again for Hajj on the 8th.",
+            "ur": "تمتع کے لیے: پہلے عمرہ کریں (عمرہ کا گائیڈ دیکھیں)، احرام کھولیں، اور ۸ تاریخ کو حج کا احرام باندھیں۔",
+            "hi": "तमत्तो के लिए: पहले उमरा करें (उमरा गाइड देखें), एहराम खोलें, और 8 तारीख़ को हज का एहराम बाँधें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1518,
+              "quote": "Give up your intention of doing the Hajj (at this moment) and perform 'Umra"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "days",
+      "title": {
+        "en": "The days of Hajj",
+        "ur": "حج کے دن",
+        "hi": "हज के दिन"
+      },
+      "kind": "steps",
+      "items": [
+        {
+          "id": "day8",
+          "ruling": "sunnah",
+          "text": {
+            "en": "8th: Put on ihram for Hajj in Makkah, say the Talbiyah, and go to Mina. Pray Zuhr to Fajr there.",
+            "ur": "۸ تاریخ: مکہ میں حج کا احرام باندھیں، تلبیہ پڑھیں اور منیٰ جائیں۔ وہاں ظہر سے فجر تک نمازیں پڑھیں۔",
+            "hi": "8 तारीख़: मक्का में हज का एहराम बाँधें, तलबिया पढ़ें और मिना जाएँ। वहाँ ज़ुहर से फ़ज्र तक नमाज़ें पढ़ें।"
+          },
+          "arabic": "لَبَّيْكَ اللَّهُمَّ لَبَّيْكَ، لَبَّيْكَ لَا شَرِيكَ لَكَ لَبَّيْكَ، إِنَّ الْحَمْدَ وَالنِّعْمَةَ لَكَ وَالْمُلْكَ، لَا شَرِيكَ لَكَ",
+          "transliteration": "Labbaik Allahumma labbaik, labbaika la sharika laka labbaik, innal-hamda wan-ni'mata laka wal-mulk, la sharika lak",
+          "meaning": {
+            "en": "Here I am, O Allah, here I am. Here I am, You have no partner, here I am. All praise, all blessings and all sovereignty are Yours. You have no partner.",
+            "ur": "میں حاضر ہوں اے اللہ، میں حاضر ہوں۔ میں حاضر ہوں، تیرا کوئی شریک نہیں، میں حاضر ہوں۔ بے شک سب تعریف، نعمت اور بادشاہی تیری ہی ہے۔ تیرا کوئی شریک نہیں۔",
+            "hi": "मैं हाज़िर हूँ ऐ अल्लाह, मैं हाज़िर हूँ। मैं हाज़िर हूँ, तेरा कोई शरीक नहीं, मैं हाज़िर हूँ। बेशक सब तारीफ़, नेमत और बादशाही तेरी ही है। तेरा कोई शरीक नहीं।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1495,
+              "quote": "Labbaika Allahumma labbaik"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "day9",
+          "ruling": "fard",
+          "text": {
+            "en": "9th: Go to Arafat. Stay there from after midday until sunset, in dua and remembrance. This standing is the heart of Hajj.",
+            "ur": "۹ تاریخ: عرفات جائیں۔ زوال کے بعد سے غروب تک دعا اور ذکر میں رہیں۔ یہ وقوف حج کی جان ہے۔",
+            "hi": "9 तारीख़: अरफ़ात जाएँ। ज़वाल के बाद से ग़ुरूब तक दुआ और ज़िक्र में रहें। यह वुक़ूफ़ हज की जान है।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1601,
+              "quote": "On the Day of `Arafat, when the sun declined at midday"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "muzdalifah",
+          "ruling": "wajib",
+          "text": {
+            "en": "After sunset, go to Muzdalifah. Pray Maghrib and Isha together there, spend the night, and collect pebbles.",
+            "ur": "غروب کے بعد مزدلفہ جائیں۔ وہاں مغرب اور عشاء ایک ساتھ پڑھیں، رات گزاریں اور کنکریاں چنیں۔",
+            "hi": "ग़ुरूब के बाद मुज़दलिफ़ा जाएँ। वहाँ मग़रिब और इशा एक साथ पढ़ें, रात गुज़ारें और कंकरियाँ चुनें।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "day10",
+          "ruling": "wajib",
+          "text": {
+            "en": "10th: Stone the big Jamarah (Aqabah) with seven pebbles, offer the sacrifice, then shave or trim the hair.",
+            "ur": "۱۰ تاریخ: بڑے جمرہ (عقبہ) کو سات کنکریاں ماریں، قربانی کریں، پھر سر منڈوائیں یا بال کٹوائیں۔",
+            "hi": "10 तारीख़: बड़े जमरा (अक़बा) को सात कंकरियाँ मारें, क़ुर्बानी करें, फिर सर मुँडवाएँ या बाल कटवाएँ।"
+          },
+          "note": {
+            "en": "Hanafi: for Tamattu' this order (stoning, sacrifice, shaving) is wajib.",
+            "ur": "حنفی: تمتع والے کے لیے یہ ترتیب (رمی، قربانی، حلق) واجب ہے۔",
+            "hi": "हनफ़ी: तमत्तो वाले के लिए यह तरतीब (रमी, क़ुर्बानी, हल्क़) वाजिब है।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1666,
+              "quote": "Forgive those who get their heads shaved"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "ifadah",
+          "ruling": "fard",
+          "text": {
+            "en": "Perform Tawaf al-Ifadah (from the 10th to the 12th) and the Sa'i of Hajj.",
+            "ur": "طواف زیارت (۱۰ سے ۱۲ تاریخ تک) اور حج کی سعی کریں۔",
+            "hi": "तवाफ़-ए-ज़ियारत (10 से 12 तारीख़ तक) और हज की सई करें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 391,
+              "quote": "performed the Tawaf around the Ka`ba"
+            },
+            {
+              "kind": "quran",
+              "key": "2:158",
+              "quote": "as-Safa and al-Marwah are among the symbols of Allah"
+            }
+          ]
+        },
+        {
+          "id": "days11-12",
+          "ruling": "wajib",
+          "text": {
+            "en": "11th and 12th (and the 13th if you stay): stay in Mina and stone all three Jamarat, small to big, seven pebbles each, after midday.",
+            "ur": "۱۱ اور ۱۲ (اور رکیں تو ۱۳) تاریخ: منیٰ میں رہیں اور زوال کے بعد تینوں جمرات کو چھوٹے سے بڑے تک، ہر ایک کو سات کنکریاں ماریں۔",
+            "hi": "11 और 12 (और रुकें तो 13) तारीख़: मिना में रहें और ज़वाल के बाद तीनों जमरात को छोटे से बड़े तक, हर एक को सात कंकरियाँ मारें।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "farewell",
+          "ruling": "wajib",
+          "text": {
+            "en": "Before leaving Makkah, perform the farewell tawaf (Tawaf al-Wada').",
+            "ur": "مکہ سے روانگی سے پہلے طواف وداع کریں۔",
+            "hi": "मक्का से रवानगी से पहले तवाफ़-ए-विदा करें।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "restrictions",
+      "title": {
+        "en": "Forbidden in ihram",
+        "ur": "احرام میں ممنوع",
+        "hi": "एहराम में मना"
+      },
+      "kind": "list",
+      "items": [
+        {
+          "id": "no-hair",
+          "text": {
+            "en": "Cutting hair or nails, using perfume or scented soap.",
+            "ur": "بال یا ناخن کاٹنا، خوشبو یا خوشبو دار صابن لگانا۔",
+            "hi": "बाल या नाख़ून काटना, ख़ुशबू या ख़ुशबूदार साबुन लगाना।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "2:196",
+              "quote": "do not shave your heads until the sacrificial animal has reached its place of slaughter"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "no-stitched",
+          "text": {
+            "en": "For men: stitched clothes and covering the head or face. For women: covering the face with something touching it.",
+            "ur": "مردوں کے لیے: سلے کپڑے، سر یا چہرہ ڈھانپنا۔ عورتوں کے لیے: چہرے کو ایسی چیز سے ڈھانپنا جو چہرے سے لگے۔",
+            "hi": "मर्दों के लिए: सिले कपड़े, सर या चेहरा ढाँपना। औरतों के लिए: चेहरे को ऐसी चीज़ से ढाँपना जो चेहरे से लगे।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "no-marital",
+          "text": {
+            "en": "Marital relations, arguing and any sin.",
+            "ur": "میاں بیوی کا تعلق، جھگڑا اور ہر گناہ۔",
+            "hi": "मियाँ-बीवी का ताल्लुक़, झगड़ा और हर गुनाह।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "2:197",
+              "quote": "no sexual relations and no disobedience and no disputing during Hajj"
+            }
+          ]
+        },
+        {
+          "id": "no-hunting",
+          "text": {
+            "en": "Hunting animals.",
+            "ur": "جانوروں کا شکار۔",
+            "hi": "जानवरों का शिकार।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "virtue",
+      "title": {
+        "en": "Its reward",
+        "ur": "اس کا اجر",
+        "hi": "इसका अज्र"
+      },
+      "kind": "list",
+      "items": [
+        {
+          "id": "mabrur",
+          "text": {
+            "en": "The reward of an accepted Hajj (Hajj Mabrur) is nothing less than Paradise.",
+            "ur": "حج مبرور (مقبول حج) کا بدلہ جنت ہی ہے۔",
+            "hi": "हज-ए-मबरूर (मक़बूल हज) का बदला जन्नत ही है।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1708,
+              "quote": "the reward of Hajj Mabrur (the one accepted by Allah) is nothing except Paradise"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

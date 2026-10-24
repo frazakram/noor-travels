@@ -1,0 +1,118 @@
+{
+  "slug": "zakat-al-fitr",
+  "order": 16,
+  "group": "ramadan",
+  "title": {
+    "en": "Zakat al-Fitr",
+    "ur": "صدقۂ فطر",
+    "hi": "सदक़ा-ए-फ़ित्र"
+  },
+  "summary": {
+    "en": "The charity of Eid al-Fitr: who pays it, how much (Hanafi) and when.",
+    "ur": "عید الفطر کا صدقہ: کون ادا کرے، کتنا (حنفی) اور کب۔",
+    "hi": "ईद-उल-फ़ित्र का सदक़ा: कौन अदा करे, कितना (हनफ़ी) और कब।"
+  },
+  "madhhab": "hanafi",
+  "status": "draft",
+  "sections": [
+    {
+      "id": "rules",
+      "title": {
+        "en": "The essentials",
+        "ur": "بنیادی باتیں",
+        "hi": "बुनियादी बातें"
+      },
+      "kind": "list",
+      "items": [
+        {
+          "id": "who",
+          "ruling": "wajib",
+          "text": {
+            "en": "Every Muslim who owns the nisab (beyond basic needs) on the morning of Eid pays it for himself and his young children.",
+            "ur": "ہر وہ مسلمان جو عید کی صبح (ضروریات سے زائد) نصاب کا مالک ہو، اپنی اور اپنے نابالغ بچوں کی طرف سے ادا کرے۔",
+            "hi": "हर वह मुसलमान जो ईद की सुबह (ज़रूरतों से ज़्यादा) निसाब का मालिक हो, अपनी और अपने नाबालिग़ बच्चों की तरफ़ से अदा करे।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1451,
+              "quote": "on every Muslim slave or free, male or female, young or old"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "amount",
+          "text": {
+            "en": "Per person: about 1.6–2 kg of wheat (half a sa'), or about 3.2–4 kg of dates, barley or raisins (one sa'), or the market value in money.",
+            "ur": "فی کس: تقریباً ۱.۶ سے ۲ کلو گندم (نصف صاع)، یا تقریباً ۳.۲ سے ۴ کلو کھجور، جو یا کشمش (ایک صاع)، یا ان کی بازاری قیمت۔",
+            "hi": "फ़ी कस: लगभग 1.6 से 2 किलो गेहूँ (आधा साअ), या लगभग 3.2 से 4 किलो खजूर, जौ या किशमिश (एक साअ), या उनकी बाज़ारी क़ीमत।"
+          },
+          "note": {
+            "en": "Hanafi: paying the value in money is allowed and often better for the poor. Ask your local masjid for this year's amount.",
+            "ur": "حنفی: قیمت میں ادا کرنا جائز ہے اور اکثر غریب کے لیے بہتر ہے۔ اس سال کی رقم اپنی مسجد سے معلوم کریں۔",
+            "hi": "हनफ़ी: क़ीमत में अदा करना जायज़ है और अक्सर ग़रीब के लिए बेहतर है। इस साल की रक़म अपनी मस्जिद से मालूम करें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1454,
+              "quote": "We used to give one Sa' of meal or one Sa' of barley or one Sa' of dates"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling (other schools differ)",
+                "ur": "حنفی مسلک (دوسرے مسالک کی رائے مختلف ہے)",
+                "hi": "हनफ़ी मसलक (दूसरे मसलकों की राय अलग है)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "when",
+          "text": {
+            "en": "Pay it before the Eid prayer; it may be given earlier in Ramadan.",
+            "ur": "عید کی نماز سے پہلے ادا کریں؛ رمضان میں پہلے بھی دے سکتے ہیں۔",
+            "hi": "ईद की नमाज़ से पहले अदा करें; रमज़ान में पहले भी दे सकते हैं।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1451,
+              "quote": "he ordered that it be paid before the people went out to offer the `Id prayer"
+            }
+          ]
+        },
+        {
+          "id": "to-whom",
+          "text": {
+            "en": "Give it to the poor and needy who are eligible for zakat.",
+            "ur": "زکوٰۃ کے مستحق غریبوں اور مسکینوں کو دیں۔",
+            "hi": "ज़कात के मुस्तहिक़ ग़रीबों और मिस्कीनों को दें।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

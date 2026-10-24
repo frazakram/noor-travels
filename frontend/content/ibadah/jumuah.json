@@ -1,0 +1,175 @@
+{
+  "slug": "jumuah",
+  "order": 6,
+  "group": "prayer",
+  "title": {
+    "en": "Jumu'ah (Friday Prayer)",
+    "ur": "نماز جمعہ",
+    "hi": "जुमे की नमाज़"
+  },
+  "summary": {
+    "en": "Preparing for Friday, the khutbah and the two-rak'ah congregational prayer that replaces Zuhr.",
+    "ur": "جمعہ کی تیاری، خطبہ اور دو رکعت باجماعت نماز جو ظہر کی جگہ ہے۔",
+    "hi": "जुमे की तैयारी, ख़ुतबा और दो रकअत बाजमाअत नमाज़ जो ज़ुहर की जगह है।"
+  },
+  "madhhab": "hanafi",
+  "status": "draft",
+  "sections": [
+    {
+      "id": "prepare",
+      "title": {
+        "en": "Before Jumu'ah",
+        "ur": "جمعہ سے پہلے",
+        "hi": "जुमे से पहले"
+      },
+      "kind": "steps",
+      "items": [
+        {
+          "id": "ghusl",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Take a bath (ghusl), clean yourself, wear clean clothes and use perfume.",
+            "ur": "غسل کریں، صاف ستھرے ہوں، صاف کپڑے پہنیں اور خوشبو لگائیں۔",
+            "hi": "ग़ुस्ल करें, साफ़-सुथरे हों, साफ़ कपड़े पहनें और ख़ुशबू लगाएँ।"
+          },
+          "note": {
+            "en": "Hanafi: the Friday bath is sunnah (an emphasised practice), not fard.",
+            "ur": "حنفی: جمعہ کا غسل سنت ہے، فرض نہیں۔",
+            "hi": "हनफ़ी: जुमे का ग़ुस्ल सुन्नत है, फ़र्ज़ नहीं।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 859,
+              "quote": "The taking of a bath on Friday is compulsory"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling (other schools differ)",
+                "ur": "حنفی مسلک (دوسرے مسالک کی رائے مختلف ہے)",
+                "hi": "हनफ़ी मसलक (दूसरे मसलकों की राय अलग है)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "early",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Go to the masjid early; the earlier you go, the greater the reward.",
+            "ur": "مسجد جلدی جائیں؛ جتنا جلدی جائیں گے اتنا زیادہ ثواب ہے۔",
+            "hi": "मस्जिद जल्दी जाएँ; जितना जल्दी जाएँगे उतना ज़्यादा सवाब है।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 860,
+              "quote": "it is as if he had sacrificed a camel"
+            },
+            {
+              "kind": "quran",
+              "key": "62:9",
+              "quote": "proceed to the remembrance of Allah and leave trade"
+            }
+          ]
+        },
+        {
+          "id": "sunnah-before",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Pray four rak'ahs of sunnah before the khutbah, without stepping over people.",
+            "ur": "خطبے سے پہلے چار رکعت سنت پڑھیں، لوگوں کی گردنیں پھلانگے بغیر۔",
+            "hi": "ख़ुतबे से पहले चार रकअत सुन्नत पढ़ें, लोगों की गर्दनें फलाँगे बग़ैर।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 888,
+              "quote": "does not force his way between two persons"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "khutbah",
+      "title": {
+        "en": "The khutbah and the prayer",
+        "ur": "خطبہ اور نماز",
+        "hi": "ख़ुतबा और नमाज़"
+      },
+      "kind": "steps",
+      "items": [
+        {
+          "id": "listen",
+          "ruling": "wajib",
+          "text": {
+            "en": "Listen to the khutbah in silence. Do not talk, even to tell someone else to be quiet.",
+            "ur": "خطبہ خاموشی سے سنیں۔ بات نہ کریں، کسی کو چپ کرانے کے لیے بھی نہیں۔",
+            "hi": "ख़ुतबा ख़ामोशी से सुनें। बात न करें, किसी को चुप कराने के लिए भी नहीं।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 888,
+              "quote": "remains quiet when the Imam delivers the Khutba"
+            }
+          ]
+        },
+        {
+          "id": "pray",
+          "ruling": "fard",
+          "text": {
+            "en": "Pray the two fard rak'ahs behind the imam. They replace the four rak'ahs of Zuhr.",
+            "ur": "امام کے پیچھے دو رکعت فرض پڑھیں۔ یہ ظہر کی چار رکعتوں کی جگہ ہیں۔",
+            "hi": "इमाम के पीछे दो रकअत फ़र्ज़ पढ़ें। यह ज़ुहर की चार रकअतों की जगह हैं।"
+          },
+          "note": {
+            "en": "Jumu'ah is fard on adult, sane, resident men who are able; women, travellers and the sick may pray Zuhr instead.",
+            "ur": "جمعہ عاقل، بالغ، مقیم اور صحت مند مردوں پر فرض ہے؛ عورتیں، مسافر اور بیمار ظہر پڑھ سکتے ہیں۔",
+            "hi": "जुमा आक़िल, बालिग़, मुक़ीम और सेहतमंद मर्दों पर फ़र्ज़ है; औरतें, मुसाफ़िर और बीमार ज़ुहर पढ़ सकते हैं।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "62:9",
+              "quote": "when [the adhan] is called for the prayer on the day of Jumu'ah"
+            }
+          ]
+        },
+        {
+          "id": "sunnah-after",
+          "ruling": "sunnah",
+          "text": {
+            "en": "After the prayer, pray four rak'ahs of sunnah (Hanafis also add two more).",
+            "ur": "نماز کے بعد چار رکعت سنت پڑھیں (احناف دو رکعت مزید بھی پڑھتے ہیں)۔",
+            "hi": "नमाज़ के बाद चार रकअत सुन्नत पढ़ें (अहनाफ़ दो रकअत और भी पढ़ते हैं)।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 /**
  * Offline pack: the Quran (all 114 surah pages, plus the reader's translation when it isn't
- * English), duas and adhkar, saved for use without a connection. The service worker
+ * English), duas, adhkar and the Ibadah Guide, saved for use without a connection. The service worker
  * (public/sw.js) serves these when the network fails; prayer times need no pack, they are
  * calculated on the device (lib/salah-offline.ts).
  *
@@ -9,6 +9,8 @@
  * Word-by-word data (4.7 MB) is left out: it only drives audio highlighting, and audio
  * streams online.
  */
+
+import { IBADAH_SLUGS } from "./ibadah.ts";
 
 export const OFFLINE_CACHE = "noor-offline-v1"; // must match OFFLINE in public/sw.js
 /** Same base the app's API calls use (lib/api.ts); empty in production = same origin. */
@@ -23,12 +25,19 @@ export type PackProgress = { done: number; total: number; bytes: number };
 
 /** Rough size before downloading, from measured averages. */
 export function estimatedMB(translation: PackTranslation): number {
-  return translation === "en" ? 28 : 38;
+  return translation === "en" ? 30 : 40; // +~1.3 MB of HTML (plus page data) for the Ibadah Guide
 }
 
 /** Every URL the pack saves (pages first; their build assets are found while saving them). */
 export function packUrls(translation: PackTranslation): string[] {
-  const pages = ["/quran", "/hadith", "/adhkar", ...Array.from({ length: SURAHS }, (_, i) => `/quran/${i + 1}`)];
+  const pages = [
+    "/quran",
+    "/hadith",
+    "/adhkar",
+    "/ibadah",
+    ...IBADAH_SLUGS.map((slug) => `/ibadah/${slug}`),
+    ...Array.from({ length: SURAHS }, (_, i) => `/quran/${i + 1}`),
+  ];
   const data = ["/api/quran/surahs", "/api/duas/", "/api/adhkar/"];
   if (translation !== "en") {
     for (let n = 1; n <= SURAHS; n++) data.push(`/api/quran/surahs/${n}?translation=${translation}`);

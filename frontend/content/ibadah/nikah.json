@@ -1,0 +1,158 @@
+{
+  "slug": "nikah",
+  "order": 19,
+  "group": "life",
+  "title": {
+    "en": "Nikah (Marriage) Basics",
+    "ur": "نکاح کی بنیادی باتیں",
+    "hi": "निकाह की बुनियादी बातें"
+  },
+  "summary": {
+    "en": "What makes a nikah valid, and the sunnahs around it.",
+    "ur": "نکاح کے صحیح ہونے کی شرطیں اور اس سے جڑی سنتیں۔",
+    "hi": "निकाह के सही होने की शर्तें और उससे जुड़ी सुन्नतें।"
+  },
+  "madhhab": "hanafi",
+  "status": "draft",
+  "sections": [
+    {
+      "id": "valid",
+      "title": {
+        "en": "What a valid nikah needs (Hanafi)",
+        "ur": "صحیح نکاح کے لیے ضروری (حنفی)",
+        "hi": "सही निकाह के लिए ज़रूरी (हनफ़ी)"
+      },
+      "kind": "list",
+      "items": [
+        {
+          "id": "consent",
+          "text": {
+            "en": "The free consent of both the man and the woman. A woman may not be married without her permission.",
+            "ur": "مرد اور عورت دونوں کی آزاد رضامندی۔ عورت کا نکاح اس کی اجازت کے بغیر نہیں ہو سکتا۔",
+            "hi": "मर्द और औरत दोनों की आज़ाद रज़ामंदी। औरत का निकाह उसकी इजाज़त के बग़ैर नहीं हो सकता।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 4930,
+              "quote": "a virgin should not be given in marriage except after her permission"
+            }
+          ]
+        },
+        {
+          "id": "ijab",
+          "text": {
+            "en": "An offer and acceptance (ijab and qabul) in one sitting.",
+            "ur": "ایک ہی مجلس میں ایجاب و قبول۔",
+            "hi": "एक ही मजलिस में ईजाब-ओ-क़ुबूल।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "witnesses",
+          "text": {
+            "en": "Two adult Muslim witnesses: two men, or one man and two women.",
+            "ur": "دو بالغ مسلمان گواہ: دو مرد، یا ایک مرد اور دو عورتیں۔",
+            "hi": "दो बालिग़ मुसलमान गवाह: दो मर्द, या एक मर्द और दो औरतें।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling (other schools differ)",
+                "ur": "حنفی مسلک (دوسرے مسالک کی رائے مختلف ہے)",
+                "hi": "हनफ़ी मसलक (दूसरे मसलकों की राय अलग है)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "mahr",
+          "text": {
+            "en": "Mahr: a gift the husband owes the wife, agreed at the nikah. It is her right.",
+            "ur": "مہر: شوہر کی طرف سے بیوی کا حق جو نکاح میں طے ہو۔",
+            "hi": "महर: शौहर की तरफ़ से बीवी का हक़ जो निकाह में तय हो।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "4:4",
+              "quote": "give the women [upon marriage] their [bridal] gifts graciously"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sunnah",
+      "title": {
+        "en": "Sunnahs of marriage",
+        "ur": "نکاح کی سنتیں",
+        "hi": "निकाह की सुन्नतें"
+      },
+      "kind": "list",
+      "items": [
+        {
+          "id": "choose",
+          "text": {
+            "en": "Give priority to religion and character when choosing a spouse.",
+            "ur": "رشتہ چنتے وقت دین اور اخلاق کو ترجیح دیں۔",
+            "hi": "रिश्ता चुनते वक़्त दीन और अख़लाक़ को तरजीह दें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 4886,
+              "quote": "So you should marry the religious woman"
+            }
+          ]
+        },
+        {
+          "id": "simple",
+          "text": {
+            "en": "Keep the nikah simple and announce it; it is often held in a masjid with the nikah khutbah.",
+            "ur": "نکاح سادہ رکھیں اور اس کا اعلان کریں؛ اکثر مسجد میں خطبۂ نکاح کے ساتھ ہوتا ہے۔",
+            "hi": "निकाह सादा रखें और उसका ऐलान करें; अक्सर मस्जिद में ख़ुतबा-ए-निकाह के साथ होता है।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Narrated in Sunan Abi Dawud and Jami' at-Tirmidhi (to be verified by a scholar)",
+                "ur": "سنن ابی داؤد اور جامع ترمذی میں روایت (کسی عالم سے تصدیق باقی)",
+                "hi": "सुनन अबी दाऊद और जामे तिर्मिज़ी में रिवायत (किसी आलिम से तसदीक़ बाक़ी)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "walima",
+          "text": {
+            "en": "The groom gives a walima (wedding meal) after the marriage, even a modest one.",
+            "ur": "شادی کے بعد دولہا ولیمہ کرے، چاہے سادہ ہی ہو۔",
+            "hi": "शादी के बाद दूल्हा वलीमा करे, चाहे सादा ही हो।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 4948,
+              "quote": "even with one sheep"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

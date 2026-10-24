@@ -1,0 +1,252 @@
+{
+  "slug": "ghusl",
+  "order": 3,
+  "group": "purification",
+  "title": {
+    "en": "Ghusl (Full Bath)",
+    "ur": "غسل",
+    "hi": "ग़ुस्ल"
+  },
+  "summary": {
+    "en": "When a full bath is required and how to perform it, with its three obligatory parts.",
+    "ur": "غسل کب فرض ہوتا ہے اور اس کا طریقہ، اس کے تین فرائض کے ساتھ۔",
+    "hi": "ग़ुस्ल कब फ़र्ज़ होता है और उसका तरीक़ा, उसके तीन फ़र्ज़ों के साथ।"
+  },
+  "madhhab": "hanafi",
+  "status": "draft",
+  "sections": [
+    {
+      "id": "when",
+      "title": {
+        "en": "When ghusl is required",
+        "ur": "غسل کب فرض ہوتا ہے",
+        "hi": "ग़ुस्ल कब फ़र्ज़ होता है"
+      },
+      "kind": "list",
+      "items": [
+        {
+          "id": "janabah",
+          "text": {
+            "en": "After marital relations or any discharge of semen (janabah).",
+            "ur": "میاں بیوی کے تعلق یا منی نکلنے کے بعد (جنابت)۔",
+            "hi": "मियाँ-बीवी के ताल्लुक़ या मनी निकलने के बाद (जनाबत)।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "5:6",
+              "quote": "if you are in a state of janabah, then purify yourselves"
+            }
+          ]
+        },
+        {
+          "id": "menses",
+          "text": {
+            "en": "When menstruation or post-natal bleeding ends.",
+            "ur": "حیض یا نفاس کا خون بند ہونے پر۔",
+            "hi": "हैज़ या निफ़ास का ख़ून बंद होने पर।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "2:222",
+              "quote": "when they have purified themselves"
+            }
+          ]
+        },
+        {
+          "id": "friday",
+          "text": {
+            "en": "It is sunnah on Friday before Jumu'ah, on the two Eids, and when entering ihram.",
+            "ur": "جمعہ کی نماز سے پہلے، دونوں عیدوں پر اور احرام باندھتے وقت غسل سنت ہے۔",
+            "hi": "जुमे की नमाज़ से पहले, दोनों ईदों पर और एहराम बाँधते वक़्त ग़ुस्ल सुन्नत है।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "steps",
+      "title": {
+        "en": "How to perform ghusl",
+        "ur": "غسل کا طریقہ",
+        "hi": "ग़ुस्ल का तरीक़ा"
+      },
+      "kind": "steps",
+      "items": [
+        {
+          "id": "intention",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Make the intention to purify yourself, and say Bismillah.",
+            "ur": "پاکی حاصل کرنے کی نیت کریں اور بسم اللہ پڑھیں۔",
+            "hi": "पाकी हासिल करने की नीयत करें और बिस्मिल्लाह पढ़ें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1,
+              "quote": "The reward of deeds depends upon the intentions"
+            }
+          ]
+        },
+        {
+          "id": "hands",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Wash both hands up to the wrists.",
+            "ur": "دونوں ہاتھ کلائیوں تک دھوئیں۔",
+            "hi": "दोनों हाथ कलाइयों तक धोएँ।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 248,
+              "quote": "he started by washing his hands"
+            }
+          ]
+        },
+        {
+          "id": "private",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Wash the private parts and remove any impurity from the body.",
+            "ur": "شرم گاہ دھوئیں اور بدن سے کوئی ناپاکی ہو تو صاف کریں۔",
+            "hi": "शर्मगाह धोएँ और बदन से कोई नापाकी हो तो साफ़ करें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 257,
+              "quote": "washed his private parts"
+            }
+          ]
+        },
+        {
+          "id": "wudu",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Perform wudu as you would for prayer. If you are standing where water collects, wash your feet at the end instead.",
+            "ur": "نماز والا وضو کریں۔ اگر ایسی جگہ کھڑے ہیں جہاں پانی جمع ہوتا ہے تو پاؤں آخر میں دھوئیں۔",
+            "hi": "नमाज़ वाला वुज़ू करें। अगर ऐसी जगह खड़े हैं जहाँ पानी जमा होता है तो पैर आख़िर में धोएँ।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 248,
+              "quote": "performed ablution like that for the prayer"
+            },
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 249,
+              "quote": "did not wash his feet"
+            }
+          ]
+        },
+        {
+          "id": "mouth-nose",
+          "ruling": "fard",
+          "text": {
+            "en": "Rinse your mouth thoroughly and put water into your nose (up to the soft part).",
+            "ur": "اچھی طرح کلی کریں اور ناک میں نرم ہڈی تک پانی ڈالیں۔",
+            "hi": "अच्छी तरह कुल्ली करें और नाक में नरम हड्डी तक पानी डालें।"
+          },
+          "note": {
+            "en": "Hanafi: rinsing the mouth and nose are obligatory parts of ghusl.",
+            "ur": "حنفی: غسل میں کلی کرنا اور ناک میں پانی ڈالنا فرض ہے۔",
+            "hi": "हनफ़ी: ग़ुस्ल में कुल्ली करना और नाक में पानी डालना फ़र्ज़ है।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 257,
+              "quote": "rinsed his mouth, washed his nose by putting water in it"
+            }
+          ]
+        },
+        {
+          "id": "head",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Pour water over your head three times, letting it reach the roots of the hair.",
+            "ur": "سر پر تین بار پانی ڈالیں کہ بالوں کی جڑوں تک پہنچ جائے۔",
+            "hi": "सर पर तीन बार पानी डालें कि बालों की जड़ों तक पहुँच जाए।"
+          },
+          "note": {
+            "en": "A woman with braided hair does not have to undo the braids if the water reaches the roots.",
+            "ur": "گندھی ہوئی چوٹی والی عورت کو چوٹی کھولنا ضروری نہیں اگر پانی جڑوں تک پہنچ جائے۔",
+            "hi": "गुँधी हुई चोटी वाली औरत को चोटी खोलना ज़रूरी नहीं अगर पानी जड़ों तक पहुँच जाए।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 248,
+              "quote": "pour three handfuls of water over his head"
+            }
+          ]
+        },
+        {
+          "id": "body",
+          "ruling": "fard",
+          "text": {
+            "en": "Pour water over the right side of the body, then the left, three times each, so that not a single spot stays dry.",
+            "ur": "پہلے دائیں پھر بائیں طرف بدن پر تین تین بار پانی ڈالیں کہ کوئی جگہ خشک نہ رہے۔",
+            "hi": "पहले दाएँ फिर बाएँ तरफ़ बदन पर तीन-तीन बार पानी डालें कि कोई जगह सूखी न रहे।"
+          },
+          "note": {
+            "en": "Washing every part of the body once is obligatory: the navel, behind the ears, under rings and between the toes.",
+            "ur": "پورے بدن کو ایک بار دھونا فرض ہے: ناف، کانوں کے پیچھے، انگوٹھی کے نیچے اور انگلیوں کے درمیان بھی۔",
+            "hi": "पूरे बदन को एक बार धोना फ़र्ज़ है: नाफ़, कानों के पीछे, अँगूठी के नीचे और उँगलियों के बीच भी।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 248,
+              "quote": "pour water all over his body"
+            },
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 168,
+              "quote": "used to like to start from the right side"
+            }
+          ]
+        },
+        {
+          "id": "feet",
+          "ruling": "sunnah",
+          "text": {
+            "en": "If you delayed them, move aside and wash your feet.",
+            "ur": "اگر پاؤں رہ گئے تھے تو ہٹ کر انہیں دھوئیں۔",
+            "hi": "अगर पैर रह गए थे तो हटकर उन्हें धोएँ।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 249,
+              "quote": "withdrew his feet from that place"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

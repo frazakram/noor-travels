@@ -1,0 +1,147 @@
+{
+  "slug": "taraweeh",
+  "order": 9,
+  "group": "prayer",
+  "title": {
+    "en": "Taraweeh",
+    "ur": "تراویح",
+    "hi": "तरावीह"
+  },
+  "summary": {
+    "en": "The night prayer of Ramadan after Isha, prayed in sets of two rak'ahs.",
+    "ur": "رمضان میں عشاء کے بعد کی رات کی نماز، دو دو رکعت کر کے۔",
+    "hi": "रमज़ान में इशा के बाद की रात की नमाज़, दो-दो रकअत करके।"
+  },
+  "madhhab": "hanafi",
+  "status": "draft",
+  "sections": [
+    {
+      "id": "steps",
+      "title": {
+        "en": "How to pray Taraweeh",
+        "ur": "تراویح کا طریقہ",
+        "hi": "तरावीह का तरीक़ा"
+      },
+      "kind": "steps",
+      "items": [
+        {
+          "id": "when",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Pray it every night of Ramadan after the Isha prayer and before Witr.",
+            "ur": "رمضان کی ہر رات عشاء کی نماز کے بعد اور وتر سے پہلے پڑھیں۔",
+            "hi": "रमज़ान की हर रात इशा की नमाज़ के बाद और वित्र से पहले पढ़ें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1935,
+              "quote": "Whoever prayed at night in it (the month of Ramadan) out of sincere Faith"
+            }
+          ]
+        },
+        {
+          "id": "pairs",
+          "text": {
+            "en": "Pray two rak'ahs at a time, each ending with a salam.",
+            "ur": "دو دو رکعت پڑھیں، ہر دو کے بعد سلام۔",
+            "hi": "दो-दो रकअत पढ़ें, हर दो के बाद सलाम।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 966,
+              "quote": "Night prayer is offered as two rak`at followed by two rak`at"
+            }
+          ]
+        },
+        {
+          "id": "count",
+          "text": {
+            "en": "Hanafi: twenty rak'ahs (ten sets of two), resting briefly after every four.",
+            "ur": "حنفی: بیس رکعت (دو دو کر کے دس بار)، ہر چار کے بعد تھوڑا آرام۔",
+            "hi": "हनफ़ी: बीस रकअत (दो-दो करके दस बार), हर चार के बाद थोड़ा आराम।"
+          },
+          "note": {
+            "en": "Many Muslims pray eight, following 'Aisha's report that the Prophet ﷺ did not pray more than eleven rak'ahs at night including Witr.",
+            "ur": "بہت سے مسلمان آٹھ رکعت پڑھتے ہیں، حضرت عائشہؓ کی روایت کی بنا پر کہ نبی ﷺ رات میں وتر سمیت گیارہ رکعت سے زیادہ نہیں پڑھتے تھے۔",
+            "hi": "बहुत से मुसलमान आठ रकअत पढ़ते हैं, हज़रत आयशा रज़ि. की रिवायत की बिना पर कि नबी ﷺ रात में वित्र समेत ग्यारह रकअत से ज़्यादा नहीं पढ़ते थे।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling (other schools differ)",
+                "ur": "حنفی مسلک (دوسرے مسالک کی رائے مختلف ہے)",
+                "hi": "हनफ़ी मसलक (दूसरे मसलकों की राय अलग है)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "witr",
+          "text": {
+            "en": "End with Witr, in congregation during Ramadan.",
+            "ur": "آخر میں وتر پڑھیں، رمضان میں باجماعت۔",
+            "hi": "आख़िर में वित्र पढ़ें, रमज़ान में बाजमाअत।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 971,
+              "quote": "Make witr as your last prayer at night"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "notes",
+      "title": {
+        "en": "Good to know",
+        "ur": "اہم باتیں",
+        "hi": "अहम बातें"
+      },
+      "kind": "list",
+      "items": [
+        {
+          "id": "aisha",
+          "text": {
+            "en": "'Aisha reported that the Prophet ﷺ did not pray more than eleven rak'ahs at night, in Ramadan or otherwise.",
+            "ur": "حضرت عائشہؓ نے بتایا کہ نبی ﷺ رمضان ہو یا کوئی اور مہینہ، رات میں گیارہ رکعت سے زیادہ نہیں پڑھتے تھے۔",
+            "hi": "हज़रत आयशा रज़ि. ने बताया कि नबी ﷺ रमज़ान हो या कोई और महीना, रात में ग्यारह रकअत से ज़्यादा नहीं पढ़ते थे।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1940,
+              "quote": "He did not pray more than eleven rak`at in Ramadan or in any other month"
+            }
+          ]
+        },
+        {
+          "id": "khatm",
+          "text": {
+            "en": "It is a beautiful sunnah to complete the whole Quran in Taraweeh during the month.",
+            "ur": "پورے مہینے کی تراویح میں ایک بار پورا قرآن ختم کرنا ایک خوبصورت سنت ہے۔",
+            "hi": "पूरे महीने की तरावीह में एक बार पूरा क़ुरआन ख़त्म करना एक ख़ूबसूरत सुन्नत है।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

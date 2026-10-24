@@ -1,0 +1,285 @@
+{
+  "slug": "eid",
+  "order": 7,
+  "group": "prayer",
+  "title": {
+    "en": "Eid Prayer",
+    "ur": "نماز عید",
+    "hi": "ईद की नमाज़"
+  },
+  "summary": {
+    "en": "The two-rak'ah Eid prayer with its six extra takbirs, and the sunnahs of the day.",
+    "ur": "دو رکعت نماز عید چھ زائد تکبیروں کے ساتھ، اور عید کے دن کی سنتیں۔",
+    "hi": "दो रकअत ईद की नमाज़ छह ज़ायद तकबीरों के साथ, और ईद के दिन की सुन्नतें।"
+  },
+  "madhhab": "hanafi",
+  "status": "draft",
+  "sections": [
+    {
+      "id": "day",
+      "title": {
+        "en": "Sunnahs of the day",
+        "ur": "عید کے دن کی سنتیں",
+        "hi": "ईद के दिन की सुन्नतें"
+      },
+      "kind": "list",
+      "items": [
+        {
+          "id": "ghusl",
+          "text": {
+            "en": "Take a bath, wear your best clean clothes and use perfume.",
+            "ur": "غسل کریں، اپنے بہترین صاف کپڑے پہنیں اور خوشبو لگائیں۔",
+            "hi": "ग़ुस्ल करें, अपने बेहतरीन साफ़ कपड़े पहनें और ख़ुशबू लगाएँ।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "dates",
+          "text": {
+            "en": "Eid al-Fitr: eat an odd number of dates before going. Eid al-Adha: eat after the prayer, from your sacrifice if you can.",
+            "ur": "عید الفطر: جانے سے پہلے طاق کھجوریں کھائیں۔ عید الاضحی: نماز کے بعد کھائیں، ہو سکے تو قربانی کے گوشت سے۔",
+            "hi": "ईद-उल-फ़ित्र: जाने से पहले ताक़ खजूरें खाएँ। ईद-उल-अज़हा: नमाज़ के बाद खाएँ, हो सके तो क़ुर्बानी के गोश्त से।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 930,
+              "quote": "never proceeded (for the prayer) on the Day of `Id-ul-Fitr unless he had eaten some dates"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "fitrah",
+          "text": {
+            "en": "Give Zakat al-Fitr before the Eid al-Fitr prayer.",
+            "ur": "نماز عید الفطر سے پہلے صدقۂ فطر ادا کریں۔",
+            "hi": "ईद-उल-फ़ित्र की नमाज़ से पहले सदक़ा-ए-फ़ित्र अदा करें।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "takbir",
+          "text": {
+            "en": "Say the takbirs of Eid on the way (quietly for Eid al-Fitr, aloud for Eid al-Adha).",
+            "ur": "راستے میں عید کی تکبیریں کہیں (عید الفطر میں آہستہ، عید الاضحی میں بلند آواز سے)۔",
+            "hi": "रास्ते में ईद की तकबीरें कहें (ईद-उल-फ़ित्र में धीरे, ईद-उल-अज़हा में बुलंद आवाज़ से)।"
+          },
+          "arabic": "اللَّهُ أَكْبَرُ اللَّهُ أَكْبَرُ، لَا إِلَٰهَ إِلَّا اللَّهُ، وَاللَّهُ أَكْبَرُ اللَّهُ أَكْبَرُ، وَلِلَّهِ الْحَمْدُ",
+          "transliteration": "Allahu Akbar, Allahu Akbar, la ilaha illallah, wallahu Akbar, Allahu Akbar, wa lillahil-hamd",
+          "meaning": {
+            "en": "Allah is the Greatest, Allah is the Greatest; there is no god but Allah; Allah is the Greatest, Allah is the Greatest, and to Allah belongs all praise.",
+            "ur": "اللہ سب سے بڑا ہے، اللہ سب سے بڑا ہے، اللہ کے سوا کوئی معبود نہیں، اللہ سب سے بڑا ہے، اللہ سب سے بڑا ہے، اور سب تعریف اللہ ہی کے لیے ہے۔",
+            "hi": "अल्लाह सबसे बड़ा है, अल्लाह सबसे बड़ा है, अल्लाह के सिवा कोई माबूद नहीं, अल्लाह सबसे बड़ा है, अल्लाह सबसे बड़ा है, और सब तारीफ़ अल्लाह ही के लिए है।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "2:185",
+              "quote": "to glorify Allah for that [to] which He has guided you"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "prayer",
+      "title": {
+        "en": "How to pray Eid (Hanafi)",
+        "ur": "نماز عید کا طریقہ (حنفی)",
+        "hi": "ईद की नमाज़ का तरीक़ा (हनफ़ी)"
+      },
+      "kind": "steps",
+      "items": [
+        {
+          "id": "intention",
+          "ruling": "wajib",
+          "text": {
+            "en": "Make the intention for two rak'ahs of the Eid prayer with six extra takbirs, behind the imam. There is no adhan or iqamah.",
+            "ur": "چھ زائد تکبیروں کے ساتھ دو رکعت نماز عید کی امام کے پیچھے نیت کریں۔ اس میں اذان اور اقامت نہیں۔",
+            "hi": "छह ज़ायद तकबीरों के साथ दो रकअत ईद की नमाज़ की इमाम के पीछे नीयत करें। इसमें अज़ान और इक़ामत नहीं।"
+          },
+          "note": {
+            "en": "Hanafi: the Eid prayer is wajib.",
+            "ur": "حنفی: نماز عید واجب ہے۔",
+            "hi": "हनफ़ी: ईद की नमाज़ वाजिब है।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1,
+              "quote": "The reward of deeds depends upon the intentions"
+            }
+          ]
+        },
+        {
+          "id": "takbir1",
+          "ruling": "fard",
+          "text": {
+            "en": "Say the opening takbir, fold your hands and recite the thana.",
+            "ur": "تکبیر تحریمہ کہہ کر ہاتھ باندھیں اور ثنا پڑھیں۔",
+            "hi": "तकबीर-ए-तहरीमा कहकर हाथ बाँधें और सना पढ़ें।"
+          },
+          "arabic": "اللَّهُ أَكْبَرُ",
+          "transliteration": "Allahu Akbar",
+          "meaning": {
+            "en": "Allah is the Greatest",
+            "ur": "اللہ سب سے بڑا ہے",
+            "hi": "अल्लाह सबसे बड़ा है"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 739,
+              "quote": "When you stand for Prayer say Takbir"
+            }
+          ]
+        },
+        {
+          "id": "extra1",
+          "ruling": "wajib",
+          "text": {
+            "en": "Say three extra takbirs, raising the hands to the ears each time. Let the hands hang after the first two; fold them after the third.",
+            "ur": "تین زائد تکبیریں کہیں، ہر بار ہاتھ کانوں تک اٹھائیں۔ پہلی دو کے بعد ہاتھ چھوڑ دیں، تیسری کے بعد باندھ لیں۔",
+            "hi": "तीन ज़ायद तकबीरें कहें, हर बार हाथ कानों तक उठाएँ। पहली दो के बाद हाथ छोड़ दें, तीसरी के बाद बाँध लें।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling (other schools differ)",
+                "ur": "حنفی مسلک (دوسرے مسالک کی رائے مختلف ہے)",
+                "hi": "हनफ़ी मसलक (दूसरे मसलकों की राय अलग है)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "recite1",
+          "ruling": "fard",
+          "text": {
+            "en": "The imam recites Al-Fatiha and a surah aloud; then bow and prostrate as usual.",
+            "ur": "امام بلند آواز سے فاتحہ اور سورت پڑھے؛ پھر معمول کے مطابق رکوع اور سجدے کریں۔",
+            "hi": "इमाम बुलंद आवाज़ से फ़ातिहा और सूरत पढ़े; फिर मामूल के मुताबिक़ रुकू और सजदे करें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 739,
+              "quote": "then bow till you feel at ease"
+            }
+          ]
+        },
+        {
+          "id": "recite2",
+          "ruling": "wajib",
+          "text": {
+            "en": "In the second rak'ah, the imam first recites Al-Fatiha and a surah.",
+            "ur": "دوسری رکعت میں امام پہلے فاتحہ اور سورت پڑھے۔",
+            "hi": "दूसरी रकअत में इमाम पहले फ़ातिहा और सूरत पढ़े।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "extra2",
+          "ruling": "wajib",
+          "text": {
+            "en": "Then say three extra takbirs with the hands raised and let them hang; at the fourth takbir go into ruku without raising the hands.",
+            "ur": "پھر ہاتھ اٹھا کر تین زائد تکبیریں کہیں اور ہاتھ چھوڑ دیں؛ چوتھی تکبیر پر ہاتھ اٹھائے بغیر رکوع میں جائیں۔",
+            "hi": "फिर हाथ उठाकर तीन ज़ायद तकबीरें कहें और हाथ छोड़ दें; चौथी तकबीर पर हाथ उठाए बग़ैर रुकू में जाएँ।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling (other schools differ)",
+                "ur": "حنفی مسلک (دوسرے مسالک کی رائے مختلف ہے)",
+                "hi": "हनफ़ी मसलक (दूसरे मसलकों की राय अलग है)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "finish",
+          "ruling": "wajib",
+          "text": {
+            "en": "Complete the prayer as usual with the tashahhud and salam.",
+            "ur": "معمول کے مطابق تشہد اور سلام کے ساتھ نماز مکمل کریں۔",
+            "hi": "मामूल के मुताबिक़ तशह्हुद और सलाम के साथ नमाज़ मुकम्मल करें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1165,
+              "quote": "at-tahiyyatu lil-lahi"
+            }
+          ]
+        },
+        {
+          "id": "khutbah",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Stay and listen to the khutbah, which comes after the Eid prayer.",
+            "ur": "رکیں اور خطبہ سنیں جو نماز عید کے بعد ہوتا ہے۔",
+            "hi": "रुकें और ख़ुतबा सुनें जो ईद की नमाज़ के बाद होता है।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 953,
+              "quote": "They used to offer the prayer before the Khutba"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

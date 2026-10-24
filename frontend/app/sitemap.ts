@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { getAllGuides } from "@/lib/ibadah-content";
 import { getAllLibraryItems, librarySlug } from "@/lib/library";
 import { SITE_URL } from "@/lib/seo";
 import { SURAHS } from "@/lib/surah-meta";
@@ -16,6 +17,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/hadith-of-day`, lastModified, changeFrequency: "daily", priority: 0.7 },
     { url: `${SITE_URL}/khutba`, lastModified, changeFrequency: "weekly", priority: 0.7 },
     { url: `${SITE_URL}/learn-quran`, lastModified, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${SITE_URL}/ibadah`, lastModified, changeFrequency: "monthly", priority: 0.8 },
+    ...getAllGuides().map((g) => ({
+      url: `${SITE_URL}/ibadah/${g.slug}`,
+      lastModified,
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
     { url: `${SITE_URL}/library`, lastModified, changeFrequency: "weekly", priority: 0.8 },
     { url: `${SITE_URL}/recite`, lastModified, changeFrequency: "monthly", priority: 0.6 },
   ];

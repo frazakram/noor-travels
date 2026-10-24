@@ -1,0 +1,178 @@
+{
+  "slug": "qurbani",
+  "order": 17,
+  "group": "hajj",
+  "title": {
+    "en": "Qurbani (Sacrifice)",
+    "ur": "قربانی",
+    "hi": "क़ुर्बानी"
+  },
+  "summary": {
+    "en": "The Eid al-Adha sacrifice: who it is wajib on, which animals, when and how.",
+    "ur": "عید الاضحی کی قربانی: کس پر واجب ہے، کون سے جانور، کب اور کیسے۔",
+    "hi": "ईद-उल-अज़हा की क़ुर्बानी: किस पर वाजिब है, कौन से जानवर, कब और कैसे।"
+  },
+  "madhhab": "hanafi",
+  "status": "draft",
+  "sections": [
+    {
+      "id": "rules",
+      "title": {
+        "en": "Who and which animals (Hanafi)",
+        "ur": "کس پر اور کون سے جانور (حنفی)",
+        "hi": "किस पर और कौन से जानवर (हनफ़ी)"
+      },
+      "kind": "list",
+      "items": [
+        {
+          "id": "who",
+          "text": {
+            "en": "Wajib on every adult, sane, resident Muslim who owns the nisab during the days of sacrifice.",
+            "ur": "قربانی کے دنوں میں نصاب کے مالک ہر عاقل، بالغ، مقیم مسلمان پر واجب ہے۔",
+            "hi": "क़ुर्बानी के दिनों में निसाब के मालिक हर आक़िल, बालिग़, मुक़ीम मुसलमान पर वाजिब है।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "108:2",
+              "quote": "So pray to your Lord and sacrifice"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling (other schools differ)",
+                "ur": "حنفی مسلک (دوسرے مسالک کی رائے مختلف ہے)",
+                "hi": "हनफ़ी मसलक (दूसरे मसलकों की राय अलग है)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "animals",
+          "text": {
+            "en": "A goat or sheep counts for one person (at least one year old). A cow or buffalo (two years) or a camel (five years) can be shared by up to seven people.",
+            "ur": "بکری یا بھیڑ ایک آدمی کی طرف سے (کم از کم ایک سال)۔ گائے یا بھینس (دو سال) یا اونٹ (پانچ سال) میں سات آدمی شریک ہو سکتے ہیں۔",
+            "hi": "बकरी या भेड़ एक आदमी की तरफ़ से (कम से कम एक साल)। गाय या भैंस (दो साल) या ऊँट (पाँच साल) में सात आदमी शरीक हो सकते हैं।"
+          },
+          "note": {
+            "en": "Follow the law of the land on which animals may be sacrificed.",
+            "ur": "کون سے جانور کی قربانی ہو سکتی ہے اس میں ملکی قانون کی پابندی کریں۔",
+            "hi": "किस जानवर की क़ुर्बानी हो सकती है इसमें मुल्की क़ानून की पाबंदी करें।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "healthy",
+          "text": {
+            "en": "The animal should be healthy, without major defects like blindness, lameness or severe illness.",
+            "ur": "جانور صحت مند ہو، بڑے عیب جیسے اندھا پن، لنگڑا پن یا سخت بیماری نہ ہو۔",
+            "hi": "जानवर सेहतमंद हो, बड़े ऐब जैसे अंधापन, लंगड़ापन या सख़्त बीमारी न हो।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Narrated in Sunan Abi Dawud and Jami' at-Tirmidhi (to be verified by a scholar)",
+                "ur": "سنن ابی داؤد اور جامع ترمذی میں روایت (کسی عالم سے تصدیق باقی)",
+                "hi": "सुनन अबी दाऊद और जामे तिर्मिज़ी में रिवायत (किसी आलिम से तसदीक़ बाक़ी)"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "steps",
+      "title": {
+        "en": "How to offer it",
+        "ur": "قربانی کا طریقہ",
+        "hi": "क़ुर्बानी का तरीक़ा"
+      },
+      "kind": "steps",
+      "items": [
+        {
+          "id": "time",
+          "ruling": "wajib",
+          "text": {
+            "en": "Sacrifice after the Eid prayer, on the 10th, 11th or 12th of Dhul-Hijjah.",
+            "ur": "عید کی نماز کے بعد ۱۰، ۱۱ یا ۱۲ ذوالحجہ کو قربانی کریں۔",
+            "hi": "ईद की नमाज़ के बाद 10, 11 या 12 ज़िल-हिज्जा को क़ुर्बानी करें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 942,
+              "quote": "The first thing we should do on this day of ours is to pray and then return and slaughter"
+            }
+          ]
+        },
+        {
+          "id": "slaughter",
+          "ruling": "wajib",
+          "text": {
+            "en": "Lay the animal on its left side facing the Qibla, say the words below, and cut swiftly with a sharp knife. Be gentle with the animal.",
+            "ur": "جانور کو بائیں کروٹ قبلہ رخ لٹائیں، نیچے دیے الفاظ کہیں اور تیز چھری سے جلدی ذبح کریں۔ جانور کے ساتھ نرمی کریں۔",
+            "hi": "जानवर को बाएँ करवट क़िबला रुख़ लिटाएँ, नीचे दिए अलफ़ाज़ कहें और तेज़ छुरी से जल्दी ज़बह करें। जानवर के साथ नरमी करें।"
+          },
+          "arabic": "بِسْمِ اللَّهِ اللَّهُ أَكْبَرُ",
+          "transliteration": "Bismillahi Allahu Akbar",
+          "meaning": {
+            "en": "In the name of Allah; Allah is the Greatest.",
+            "ur": "اللہ کے نام سے، اللہ سب سے بڑا ہے۔",
+            "hi": "अल्लाह के नाम से, अल्लाह सबसे बड़ा है।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1650,
+              "quote": "he slaughtered (sacrificed) two horned rams"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "share",
+          "ruling": "mustahab",
+          "text": {
+            "en": "It is recommended to divide the meat into three: for the family, relatives and friends, and the poor.",
+            "ur": "گوشت کو تین حصوں میں بانٹنا مستحب ہے: گھر والوں، رشتہ داروں و دوستوں، اور غریبوں کے لیے۔",
+            "hi": "गोश्त को तीन हिस्सों में बाँटना मुस्तहब है: घरवालों, रिश्तेदारों व दोस्तों, और ग़रीबों के लिए।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "22:37",
+              "quote": "Their meat will not reach Allah, nor will their blood, but what reaches Him is piety from you"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,421 @@
+{
+  "slug": "wudu",
+  "order": 1,
+  "group": "purification",
+  "title": {
+    "en": "Wudu (Ablution)",
+    "ur": "وضو",
+    "hi": "वुज़ू"
+  },
+  "summary": {
+    "en": "How to perform wudu before prayer, step by step, with what is obligatory, what is sunnah, and what breaks it.",
+    "ur": "نماز سے پہلے وضو کا طریقہ، قدم بہ قدم: کیا فرض ہے، کیا سنت ہے، اور کن چیزوں سے وضو ٹوٹ جاتا ہے۔",
+    "hi": "नमाज़ से पहले वुज़ू करने का तरीक़ा, क़दम-ब-क़दम: क्या फ़र्ज़ है, क्या सुन्नत है, और किन चीज़ों से वुज़ू टूट जाता है।"
+  },
+  "madhhab": "hanafi",
+  "status": "draft",
+  "sections": [
+    {
+      "id": "steps",
+      "title": {
+        "en": "How to perform wudu",
+        "ur": "وضو کا طریقہ",
+        "hi": "वुज़ू का तरीक़ा"
+      },
+      "kind": "steps",
+      "items": [
+        {
+          "id": "intention",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Make the intention in your heart that you are doing wudu to purify yourself for Allah.",
+            "ur": "دل میں نیت کریں کہ آپ اللہ کی رضا کے لیے پاکی حاصل کرنے کو وضو کر رہے ہیں۔",
+            "hi": "दिल में नीयत करें कि आप अल्लाह के लिए पाकी हासिल करने को वुज़ू कर रहे हैं।"
+          },
+          "note": {
+            "en": "Saying the intention aloud is not required; the intention is in the heart.",
+            "ur": "نیت زبان سے کہنا ضروری نہیں، نیت دل کا ارادہ ہے۔",
+            "hi": "नीयत ज़बान से कहना ज़रूरी नहीं, नीयत दिल का इरादा है।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1,
+              "quote": "The reward of deeds depends upon the intentions"
+            }
+          ]
+        },
+        {
+          "id": "bismillah",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Say Bismillah before you begin.",
+            "ur": "شروع کرنے سے پہلے بسم اللہ پڑھیں۔",
+            "hi": "शुरू करने से पहले बिस्मिल्लाह पढ़ें।"
+          },
+          "arabic": "بِسْمِ اللَّهِ",
+          "transliteration": "Bismillah",
+          "meaning": {
+            "en": "In the name of Allah",
+            "ur": "اللہ کے نام سے",
+            "hi": "अल्लाह के नाम से"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi: sunnah (narrated in Sunan Abi Dawud and Jami' at-Tirmidhi; to be verified by a scholar)",
+                "ur": "حنفی: سنت (سنن ابی داؤد اور جامع ترمذی میں روایت؛ کسی عالم سے تصدیق باقی)",
+                "hi": "हनफ़ी: सुन्नत (सुनन अबी दाऊद और जामे तिर्मिज़ी में रिवायत; किसी आलिम से तसदीक़ बाक़ी)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "hands",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Wash both hands up to the wrists three times, starting with the right.",
+            "ur": "دونوں ہاتھ کلائیوں تک تین بار دھوئیں، دائیں ہاتھ سے شروع کریں۔",
+            "hi": "दोनों हाथ कलाइयों तक तीन बार धोएँ, दाएँ हाथ से शुरू करें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 159,
+              "quote": "he poured water over his hands and washed them thrice"
+            },
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 168,
+              "quote": "used to like to start from the right side"
+            }
+          ]
+        },
+        {
+          "id": "miswak",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Clean your teeth with a miswak (or your finger if you have none).",
+            "ur": "مسواک سے دانت صاف کریں (مسواک نہ ہو تو انگلی سے)۔",
+            "hi": "मिस्वाक से दाँत साफ़ करें (मिस्वाक न हो तो उँगली से)।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 866,
+              "quote": "clean their teeth with Siwak for every prayer"
+            }
+          ]
+        },
+        {
+          "id": "mouth",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Rinse your mouth three times.",
+            "ur": "تین بار کلی کریں۔",
+            "hi": "तीन बार कुल्ली करें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 186,
+              "quote": "rinsed his mouth and washed his nose by putting water in it and then blowing it out with three handfuls of water"
+            }
+          ]
+        },
+        {
+          "id": "nose",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Put water into your nose three times and blow it out with your left hand.",
+            "ur": "تین بار ناک میں پانی ڈالیں اور بائیں ہاتھ سے صاف کریں۔",
+            "hi": "तीन बार नाक में पानी डालें और बाएँ हाथ से साफ़ करें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 161,
+              "quote": "Whoever performs ablution should clean his nose with water by putting the water"
+            }
+          ]
+        },
+        {
+          "id": "face",
+          "ruling": "fard",
+          "text": {
+            "en": "Wash your whole face three times: from the hairline to below the chin, and from one earlobe to the other.",
+            "ur": "پورا چہرہ تین بار دھوئیں: پیشانی کے بالوں سے ٹھوڑی کے نیچے تک، اور ایک کان کی لو سے دوسرے کان کی لو تک۔",
+            "hi": "पूरा चेहरा तीन बार धोएँ: माथे के बालों से ठोड़ी के नीचे तक, और एक कान की लौ से दूसरे कान की लौ तक।"
+          },
+          "note": {
+            "en": "Washing the face once is obligatory; three times is sunnah. Men with a thick beard pass wet fingers through it (khilal).",
+            "ur": "چہرہ ایک بار دھونا فرض ہے، تین بار سنت ہے۔ گھنی داڑھی والے مرد گیلی انگلیوں سے داڑھی کا خلال کریں۔",
+            "hi": "चेहरा एक बार धोना फ़र्ज़ है, तीन बार सुन्नत है। घनी दाढ़ी वाले मर्द गीली उँगलियों से दाढ़ी का ख़िलाल करें।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "5:6",
+              "quote": "wash your faces"
+            },
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 159,
+              "quote": "then he washed his face and forearms up to the elbows thrice"
+            }
+          ]
+        },
+        {
+          "id": "arms",
+          "ruling": "fard",
+          "text": {
+            "en": "Wash your right arm, then your left, three times each, from the fingertips up to and including the elbow.",
+            "ur": "پہلے دایاں پھر بایاں بازو تین تین بار دھوئیں، انگلیوں کے سروں سے کہنیوں سمیت۔",
+            "hi": "पहले दायाँ फिर बायाँ बाज़ू तीन-तीन बार धोएँ, उँगलियों के सिरों से कोहनियों समेत।"
+          },
+          "note": {
+            "en": "Make sure water reaches under rings and between the fingers.",
+            "ur": "خیال رکھیں کہ پانی انگوٹھی کے نیچے اور انگلیوں کے درمیان پہنچ جائے۔",
+            "hi": "ध्यान रखें कि पानी अँगूठी के नीचे और उँगलियों के बीच पहुँच जाए।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "5:6",
+              "quote": "your forearms to the elbows"
+            },
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 168,
+              "quote": "used to like to start from the right side"
+            }
+          ]
+        },
+        {
+          "id": "head",
+          "ruling": "fard",
+          "text": {
+            "en": "Wipe your head with wet hands once: from the front to the back of the head, then back to the front.",
+            "ur": "گیلے ہاتھوں سے ایک بار سر کا مسح کریں: پیشانی سے گدی تک لے جائیں، پھر واپس آگے لائیں۔",
+            "hi": "गीले हाथों से एक बार सर का मसह करें: माथे से गुद्दी तक ले जाएँ, फिर वापस आगे लाएँ।"
+          },
+          "note": {
+            "en": "Hanafi: wiping at least a quarter of the head is obligatory; wiping all of it is sunnah.",
+            "ur": "حنفی: کم از کم چوتھائی سر کا مسح فرض ہے، پورے سر کا مسح سنت ہے۔",
+            "hi": "हनफ़ी: कम से कम चौथाई सर का मसह फ़र्ज़ है, पूरे सर का मसह सुन्नत है।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "5:6",
+              "quote": "wipe over your heads"
+            },
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 186,
+              "quote": "passed them over his head by bringing them to the front and then to the rear of the head once"
+            }
+          ]
+        },
+        {
+          "id": "ears",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Wipe your ears with the same wet hands: the inside with your index fingers, the back with your thumbs.",
+            "ur": "اسی تری سے کانوں کا مسح کریں: شہادت کی انگلیوں سے اندر کا اور انگوٹھوں سے پیچھے کا۔",
+            "hi": "उसी तरी से कानों का मसह करें: शहादत की उँगलियों से अंदर का और अँगूठों से पीछे का।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi: sunnah (narrated in Sunan Abi Dawud and Jami' at-Tirmidhi; to be verified by a scholar)",
+                "ur": "حنفی: سنت (سنن ابی داؤد اور جامع ترمذی میں روایت؛ کسی عالم سے تصدیق باقی)",
+                "hi": "हनफ़ी: सुन्नत (सुनन अबी दाऊद और जामे तिर्मिज़ी में रिवायत; किसी आलिम से तसदीक़ बाक़ी)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "feet",
+          "ruling": "fard",
+          "text": {
+            "en": "Wash your right foot, then your left, three times each, up to and including the ankles. Pass your little finger between the toes.",
+            "ur": "پہلے دایاں پھر بایاں پاؤں ٹخنوں سمیت تین تین بار دھوئیں، اور چھوٹی انگلی سے انگلیوں کا خلال کریں۔",
+            "hi": "पहले दायाँ फिर बायाँ पैर टख़नों समेत तीन-तीन बार धोएँ, और छोटी उँगली से उँगलियों का ख़िलाल करें।"
+          },
+          "note": {
+            "en": "Make sure no part of the heel stays dry: the Prophet ﷺ warned about heels left unwashed.",
+            "ur": "خیال رکھیں کہ ایڑی کا کوئی حصہ خشک نہ رہے: نبی ﷺ نے خشک رہ جانے والی ایڑیوں پر تنبیہ فرمائی۔",
+            "hi": "ध्यान रखें कि एड़ी का कोई हिस्सा सूखा न रहे: नबी ﷺ ने सूखी रह जाने वाली एड़ियों पर तंबीह फ़रमाई।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "5:6",
+              "quote": "wash your feet to the ankles"
+            },
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 163,
+              "quote": "we were just passing wet hands over our feet"
+            }
+          ]
+        },
+        {
+          "id": "dua",
+          "ruling": "mustahab",
+          "text": {
+            "en": "After wudu, recite the shahada.",
+            "ur": "وضو کے بعد کلمۂ شہادت پڑھیں۔",
+            "hi": "वुज़ू के बाद कलिमा-ए-शहादत पढ़ें।"
+          },
+          "arabic": "أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، وَأَشْهَدُ أَنَّ مُحَمَّدًا عَبْدُهُ وَرَسُولُهُ",
+          "transliteration": "Ashhadu an la ilaha illallahu wahdahu la sharika lah, wa ashhadu anna Muhammadan 'abduhu wa rasuluh",
+          "meaning": {
+            "en": "I bear witness that there is no god but Allah alone, with no partner, and I bear witness that Muhammad is His servant and Messenger.",
+            "ur": "میں گواہی دیتا ہوں کہ اللہ کے سوا کوئی معبود نہیں، وہ اکیلا ہے، اس کا کوئی شریک نہیں، اور میں گواہی دیتا ہوں کہ محمد اس کے بندے اور رسول ہیں۔",
+            "hi": "मैं गवाही देता हूँ कि अल्लाह के सिवा कोई माबूद नहीं, वह अकेला है, उसका कोई शरीक नहीं, और मैं गवाही देता हूँ कि मुहम्मद उसके बंदे और रसूल हैं।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Narrated in Sahih Muslim (Book of Purification; to be verified by a scholar)",
+                "ur": "صحیح مسلم میں روایت (کتاب الطہارۃ؛ کسی عالم سے تصدیق باقی)",
+                "hi": "सहीह मुस्लिम में रिवायत (किताबुत्तहारत; किसी आलिम से तसदीक़ बाक़ी)"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "breaks",
+      "title": {
+        "en": "What breaks wudu (Hanafi)",
+        "ur": "وضو توڑنے والی چیزیں (حنفی)",
+        "hi": "वुज़ू तोड़ने वाली चीज़ें (हनफ़ी)"
+      },
+      "kind": "list",
+      "items": [
+        {
+          "id": "passage",
+          "text": {
+            "en": "Anything that comes out of the front or back private part: urine, stool, or wind.",
+            "ur": "آگے یا پیچھے کی شرم گاہ سے نکلنے والی کوئی بھی چیز: پیشاب، پاخانہ یا ہوا۔",
+            "hi": "आगे या पीछे की शर्मगाह से निकलने वाली कोई भी चीज़: पेशाब, पाख़ाना या हवा।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "5:6",
+              "quote": "comes from the place of relieving himself"
+            }
+          ]
+        },
+        {
+          "id": "blood",
+          "text": {
+            "en": "Blood or pus that flows out of the body beyond the wound.",
+            "ur": "خون یا پیپ جو بدن سے نکل کر زخم کی جگہ سے بہہ جائے۔",
+            "hi": "ख़ून या पीप जो बदन से निकलकर ज़ख़्म की जगह से बह जाए।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling (other schools differ)",
+                "ur": "حنفی مسلک (دوسرے مسالک کی رائے مختلف ہے)",
+                "hi": "हनफ़ी मसलक (दूसरे मसलकों की राय अलग है)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "vomit",
+          "text": {
+            "en": "Vomiting a mouthful.",
+            "ur": "منہ بھر کر قے آنا۔",
+            "hi": "मुँह भरकर उल्टी आना।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling (other schools differ)",
+                "ur": "حنفی مسلک (دوسرے مسالک کی رائے مختلف ہے)",
+                "hi": "हनफ़ी मसलक (दूसरे मसलकों की राय अलग है)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "sleep",
+          "text": {
+            "en": "Sleeping lying down or leaning against something, so that you would fall if it were removed.",
+            "ur": "لیٹ کر یا کسی چیز سے ٹیک لگا کر سونا کہ وہ چیز ہٹا دی جائے تو آدمی گر پڑے۔",
+            "hi": "लेटकर या किसी चीज़ से टेक लगाकर सोना कि वह चीज़ हटा दी जाए तो आदमी गिर पड़े।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "unconscious",
+          "text": {
+            "en": "Fainting, losing consciousness, or intoxication.",
+            "ur": "بے ہوشی، ہوش کھو دینا یا نشہ۔",
+            "hi": "बेहोशी, होश खो देना या नशा।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "laughing",
+          "text": {
+            "en": "Laughing out loud during a prayer that has ruku and sujud (this also breaks the prayer).",
+            "ur": "رکوع اور سجدے والی نماز میں قہقہہ لگا کر ہنسنا (اس سے نماز بھی ٹوٹ جاتی ہے)۔",
+            "hi": "रुकू और सजदे वाली नमाज़ में क़हक़हा लगाकर हँसना (इससे नमाज़ भी टूट जाती है)।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling (other schools differ)",
+                "ur": "حنفی مسلک (دوسرے مسالک کی رائے مختلف ہے)",
+                "hi": "हनफ़ी मसलक (दूसरे मसलकों की राय अलग है)"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

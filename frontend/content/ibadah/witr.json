@@ -1,0 +1,136 @@
+{
+  "slug": "witr",
+  "order": 8,
+  "group": "prayer",
+  "title": {
+    "en": "Witr Prayer",
+    "ur": "نماز وتر",
+    "hi": "वित्र की नमाज़"
+  },
+  "summary": {
+    "en": "The three-rak'ah Witr after Isha with Dua al-Qunut, the Hanafi way.",
+    "ur": "عشاء کے بعد تین رکعت وتر دعائے قنوت کے ساتھ، حنفی طریقے پر۔",
+    "hi": "इशा के बाद तीन रकअत वित्र दुआ-ए-क़ुनूत के साथ, हनफ़ी तरीक़े पर।"
+  },
+  "madhhab": "hanafi",
+  "status": "draft",
+  "sections": [
+    {
+      "id": "steps",
+      "title": {
+        "en": "How to pray Witr (Hanafi)",
+        "ur": "وتر کا طریقہ (حنفی)",
+        "hi": "वित्र का तरीक़ा (हनफ़ी)"
+      },
+      "kind": "steps",
+      "items": [
+        {
+          "id": "when",
+          "ruling": "wajib",
+          "text": {
+            "en": "Pray Witr after Isha, before Fajr begins. If you wake for night prayer, it is best to make Witr your last prayer.",
+            "ur": "وتر عشاء کے بعد فجر سے پہلے پڑھیں۔ اگر تہجد کے لیے اٹھتے ہیں تو وتر آخر میں پڑھنا افضل ہے۔",
+            "hi": "वित्र इशा के बाद फ़ज्र से पहले पढ़ें। अगर तहज्जुद के लिए उठते हैं तो वित्र आख़िर में पढ़ना अफ़ज़ल है।"
+          },
+          "note": {
+            "en": "Hanafi: Witr is wajib; other schools hold it to be a strongly emphasised sunnah.",
+            "ur": "حنفی: وتر واجب ہے؛ دوسرے مسالک اسے سنت مؤکدہ کہتے ہیں۔",
+            "hi": "हनफ़ी: वित्र वाजिब है; दूसरे मसलक इसे सुन्नत-ए-मुअक्कदा कहते हैं।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 971,
+              "quote": "Make witr as your last prayer at night"
+            }
+          ]
+        },
+        {
+          "id": "two",
+          "text": {
+            "en": "Pray two rak'ahs as usual (Al-Fatiha and a surah in each), sit for the tashahhud only, then stand for the third.",
+            "ur": "معمول کے مطابق دو رکعت پڑھیں (ہر رکعت میں فاتحہ اور سورت)، صرف تشہد کے لیے بیٹھیں، پھر تیسری کے لیے کھڑے ہوں۔",
+            "hi": "मामूल के मुताबिक़ दो रकअत पढ़ें (हर रकअत में फ़ातिहा और सूरत), सिर्फ़ तशह्हुद के लिए बैठें, फिर तीसरी के लिए खड़े हों।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling (other schools differ)",
+                "ur": "حنفی مسلک (دوسرے مسالک کی رائے مختلف ہے)",
+                "hi": "हनफ़ी मसलक (दूसरे मसलकों की राय अलग है)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "third",
+          "ruling": "wajib",
+          "text": {
+            "en": "In the third rak'ah recite Al-Fatiha and a surah, then raise your hands to your ears saying Allahu Akbar and fold them again.",
+            "ur": "تیسری رکعت میں فاتحہ اور سورت پڑھیں، پھر اللہ اکبر کہتے ہوئے ہاتھ کانوں تک اٹھا کر دوبارہ باندھ لیں۔",
+            "hi": "तीसरी रकअत में फ़ातिहा और सूरत पढ़ें, फिर अल्लाहु अकबर कहते हुए हाथ कानों तक उठाकर दोबारा बाँध लें।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "qunut",
+          "ruling": "wajib",
+          "text": {
+            "en": "Recite Dua al-Qunut.",
+            "ur": "دعائے قنوت پڑھیں۔",
+            "hi": "दुआ-ए-क़ुनूत पढ़ें।"
+          },
+          "arabic": "اللَّهُمَّ إِنَّا نَسْتَعِينُكَ وَنَسْتَغْفِرُكَ، وَنُؤْمِنُ بِكَ وَنَتَوَكَّلُ عَلَيْكَ، وَنُثْنِي عَلَيْكَ الْخَيْرَ، وَنَشْكُرُكَ وَلَا نَكْفُرُكَ، وَنَخْلَعُ وَنَتْرُكُ مَنْ يَفْجُرُكَ، اللَّهُمَّ إِيَّاكَ نَعْبُدُ، وَلَكَ نُصَلِّي وَنَسْجُدُ، وَإِلَيْكَ نَسْعَىٰ وَنَحْفِدُ، وَنَرْجُو رَحْمَتَكَ وَنَخْشَىٰ عَذَابَكَ، إِنَّ عَذَابَكَ بِالْكُفَّارِ مُلْحِقٌ",
+          "transliteration": "Allahumma inna nasta'inuka wa nastaghfiruka, wa nu'minu bika wa natawakkalu 'alaika, wa nuthni 'alaikal-khair, wa nashkuruka wa la nakfuruk, wa nakhla'u wa natruku man yafjuruk. Allahumma iyyaka na'budu, wa laka nusalli wa nasjud, wa ilaika nas'a wa nahfid, wa narju rahmataka wa nakhsha 'adhabak, inna 'adhabaka bil-kuffari mulhiq",
+          "meaning": {
+            "en": "O Allah, we seek Your help and Your forgiveness, we believe in You and rely on You, we praise You with all good, we thank You and are not ungrateful, and we cast off and leave whoever disobeys You. O Allah, You alone we worship, to You we pray and prostrate, to You we hasten and strive; we hope for Your mercy and fear Your punishment; surely Your punishment will reach the disbelievers.",
+            "ur": "اے اللہ! ہم تجھ سے مدد اور مغفرت مانگتے ہیں، تجھ پر ایمان لاتے اور تجھ پر بھروسہ کرتے ہیں، تیری بہترین تعریف کرتے ہیں، تیرا شکر کرتے ہیں اور ناشکری نہیں کرتے، اور جو تیری نافرمانی کرے اسے چھوڑ دیتے ہیں۔ اے اللہ! ہم تیری ہی عبادت کرتے ہیں، تیرے ہی لیے نماز پڑھتے اور سجدہ کرتے ہیں، تیری ہی طرف دوڑتے اور کوشش کرتے ہیں، تیری رحمت کی امید رکھتے اور تیرے عذاب سے ڈرتے ہیں، بے شک تیرا عذاب کافروں کو پہنچنے والا ہے۔",
+            "hi": "ऐ अल्लाह! हम तुझसे मदद और मग़फ़िरत माँगते हैं, तुझ पर ईमान लाते और तुझ पर भरोसा करते हैं, तेरी बेहतरीन तारीफ़ करते हैं, तेरा शुक्र करते हैं और नाशुक्री नहीं करते, और जो तेरी नाफ़रमानी करे उसे छोड़ देते हैं। ऐ अल्लाह! हम तेरी ही इबादत करते हैं, तेरे ही लिए नमाज़ पढ़ते और सजदा करते हैं, तेरी ही तरफ़ दौड़ते और कोशिश करते हैं, तेरी रहमत की उम्मीद रखते और तेरे अज़ाब से डरते हैं, बेशक तेरा अज़ाब काफ़िरों को पहुँचने वाला है।"
+          },
+          "note": {
+            "en": "If you don't know it yet, you may say 'Rabbana atina fid-dunya hasanah…' or 'Allahummaghfir li' three times until you learn it.",
+            "ur": "اگر ابھی یاد نہیں تو یاد ہونے تک 'ربنا آتنا فی الدنیا حسنہ…' یا تین بار 'اللہم اغفر لی' پڑھ سکتے ہیں۔",
+            "hi": "अगर अभी याद नहीं तो याद होने तक 'रब्बना आतिना फ़िद्दुनिया हसनह…' या तीन बार 'अल्लाहुम्मग़फ़िर ली' पढ़ सकते हैं।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi wording of Qunut (narrated from 'Umar; to be verified by a scholar)",
+                "ur": "قنوت کے حنفی الفاظ (حضرت عمرؓ سے منقول؛ کسی عالم سے تصدیق باقی)",
+                "hi": "क़ुनूत के हनफ़ी अलफ़ाज़ (हज़रत उमर रज़ि. से मनक़ूल; किसी आलिम से तसदीक़ बाक़ी)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "finish",
+          "text": {
+            "en": "Then bow, prostrate and finish the prayer as usual.",
+            "ur": "پھر رکوع، سجدے کریں اور معمول کے مطابق نماز مکمل کریں۔",
+            "hi": "फिर रुकू, सजदे करें और मामूल के मुताबिक़ नमाज़ मुकम्मल करें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 739,
+              "quote": "then bow till you feel at ease"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

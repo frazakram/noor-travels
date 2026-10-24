@@ -1,0 +1,122 @@
+{
+  "slug": "aqiqah",
+  "order": 18,
+  "group": "life",
+  "title": {
+    "en": "Aqiqah",
+    "ur": "عقیقہ",
+    "hi": "अक़ीक़ा"
+  },
+  "summary": {
+    "en": "Welcoming a newborn: the aqiqah sacrifice, shaving the head and choosing a good name.",
+    "ur": "نومولود کا استقبال: عقیقہ، سر کے بال منڈوانا اور اچھا نام رکھنا۔",
+    "hi": "नवजात का स्वागत: अक़ीक़ा, सर के बाल मुँडवाना और अच्छा नाम रखना।"
+  },
+  "madhhab": "hanafi",
+  "status": "draft",
+  "sections": [
+    {
+      "id": "steps",
+      "title": {
+        "en": "What to do",
+        "ur": "کیا کریں",
+        "hi": "क्या करें"
+      },
+      "kind": "steps",
+      "items": [
+        {
+          "id": "sacrifice",
+          "ruling": "mustahab",
+          "text": {
+            "en": "On the seventh day after birth, sacrifice two goats for a boy and one for a girl (one is also sufficient for a boy).",
+            "ur": "پیدائش کے ساتویں دن لڑکے کی طرف سے دو اور لڑکی کی طرف سے ایک بکری ذبح کریں (لڑکے کے لیے ایک بھی کافی ہے)۔",
+            "hi": "पैदाइश के सातवें दिन लड़के की तरफ़ से दो और लड़की की तरफ़ से एक बकरी ज़बह करें (लड़के के लिए एक भी काफ़ी है)।"
+          },
+          "note": {
+            "en": "Hanafi: aqiqah is recommended (mustahab), not obligatory. If the seventh day passes, it can be done later.",
+            "ur": "حنفی: عقیقہ مستحب ہے، واجب نہیں۔ ساتواں دن گزر جائے تو بعد میں بھی ہو سکتا ہے۔",
+            "hi": "हनफ़ी: अक़ीक़ा मुस्तहब है, वाजिब नहीं। सातवाँ दिन गुज़र जाए तो बाद में भी हो सकता है।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 5260,
+              "quote": "'Aqiqa is to be offered for a (newly born) boy"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Narrated in Sunan Abi Dawud and Jami' at-Tirmidhi (to be verified by a scholar)",
+                "ur": "سنن ابی داؤد اور جامع ترمذی میں روایت (کسی عالم سے تصدیق باقی)",
+                "hi": "सुनन अबी दाऊद और जामे तिर्मिज़ी में रिवायत (किसी आलिम से तसदीक़ बाक़ी)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "shave",
+          "ruling": "mustahab",
+          "text": {
+            "en": "Shave the baby's head and give silver (or its value) equal to the weight of the hair in charity.",
+            "ur": "بچے کا سر منڈوائیں اور بالوں کے وزن کے برابر چاندی (یا اس کی قیمت) صدقہ کریں۔",
+            "hi": "बच्चे का सर मुँडवाएँ और बालों के वज़न के बराबर चाँदी (या उसकी क़ीमत) सदक़ा करें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 5260,
+              "quote": "relieve him of his suffering"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Narrated in Sunan Abi Dawud and Jami' at-Tirmidhi (to be verified by a scholar)",
+                "ur": "سنن ابی داؤد اور جامع ترمذی میں روایت (کسی عالم سے تصدیق باقی)",
+                "hi": "सुनन अबी दाऊद और जामे तिर्मिज़ी में रिवायत (किसी आलिम से तसदीक़ बाक़ी)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "name",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Give the child a good name with a good meaning.",
+            "ur": "بچے کا اچھے معنی والا اچھا نام رکھیں۔",
+            "hi": "बच्चे का अच्छे मानी वाला अच्छा नाम रखें।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Narrated in Sunan Abi Dawud and Jami' at-Tirmidhi (to be verified by a scholar)",
+                "ur": "سنن ابی داؤد اور جامع ترمذی میں روایت (کسی عالم سے تصدیق باقی)",
+                "hi": "सुनन अबी दाऊद और जामे तिर्मिज़ी में रिवायत (किसी आलिम से तसदीक़ बाक़ी)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "meat",
+          "text": {
+            "en": "The meat may be eaten by the family and shared with relatives and the poor, raw or cooked.",
+            "ur": "گوشت گھر والے کھا سکتے ہیں اور رشتہ داروں اور غریبوں میں کچا یا پکا ہوا بانٹ سکتے ہیں۔",
+            "hi": "गोश्त घरवाले खा सकते हैं और रिश्तेदारों और ग़रीबों में कच्चा या पका हुआ बाँट सकते हैं।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

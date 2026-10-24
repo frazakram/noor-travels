@@ -1,0 +1,270 @@
+{
+  "slug": "umrah",
+  "order": 13,
+  "group": "hajj",
+  "title": {
+    "en": "Umrah",
+    "ur": "عمرہ",
+    "hi": "उमरा"
+  },
+  "summary": {
+    "en": "Umrah step by step: ihram, tawaf, sa'i and shaving or trimming the hair.",
+    "ur": "عمرہ قدم بہ قدم: احرام، طواف، سعی اور سر منڈوانا یا بال کٹوانا۔",
+    "hi": "उमरा क़दम-ब-क़दम: एहराम, तवाफ़, सई और सर मुँडवाना या बाल कटवाना।"
+  },
+  "madhhab": "hanafi",
+  "status": "draft",
+  "sections": [
+    {
+      "id": "steps",
+      "title": {
+        "en": "How to perform Umrah",
+        "ur": "عمرہ کا طریقہ",
+        "hi": "उमरा का तरीक़ा"
+      },
+      "kind": "steps",
+      "items": [
+        {
+          "id": "ihram-prepare",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Before the miqat (or before your flight reaches it), take a bath, clip nails, and men put on two plain white unstitched sheets. Women wear normal modest clothes.",
+            "ur": "میقات سے پہلے (یا جہاز کے میقات پہنچنے سے پہلے) غسل کریں، ناخن کاٹیں؛ مرد دو سفید بغیر سلی چادریں پہنیں۔ عورتیں عام باپردہ لباس پہنیں۔",
+            "hi": "मीक़ात से पहले (या जहाज़ के मीक़ात पहुँचने से पहले) ग़ुस्ल करें, नाख़ून काटें; मर्द दो सफ़ेद बिना सिली चादरें पहनें। औरतें आम बापर्दा लिबास पहनें।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "ihram-intention",
+          "ruling": "fard",
+          "text": {
+            "en": "Pray two rak'ahs if it is not a disliked time, make the intention, and say the Talbiyah. You are now in ihram.",
+            "ur": "مکروہ وقت نہ ہو تو دو رکعت پڑھیں، نیت کریں اور تلبیہ پڑھیں۔ اب آپ احرام میں ہیں۔",
+            "hi": "मकरूह वक़्त न हो तो दो रकअत पढ़ें, नीयत करें और तलबिया पढ़ें। अब आप एहराम में हैं।"
+          },
+          "arabic": "لَبَّيْكَ اللَّهُمَّ لَبَّيْكَ، لَبَّيْكَ لَا شَرِيكَ لَكَ لَبَّيْكَ، إِنَّ الْحَمْدَ وَالنِّعْمَةَ لَكَ وَالْمُلْكَ، لَا شَرِيكَ لَكَ",
+          "transliteration": "Labbaik Allahumma labbaik, labbaika la sharika laka labbaik, innal-hamda wan-ni'mata laka wal-mulk, la sharika lak",
+          "meaning": {
+            "en": "Here I am, O Allah, here I am. Here I am, You have no partner, here I am. All praise, all blessings and all sovereignty are Yours. You have no partner.",
+            "ur": "میں حاضر ہوں اے اللہ، میں حاضر ہوں۔ میں حاضر ہوں، تیرا کوئی شریک نہیں، میں حاضر ہوں۔ بے شک سب تعریف، نعمت اور بادشاہی تیری ہی ہے۔ تیرا کوئی شریک نہیں۔",
+            "hi": "मैं हाज़िर हूँ ऐ अल्लाह, मैं हाज़िर हूँ। मैं हाज़िर हूँ, तेरा कोई शरीक नहीं, मैं हाज़िर हूँ। बेशक सब तारीफ़, नेमत और बादशाही तेरी ही है। तेरा कोई शरीक नहीं।"
+          },
+          "note": {
+            "en": "Hanafi: ihram is the intention together with the Talbiyah. Men say it aloud, women quietly.",
+            "ur": "حنفی: احرام نیت اور تلبیہ کا مجموعہ ہے۔ مرد بلند آواز سے، عورتیں آہستہ پڑھیں۔",
+            "hi": "हनफ़ी: एहराम नीयत और तलबिया का मजमूआ है। मर्द बुलंद आवाज़ से, औरतें धीरे पढ़ें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1495,
+              "quote": "Labbaika Allahumma labbaik"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tawaf",
+          "ruling": "fard",
+          "text": {
+            "en": "At the Kaaba, start at the Black Stone and walk around the Kaaba seven times, keeping it on your left. Men uncover the right shoulder during this tawaf.",
+            "ur": "کعبہ پر حجر اسود سے شروع کر کے کعبہ کو بائیں ہاتھ رکھتے ہوئے سات چکر لگائیں۔ مرد اس طواف میں دایاں کندھا کھلا رکھیں۔",
+            "hi": "काबा पर हजर-ए-असवद से शुरू करके काबा को बाएँ हाथ रखते हुए सात चक्कर लगाएँ। मर्द इस तवाफ़ में दायाँ कंधा खुला रखें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 391,
+              "quote": "performed the Tawaf around the Ka`ba (circumambulated it seven times)"
+            }
+          ]
+        },
+        {
+          "id": "rakahs",
+          "ruling": "wajib",
+          "text": {
+            "en": "Pray two rak'ahs behind the Station of Ibrahim (or anywhere in the masjid if crowded), then drink Zamzam.",
+            "ur": "مقام ابراہیم کے پیچھے (یا رش ہو تو مسجد میں کہیں بھی) دو رکعت پڑھیں، پھر زمزم پئیں۔",
+            "hi": "मक़ाम-ए-इब्राहीम के पीछे (या भीड़ हो तो मस्जिद में कहीं भी) दो रकअत पढ़ें, फिर ज़मज़म पिएँ।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 391,
+              "quote": "offered a two-rak`at prayer"
+            },
+            {
+              "kind": "quran",
+              "key": "2:125",
+              "quote": "take, [O believers], from the standing place of Abraham a place of prayer"
+            }
+          ]
+        },
+        {
+          "id": "sai",
+          "ruling": "wajib",
+          "text": {
+            "en": "Walk seven times between Safa and Marwah, starting at Safa and ending at Marwah (each one-way walk counts as one).",
+            "ur": "صفا اور مروہ کے درمیان سات چکر لگائیں، صفا سے شروع کر کے مروہ پر ختم کریں (ہر ایک طرف کا چکر ایک شمار ہوتا ہے)۔",
+            "hi": "सफ़ा और मरवा के बीच सात चक्कर लगाएँ, सफ़ा से शुरू करके मरवा पर ख़त्म करें (हर एक तरफ़ का चक्कर एक गिना जाता है)।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "2:158",
+              "quote": "as-Safa and al-Marwah are among the symbols of Allah"
+            }
+          ]
+        },
+        {
+          "id": "hair",
+          "ruling": "wajib",
+          "text": {
+            "en": "Men shave the head (best) or trim it; women cut about a fingertip's length from the end of their hair. Your Umrah is complete and ihram ends.",
+            "ur": "مرد سر منڈوائیں (افضل) یا بال کٹوائیں؛ عورتیں بالوں کے سرے سے ایک پور کے برابر کاٹیں۔ عمرہ مکمل ہوا اور احرام ختم۔",
+            "hi": "मर्द सर मुँडवाएँ (अफ़ज़ल) या बाल कटवाएँ; औरतें बालों के सिरे से एक पोर के बराबर काटें। उमरा मुकम्मल हुआ और एहराम ख़त्म।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1666,
+              "quote": "Forgive those who get their heads shaved"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "restrictions",
+      "title": {
+        "en": "Forbidden in ihram",
+        "ur": "احرام میں ممنوع",
+        "hi": "एहराम में मना"
+      },
+      "kind": "list",
+      "items": [
+        {
+          "id": "no-hair",
+          "text": {
+            "en": "Cutting hair or nails, using perfume or scented soap.",
+            "ur": "بال یا ناخن کاٹنا، خوشبو یا خوشبو دار صابن لگانا۔",
+            "hi": "बाल या नाख़ून काटना, ख़ुशबू या ख़ुशबूदार साबुन लगाना।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "2:196",
+              "quote": "do not shave your heads until the sacrificial animal has reached its place of slaughter"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "no-stitched",
+          "text": {
+            "en": "For men: stitched clothes and covering the head or face. For women: covering the face with something touching it.",
+            "ur": "مردوں کے لیے: سلے کپڑے، سر یا چہرہ ڈھانپنا۔ عورتوں کے لیے: چہرے کو ایسی چیز سے ڈھانپنا جو چہرے سے لگے۔",
+            "hi": "मर्दों के लिए: सिले कपड़े, सर या चेहरा ढाँपना। औरतों के लिए: चेहरे को ऐसी चीज़ से ढाँपना जो चेहरे से लगे।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "no-marital",
+          "text": {
+            "en": "Marital relations, arguing and any sin.",
+            "ur": "میاں بیوی کا تعلق، جھگڑا اور ہر گناہ۔",
+            "hi": "मियाँ-बीवी का ताल्लुक़, झगड़ा और हर गुनाह।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "2:197",
+              "quote": "no sexual relations and no disobedience and no disputing during Hajj"
+            }
+          ]
+        },
+        {
+          "id": "no-hunting",
+          "text": {
+            "en": "Hunting animals.",
+            "ur": "جانوروں کا شکار۔",
+            "hi": "जानवरों का शिकार।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "virtue",
+      "title": {
+        "en": "Its reward",
+        "ur": "اس کا اجر",
+        "hi": "इसका अज्र"
+      },
+      "kind": "list",
+      "items": [
+        {
+          "id": "expiation",
+          "text": {
+            "en": "An Umrah is an expiation for the sins between it and the previous one.",
+            "ur": "ایک عمرہ دوسرے عمرے تک کے گناہوں کا کفارہ ہے۔",
+            "hi": "एक उमरा दूसरे उमरे तक के गुनाहों का कफ़्फ़ारा है।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1708,
+              "quote": "is an expiation for the sins committed"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

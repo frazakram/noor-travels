@@ -1,0 +1,167 @@
+{
+  "slug": "sajda-sahw",
+  "order": 10,
+  "group": "prayer",
+  "title": {
+    "en": "Sajda Sahw (Forgetfulness)",
+    "ur": "سجدۂ سہو",
+    "hi": "सजदा-ए-सह्व"
+  },
+  "summary": {
+    "en": "The two prostrations that make up for a wajib act missed or delayed by mistake in prayer.",
+    "ur": "نماز میں بھول سے کوئی واجب چھوٹ جائے یا دیر ہو جائے تو اس کی تلافی کے دو سجدے۔",
+    "hi": "नमाज़ में भूल से कोई वाजिब छूट जाए या देर हो जाए तो उसकी तलाफ़ी के दो सजदे।"
+  },
+  "madhhab": "hanafi",
+  "status": "draft",
+  "sections": [
+    {
+      "id": "when",
+      "title": {
+        "en": "When it is needed",
+        "ur": "کب ضروری ہے",
+        "hi": "कब ज़रूरी है"
+      },
+      "kind": "list",
+      "items": [
+        {
+          "id": "wajib",
+          "text": {
+            "en": "When you forget or delay a wajib act: e.g. forgetting the first sitting, Al-Fatiha, or the surah after it.",
+            "ur": "جب بھول سے کوئی واجب چھوٹ جائے یا دیر ہو جائے: مثلاً پہلا قعدہ، سورہ فاتحہ یا اس کے بعد کی سورت بھول جانا۔",
+            "hi": "जब भूल से कोई वाजिब छूट जाए या देर हो जाए: जैसे पहला क़ादा, सूरह फ़ातिहा या उसके बाद की सूरत भूल जाना।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1194,
+              "quote": "he should have sat (after the second rak`a but he stood up for the third rak`a without sitting for Tashah-hud)"
+            }
+          ]
+        },
+        {
+          "id": "fard",
+          "text": {
+            "en": "It cannot make up for a missed fard act (like a ruku or a sajdah); that prayer must be repeated.",
+            "ur": "کوئی فرض (جیسے رکوع یا سجدہ) چھوٹ جائے تو سجدۂ سہو کافی نہیں؛ نماز دہرانی ہوگی۔",
+            "hi": "कोई फ़र्ज़ (जैसे रुकू या सजदा) छूट जाए तो सजदा-ए-सह्व काफ़ी नहीं; नमाज़ दोहरानी होगी।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "deliberate",
+          "text": {
+            "en": "Leaving a wajib on purpose is not fixed by sajda sahw; the prayer should be repeated.",
+            "ur": "جان بوجھ کر واجب چھوڑنے پر سجدۂ سہو کافی نہیں؛ نماز دہرانی چاہیے۔",
+            "hi": "जान-बूझकर वाजिब छोड़ने पर सजदा-ए-सह्व काफ़ी नहीं; नमाज़ दोहरानी चाहिए।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "steps",
+      "title": {
+        "en": "How to do it (Hanafi)",
+        "ur": "طریقہ (حنفی)",
+        "hi": "तरीक़ा (हनफ़ी)"
+      },
+      "kind": "steps",
+      "items": [
+        {
+          "id": "tashahhud",
+          "text": {
+            "en": "In the last sitting, recite the tashahhud only.",
+            "ur": "آخری قعدے میں صرف تشہد پڑھیں۔",
+            "hi": "आख़िरी क़ादे में सिर्फ़ तशह्हुद पढ़ें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1165,
+              "quote": "at-tahiyyatu lil-lahi"
+            }
+          ]
+        },
+        {
+          "id": "salam",
+          "text": {
+            "en": "Give one salam to the right.",
+            "ur": "دائیں طرف ایک سلام پھیریں۔",
+            "hi": "दाएँ तरफ़ एक सलाम फेरें।"
+          },
+          "note": {
+            "en": "In the hadith the Prophet ﷺ made the two prostrations before the salam; some schools follow that. Hanafis prostrate after one salam.",
+            "ur": "حدیث میں نبی ﷺ نے سلام سے پہلے دو سجدے کیے؛ بعض مسالک اسی پر عمل کرتے ہیں۔ احناف ایک سلام کے بعد سجدہ کرتے ہیں۔",
+            "hi": "हदीस में नबी ﷺ ने सलाम से पहले दो सजदे किए; कुछ मसलक उसी पर अमल करते हैं। अहनाफ़ एक सलाम के बाद सजदा करते हैं।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling (other schools differ)",
+                "ur": "حنفی مسلک (دوسرے مسالک کی رائے مختلف ہے)",
+                "hi": "हनफ़ी मसलक (दूसरे मसलकों की राय अलग है)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "prostrate",
+          "ruling": "wajib",
+          "text": {
+            "en": "Make two prostrations with Allahu Akbar, as in prayer.",
+            "ur": "اللہ اکبر کہہ کر نماز کی طرح دو سجدے کریں۔",
+            "hi": "अल्लाहु अकबर कहकर नमाज़ की तरह दो सजदे करें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1194,
+              "quote": "he performed two prostrations and said Takbir on each prostration"
+            }
+          ]
+        },
+        {
+          "id": "finish",
+          "text": {
+            "en": "Sit, recite the tashahhud, Durood Ibrahimi and a dua again, then end with the salam to both sides.",
+            "ur": "بیٹھ کر دوبارہ تشہد، درود ابراہیمی اور دعا پڑھیں، پھر دونوں طرف سلام پھیریں۔",
+            "hi": "बैठकर दोबारा तशह्हुद, दुरूद-ए-इब्राहीमी और दुआ पढ़ें, फिर दोनों तरफ़ सलाम फेरें।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,210 @@
+{
+  "slug": "fasting",
+  "order": 15,
+  "group": "ramadan",
+  "title": {
+    "en": "Fasting (Sawm)",
+    "ur": "روزہ",
+    "hi": "रोज़ा"
+  },
+  "summary": {
+    "en": "How to fast in Ramadan: suhoor, intention, iftar, what breaks the fast and who is excused.",
+    "ur": "رمضان کا روزہ: سحری، نیت، افطار، روزہ توڑنے والی چیزیں اور کس کو رخصت ہے۔",
+    "hi": "रमज़ान का रोज़ा: सहरी, नीयत, इफ़्तार, रोज़ा तोड़ने वाली चीज़ें और किसको रुख़सत है।"
+  },
+  "madhhab": "hanafi",
+  "status": "draft",
+  "sections": [
+    {
+      "id": "day",
+      "title": {
+        "en": "A day of fasting",
+        "ur": "روزے کا دن",
+        "hi": "रोज़े का दिन"
+      },
+      "kind": "steps",
+      "items": [
+        {
+          "id": "suhoor",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Eat suhoor before dawn; even a little has blessing in it.",
+            "ur": "فجر سے پہلے سحری کریں؛ تھوڑی سی بھی ہو تو اس میں برکت ہے۔",
+            "hi": "फ़ज्र से पहले सहरी करें; थोड़ी सी भी हो तो उसमें बरकत है।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1854,
+              "quote": "Take Suhur as there is a blessing in it"
+            }
+          ]
+        },
+        {
+          "id": "intention",
+          "ruling": "fard",
+          "text": {
+            "en": "Make the intention to fast (in the heart; for Ramadan it can be made until before midday).",
+            "ur": "روزے کی نیت کریں (دل سے؛ رمضان کے روزے کی نیت نصف النہار سے پہلے تک ہو سکتی ہے)۔",
+            "hi": "रोज़े की नीयत करें (दिल से; रमज़ान के रोज़े की नीयत निस्फ़-उन-नहार से पहले तक हो सकती है)।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1,
+              "quote": "The reward of deeds depends upon the intentions"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling (other schools differ)",
+                "ur": "حنفی مسلک (دوسرے مسالک کی رائے مختلف ہے)",
+                "hi": "हनफ़ी मसलक (दूसरे मसलकों की राय अलग है)"
+              }
+            }
+          ]
+        },
+        {
+          "id": "abstain",
+          "ruling": "fard",
+          "text": {
+            "en": "From dawn (Fajr) until sunset, do not eat, drink or have marital relations.",
+            "ur": "فجر سے غروب آفتاب تک کھانا، پینا اور میاں بیوی کا تعلق نہ ہو۔",
+            "hi": "फ़ज्र से सूरज डूबने तक खाना, पीना और मियाँ-बीवी का ताल्लुक़ न हो।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "2:187",
+              "quote": "until the white thread of dawn becomes distinct to you from the black thread"
+            }
+          ]
+        },
+        {
+          "id": "conduct",
+          "text": {
+            "en": "Guard your tongue and eyes; avoid lying, backbiting and arguing.",
+            "ur": "زبان اور آنکھوں کی حفاظت کریں؛ جھوٹ، غیبت اور جھگڑے سے بچیں۔",
+            "hi": "ज़बान और आँखों की हिफ़ाज़त करें; झूठ, ग़ीबत और झगड़े से बचें।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "2:183",
+              "quote": "that you may become righteous"
+            }
+          ]
+        },
+        {
+          "id": "iftar",
+          "ruling": "sunnah",
+          "text": {
+            "en": "Break the fast right at sunset, ideally with dates or water.",
+            "ur": "غروب ہوتے ہی افطار کریں، ہو سکے تو کھجور یا پانی سے۔",
+            "hi": "ग़ुरूब होते ही इफ़्तार करें, हो सके तो खजूर या पानी से।"
+          },
+          "arabic": "اللَّهُمَّ لَكَ صُمْتُ وَعَلَىٰ رِزْقِكَ أَفْطَرْتُ",
+          "transliteration": "Allahumma laka sumtu wa 'ala rizqika aftartu",
+          "meaning": {
+            "en": "O Allah, for You I fasted and with Your provision I break my fast.",
+            "ur": "اے اللہ! میں نے تیرے لیے روزہ رکھا اور تیرے رزق سے افطار کیا۔",
+            "hi": "ऐ अल्लाह! मैंने तेरे लिए रोज़ा रखा और तेरे रिज़्क़ से इफ़्तार किया।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1886,
+              "quote": "The people will remain on the right path as long as they hasten the breaking of the fast"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rules",
+      "title": {
+        "en": "What breaks it and what doesn't",
+        "ur": "کیا روزہ توڑتا ہے اور کیا نہیں",
+        "hi": "क्या रोज़ा तोड़ता है और क्या नहीं"
+      },
+      "kind": "list",
+      "items": [
+        {
+          "id": "breaks",
+          "text": {
+            "en": "Eating, drinking or marital relations on purpose break the fast (deliberately breaking a Ramadan fast also needs kaffarah).",
+            "ur": "جان بوجھ کر کھانا، پینا یا میاں بیوی کا تعلق روزہ توڑ دیتا ہے (رمضان کا روزہ جان بوجھ کر توڑنے پر کفارہ بھی ہے)۔",
+            "hi": "जान-बूझकर खाना, पीना या मियाँ-बीवी का ताल्लुक़ रोज़ा तोड़ देता है (रमज़ान का रोज़ा जान-बूझकर तोड़ने पर कफ़्फ़ारा भी है)।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "2:187",
+              "quote": "eat and drink until the white thread of dawn"
+            },
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "forgot",
+          "text": {
+            "en": "Eating or drinking by mistake does not break it: stop and complete your fast.",
+            "ur": "بھول کر کھا پی لینے سے روزہ نہیں ٹوٹتا: رک جائیں اور روزہ پورا کریں۔",
+            "hi": "भूलकर खा-पी लेने से रोज़ा नहीं टूटता: रुक जाएँ और रोज़ा पूरा करें।"
+          },
+          "refs": [
+            {
+              "kind": "hadith",
+              "collection": "bukhari",
+              "number": 1862,
+              "quote": "If somebody eats or drinks forgetfully then he should complete his fast"
+            }
+          ]
+        },
+        {
+          "id": "not-break",
+          "text": {
+            "en": "Brushing without swallowing, a bath, eye drops, an injection in the muscle, and unintentional vomiting do not break it.",
+            "ur": "بغیر نگلے مسواک، غسل، آنکھ میں دوا، پٹھے میں انجکشن اور بلا ارادہ قے سے روزہ نہیں ٹوٹتا۔",
+            "hi": "बिना निगले मिस्वाक, ग़ुस्ल, आँख में दवा, पट्ठे में इंजेक्शन और बिना इरादा उल्टी से रोज़ा नहीं टूटता।"
+          },
+          "refs": [
+            {
+              "kind": "fiqh",
+              "text": {
+                "en": "Hanafi ruling",
+                "ur": "حنفی مسلک",
+                "hi": "हनफ़ी मसलक"
+              }
+            }
+          ]
+        },
+        {
+          "id": "excused",
+          "text": {
+            "en": "The sick and travellers may skip and make up the days later; the very old who cannot fast give fidyah (feeding a poor person per day).",
+            "ur": "بیمار اور مسافر چھوڑ سکتے ہیں اور بعد میں قضا کریں؛ بہت بوڑھے جو روزہ نہ رکھ سکیں فدیہ دیں (ہر دن ایک مسکین کو کھانا)۔",
+            "hi": "बीमार और मुसाफ़िर छोड़ सकते हैं और बाद में क़ज़ा करें; बहुत बूढ़े जो रोज़ा न रख सकें फ़िदया दें (हर दिन एक मिस्कीन को खाना)।"
+          },
+          "refs": [
+            {
+              "kind": "quran",
+              "key": "2:185",
+              "quote": "whoever is ill or on a journey - then an equal number of other days"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

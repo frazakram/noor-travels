@@ -8,7 +8,7 @@ describe("isTabActive", () => {
   it("highlights exactly one tab for every real route", () => {
     const routes = [
       "/", "/khutba", "/quran", "/quran/2", "/quran/listen/36", "/quran/find", "/learn-quran", "/learn-quran/l1",
-      "/recite", "/hadith", "/hadith-of-day", "/hadith-of-day/2026-09-26", "/adhkar", "/library", "/library/some-slug",
+      "/recite", "/hadith", "/hadith-of-day", "/hadith-of-day/2026-09-26", "/adhkar", "/ibadah", "/ibadah/wudu", "/library", "/library/some-slug",
       "/settings", "/account", "/about", "/support", "/privacy",
     ];
     for (const route of routes) {
@@ -19,6 +19,7 @@ describe("isTabActive", () => {
   it("groups sub-features under their tab", () => {
     assert.deepEqual(activeTab("/recite"), ["quran"]);
     assert.deepEqual(activeTab("/adhkar"), ["navHadithDuas"]);
+    assert.deepEqual(activeTab("/ibadah/wudu"), ["navHadithDuas"]);
     assert.deepEqual(activeTab("/library/x"), ["ask"]);
     assert.deepEqual(activeTab("/privacy"), ["navYou"]);
     assert.deepEqual(activeTab("/khutba"), ["navToday"]);
