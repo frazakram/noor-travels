@@ -1,5 +1,7 @@
 "use client";
 
+import type { NativePlaybackSession } from "@/lib/playback-session";
+
 export type NativeQueueItem = {
   url: string;
   title: string;
@@ -9,7 +11,8 @@ export type NativeQueueItem = {
 
 type NoorAndroidBridge = {
   setQuranPlaying?: (playing: boolean) => void;
-  playQuranQueue?: (playlistJson: string) => void;
+  /** 1.9+ returns false when Android refused to start playback (app in background); older APKs return undefined. */
+  playQuranQueue?: (playlistJson: string) => boolean | void;
   stopQuranPlayback?: () => void;
   schedulePrayerAlarm?: (prayerName: string, hour: number, minute: number, enabled: boolean) => void;
   schedulePrayerAlarmTz?: (
@@ -30,6 +33,10 @@ type NoorAndroidBridge = {
   appVersion?: () => string;
   /** 1.7+: lets the APK refresh adhan times itself when the app isn't opened. */
   setPrayerLocation?: (json: string) => void;
+  /** 1.9+: JSON of the native playback session (lib/playback-session.ts), or "null". */
+  getQuranPlaybackSession?: () => string;
+  /** 1.9+: pause/resume the native queue in place; false when no queue is loaded. */
+  setQuranQueuePlaying?: (play: boolean) => boolean;
   /** 1.8+: offline surah audio. The native queue plays the saved copy of any URL it has. */
   downloadQuranAudio?: (key: string, urlsJson: string) => void;
   cancelQuranAudioDownload?: (key: string) => void;
@@ -62,12 +69,14 @@ export function nativeSetQuranPlaying(playing: boolean): void {
 export function nativePlayQuranQueue(
   surahName: string,
   items: NativeQueueItem[],
+  /** Identifies the session so a reloaded reader can re-attach (ignored by APKs before 1.9). */
+  meta?: { surah: number; sessionId: string },
 ): boolean {
   try {
     const b = bridge();
     if (!b?.playQuranQueue || !items.length) return false;
-    b.playQuranQueue(JSON.stringify({ surahName, items }));
-    return true;
+    // false = the native player could not start; the caller falls back to web playback.
+    return b.playQuranQueue(JSON.stringify({ surahName, items, ...meta })) !== false;
   } catch {
     return false;
   }
@@ -241,6 +250,31 @@ export function nativeQuranAudioStatus(): Record<
   try {
     const raw = bridge()?.quranAudioStatus?.();
     return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Pause or resume the loaded native queue. False on older APKs or when nothing is loaded. */
+export function nativeSetQueuePlaying(play: boolean): boolean {
+  try {
+    return bridge()?.setQuranQueuePlaying?.(play) === true;
+  } catch {
+    return false;
+  }
+}
+
+/** APK 1.9+ exposes the playback session (older APKs must keep the push-only behaviour). */
+export function nativeSupportsPlaybackSession(): boolean {
+  return typeof bridge()?.getQuranPlaybackSession === "function";
+}
+
+/** The native playback session, or null on APKs before 1.9 / when nothing has played. */
+export function nativeGetPlaybackSession(): NativePlaybackSession | null {
+  try {
+    const raw = bridge()?.getQuranPlaybackSession?.();
+    if (!raw || raw === "null") return null;
+    return JSON.parse(raw) as NativePlaybackSession;
   } catch {
     return null;
   }

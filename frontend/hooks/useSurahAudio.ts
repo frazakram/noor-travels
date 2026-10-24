@@ -3,6 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { fetchSurahWords } from "@/lib/surah-words";
+import { setWordHighlight } from "@/lib/word-highlight";
+import {
+  canResumeNative,
+  isOwnSessionEvent,
+  newSessionId,
+  queueKey,
+  reconcileDecision,
+} from "@/lib/playback-session";
 import { loadSavedManifest, trLangFor } from "@/lib/offline-audio";
 import {
   acquireWakeLock,
@@ -18,6 +26,9 @@ import {
   nativeStopQuranPlayback,
   nativeUpdateQuranNotification,
   type NativeQueueItem,
+  nativeGetPlaybackSession,
+  nativeSetQueuePlaying,
+  nativeSupportsPlaybackSession,
 } from "@/lib/native-bridge";
 import {
   beginPlaybackSession,
@@ -62,6 +73,16 @@ function dedupeReciters(list: Reciter[]): Reciter[] {
   }
   return out;
 }
+
+type LoadedAudio = {
+  ayahs: AudioAyah[];
+  bismillah: string | null;
+  needsBis: boolean;
+  embeddedBis: boolean;
+  embeddedBisDurationMs: number;
+  embeddedBisSegments: WordSegment[];
+  mode: "ayah" | "surah";
+};
 
 type AudioPayload = {
   ayahs: AudioAyah[];
@@ -212,7 +233,8 @@ export function useSurahAudio({
   // A reciter/translation clip that should exist but didn't play — surfaced to
   // the user explicitly instead of silently swapping in synthesized speech.
   const [audioNotice, setAudioNotice] = useState<string | null>(null);
-  const [activeWordIndex, setActiveWordIndex] = useState(-1);
+  // Not state: see lib/word-highlight.ts. Only the playing ayah subscribes to it.
+  const setActiveWordIndex = setWordHighlight;
   const [activeBismillahWordIndex, setActiveBismillahWordIndex] = useState(-1);
   const [isPlayingBismillah, setIsPlayingBismillah] = useState(false);
   const [wordCounts, setWordCounts] = useState<Record<string, number>>({});
@@ -223,6 +245,7 @@ export function useSurahAudio({
   const stopRef = useRef(false);
   const sessionRef = useRef(0);
   const loadGenRef = useRef(0);
+  const audioLoadInflightRef = useRef<{ key: string; promise: Promise<LoadedAudio> } | null>(null);
   const nativeModeRef = useRef(false);
   const playingRef = useRef(false);
   const playIndexRef = useRef(0);
@@ -246,6 +269,27 @@ export function useSurahAudio({
    *  before they arrive would start from the beginning of the file. */
   const timingsReadyRef = useRef<Promise<void>>(Promise.resolve());
   includeTafsirRef.current = includeTafsir;
+  // Read by the native event handlers, which must not re-subscribe (their cleanup stops
+  // native playback) when only the title changes.
+  const surahNameRef = useRef(surahName);
+  surahNameRef.current = surahName;
+  /** The native session this page drives (or re-attached to), to ignore other sessions' events. */
+  const nativeSessionIdRef = useRef<string | null>(null);
+  /** Settings the native queue was built with; a paused queue is resumed only if unchanged. */
+  const nativeQueueKeyRef = useRef<string | null>(null);
+  const currentQueueKey = queueKey({
+    surah: surahNumber,
+    reciter,
+    translation,
+    includeTranslation,
+    includeTafsir,
+    repeatScope,
+    repeatCount,
+    rangeStart,
+    rangeEnd,
+  });
+  const currentQueueKeyRef = useRef(currentQueueKey);
+  currentQueueKeyRef.current = currentQueueKey;
   includeTranslationRef.current = includeTranslation;
   tafsirSourceRef.current = tafsirSource;
   onPlayIndexRef.current = onPlayIndex;
@@ -368,15 +412,7 @@ export function useSurahAudio({
     [translation]
   );
 
-  const ensureAudioLoaded = useCallback(async (): Promise<{
-    ayahs: AudioAyah[];
-    bismillah: string | null;
-    needsBis: boolean;
-    embeddedBis: boolean;
-    embeddedBisDurationMs: number;
-    embeddedBisSegments: WordSegment[];
-    mode: "ayah" | "surah";
-  }> => {
+  const ensureAudioLoaded = useCallback(async (): Promise<LoadedAudio> => {
     const needsTrAudio = includeTranslation && (translation === "en" || translation === "ur");
     const cachedHasTr =
       audioAyahs.length > 0 && audioAyahs.some((a) => Boolean(a.translation_audio));
@@ -392,66 +428,85 @@ export function useSurahAudio({
       };
     }
 
-    const gen = ++loadGenRef.current;
-    setAudioLoading(true);
-    try {
-      // Always request translation audio when the spoken-translation toggle is on,
-      // so switching reciter never drops Urdu/English verse audio.
-      const trParam = includeTranslation ? `&translation_lang=${translation}` : "";
-      // Editions only feed the reciter picker, so losing them offline is harmless.
-      const editionsReq = api<{ reciters: Reciter[] }>("/api/quran/audio/editions").catch(
-        () => ({ reciters: [] as Reciter[] })
-      );
-      const audioReq = api<AudioPayload>(
-        `/api/quran/audio/surahs/${surahNumber}?reciter=${encodeURIComponent(reciter)}${trParam}`
-      ).catch(async (err) => {
-        // Offline (or the backend is down): use the manifest saved with a surah download.
-        const saved = isNativeApp()
-          ? await loadSavedManifest(surahNumber, reciter, trLangFor(includeTranslation, translation))
-          : null;
-        if (!saved) throw err;
-        return saved as unknown as AudioPayload;
-      });
-      const [editions, audio] = await Promise.all([editionsReq, audioReq]);
-      if (gen !== loadGenRef.current) {
+    // Concurrent requests for the same audio list (the background prefetch and a play tap or
+    // auto-play) share one request. Each used to start its own and the older one was handed an
+    // empty list, so playFromIndex silently did nothing: auto-play next surah never started, and
+    // a play tap right after opening a surah could be ignored. Only a request with different
+    // settings supersedes an older one (generation check below).
+    const reqKey = `${surahNumber}|${reciter}|${includeTranslation ? translation : ""}`;
+    const inflight = audioLoadInflightRef.current;
+    if (inflight && inflight.key === reqKey) return inflight.promise;
+    const load = async (): Promise<LoadedAudio> => {
+      const gen = ++loadGenRef.current;
+      setAudioLoading(true);
+      try {
+        // Always request translation audio when the spoken-translation toggle is on,
+        // so switching reciter never drops Urdu/English verse audio.
+        const trParam = includeTranslation ? `&translation_lang=${translation}` : "";
+        // Editions only feed the reciter picker, so losing them offline is harmless.
+        const editionsReq = api<{ reciters: Reciter[] }>("/api/quran/audio/editions").catch(
+          () => ({ reciters: [] as Reciter[] })
+        );
+        const audioReq = api<AudioPayload>(
+          `/api/quran/audio/surahs/${surahNumber}?reciter=${encodeURIComponent(reciter)}${trParam}`
+        ).catch(async (err) => {
+          // Offline (or the backend is down): use the manifest saved with a surah download.
+          const saved = isNativeApp()
+            ? await loadSavedManifest(surahNumber, reciter, trLangFor(includeTranslation, translation))
+            : null;
+          if (!saved) throw err;
+          return saved as unknown as AudioPayload;
+        });
+        const [editions, audio] = await Promise.all([editionsReq, audioReq]);
+        if (gen !== loadGenRef.current) {
+          return {
+            ayahs: [],
+            bismillah: null,
+            needsBis: false,
+            embeddedBis: false,
+            embeddedBisDurationMs: 0,
+            embeddedBisSegments: [],
+            mode: "ayah",
+          };
+        }
+        if (editions.reciters?.length) setReciters(dedupeReciters(editions.reciters));
+        const mode = audio.playback_mode ?? "ayah";
+        setPlaybackMode(mode);
+        setSurahAudioAvailable(audio.surah_audio_available ?? true);
+        setAudioAyahs(audio.ayahs);
+        const bis = audio.bismillah_audio ?? null;
+        const needsBis = Boolean(audio.needs_bismillah && bis);
+        const embeddedBis = Boolean(audio.embedded_bismillah);
+        const embeddedBisDurationMs = Math.max(0, audio.embedded_bismillah_duration_ms ?? 0);
+        const embeddedBisSegments = audio.embedded_bismillah_segments ?? [];
+        setBismillahAudio(bis);
+        setNeedsBismillah(needsBis);
+        setEmbeddedBismillah(embeddedBis);
+        setEmbeddedBismillahDurationMs(embeddedBisDurationMs);
+        setEmbeddedBismillahSegments(embeddedBisSegments);
+        setAudioReady(true);
         return {
-          ayahs: [],
-          bismillah: null,
-          needsBis: false,
-          embeddedBis: false,
-          embeddedBisDurationMs: 0,
-          embeddedBisSegments: [],
-          mode: "ayah",
+          ayahs: audio.ayahs,
+          bismillah: bis,
+          needsBis,
+          embeddedBis,
+          embeddedBisDurationMs,
+          embeddedBisSegments,
+          mode,
         };
+      } finally {
+        if (gen === loadGenRef.current) setAudioLoading(false);
       }
-      if (editions.reciters?.length) setReciters(dedupeReciters(editions.reciters));
-      const mode = audio.playback_mode ?? "ayah";
-      setPlaybackMode(mode);
-      setSurahAudioAvailable(audio.surah_audio_available ?? true);
-      setAudioAyahs(audio.ayahs);
-      const bis = audio.bismillah_audio ?? null;
-      const needsBis = Boolean(audio.needs_bismillah && bis);
-      const embeddedBis = Boolean(audio.embedded_bismillah);
-      const embeddedBisDurationMs = Math.max(0, audio.embedded_bismillah_duration_ms ?? 0);
-      const embeddedBisSegments = audio.embedded_bismillah_segments ?? [];
-      setBismillahAudio(bis);
-      setNeedsBismillah(needsBis);
-      setEmbeddedBismillah(embeddedBis);
-      setEmbeddedBismillahDurationMs(embeddedBisDurationMs);
-      setEmbeddedBismillahSegments(embeddedBisSegments);
-      setAudioReady(true);
-      return {
-        ayahs: audio.ayahs,
-        bismillah: bis,
-        needsBis,
-        embeddedBis,
-        embeddedBisDurationMs,
-        embeddedBisSegments,
-        mode,
-      };
-    } finally {
-      if (gen === loadGenRef.current) setAudioLoading(false);
-    }
+    };
+    const promise = load();
+    audioLoadInflightRef.current = { key: reqKey, promise };
+    void promise.then(
+      () => undefined,
+      () => undefined,
+    ).finally(() => {
+      if (audioLoadInflightRef.current?.promise === promise) audioLoadInflightRef.current = null;
+    });
+    return promise;
   }, [
     audioReady,
     audioAyahs,
@@ -490,10 +545,13 @@ export function useSurahAudio({
     return () => window.clearTimeout(id);
   }, [audioReady, ensureAudioLoaded]);
 
+  /** Stop: ends playback and the native session (used before settings change, on unmount…). */
   const pause = useCallback(() => {
     const wasActive = playingRef.current || nativeModeRef.current;
     stopRef.current = true;
     nativeModeRef.current = false;
+    nativeSessionIdRef.current = null;
+    nativeQueueKeyRef.current = null;
     playingRef.current = false;
     invalidatePlaybackSession();
     if (wasActive) {
@@ -510,6 +568,21 @@ export function useSurahAudio({
     setIsPlayingBismillah(false);
   }, []);
 
+  /**
+   * The play/pause button. Native playback is paused in place (session, position and
+   * notification kept, so play resumes it); web playback has no resumable queue and stops.
+   */
+  const pausePlayback = useCallback(() => {
+    if (nativeModeRef.current && playingRef.current && nativeSetQueuePlaying(false)) {
+      playingRef.current = false;
+      setPlaying(false);
+      setActiveWordIndex(-1);
+      void releaseWakeLock();
+      return;
+    }
+    pause();
+  }, [pause]);
+
   const releaseNativePlayback = useCallback(() => {
     if (!playingRef.current && !nativeModeRef.current) return;
     nativeStopQuranPlayback();
@@ -520,8 +593,11 @@ export function useSurahAudio({
 
   useEffect(() => {
     if (isNativeApp()) {
-      (window as unknown as { noorOnAyahIndex?: (i: number) => void }).noorOnAyahIndex = (i: number) => {
-        if (!nativeModeRef.current) return;
+      (window as unknown as { noorOnAyahIndex?: (i: number, sid?: string) => void }).noorOnAyahIndex = (
+        i: number,
+        sid?: string,
+      ) => {
+        if (!nativeModeRef.current || !isOwnSessionEvent(sid, nativeSessionIdRef.current)) return;
         setPlayIndex(i);
         setActiveWordIndex(-1);
         onPlayIndexRef.current?.(i);
@@ -529,12 +605,42 @@ export function useSurahAudio({
         setStatus(vk);
         updateMediaSession({
           title: vk || `Ayah ${i + 1}`,
-          artist: surahName ?? `Surah ${surahNumber}`,
-          playing: true,
+          artist: surahNameRef.current ?? `Surah ${surahNumber}`,
+          playing: playingRef.current,
         });
+      };
+      // Play/pause/stop decided on the native side (notification, lock screen, headset):
+      // without this the page kept showing "playing" after a notification pause, and its play
+      // button then stopped everything instead of resuming.
+      (
+        window as unknown as { noorOnPlaybackState?: (playing: boolean, active: boolean, sid?: string) => void }
+      ).noorOnPlaybackState = (isPlaying, active, sid) => {
+        if (!nativeModeRef.current || !isOwnSessionEvent(sid, nativeSessionIdRef.current)) return;
+        if (!active) {
+          // Stopped from the notification: not a natural finish, so no auto-play next surah.
+          nativeModeRef.current = false;
+          nativeSessionIdRef.current = null;
+          playingRef.current = false;
+          setPlaying(false);
+          setActiveWordIndex(-1);
+          void releaseWakeLock();
+          clearMediaSession();
+          return;
+        }
+        playingRef.current = isPlaying;
+        setPlaying(isPlaying);
+        if (!isPlaying) {
+          setActiveWordIndex(-1);
+          void releaseWakeLock();
+        }
       };
       (window as unknown as { noorOnPlaybackEnded?: () => void }).noorOnPlaybackEnded = () => {
         if (!nativeModeRef.current) return;
+        // The service already finished the queue and stays in the foreground a short while to
+        // take the next surah (auto-play) without a background start, which Android forbids.
+        // Reset only this page: pause() would stop that service.
+        nativeModeRef.current = false;
+        playingRef.current = false;
         pause();
         // Native queue drained on its own (user pauses clear nativeModeRef
         // before this fires) — treat it as a natural finish.
@@ -590,12 +696,86 @@ export function useSurahAudio({
       invalidatePlaybackSession();
       releaseNativePlayback();
       delete (window as unknown as { noorOnAyahIndex?: unknown }).noorOnAyahIndex;
+      delete (window as unknown as { noorOnPlaybackState?: unknown }).noorOnPlaybackState;
       delete (window as unknown as { noorOnPlaybackEnded?: unknown }).noorOnPlaybackEnded;
       delete (window as unknown as { noorOnWordPosition?: unknown }).noorOnWordPosition;
       delete (window as unknown as { noorOnPlaybackError?: unknown }).noorOnPlaybackError;
       delete (window as unknown as { noorOnPlaybackStalled?: unknown }).noorOnPlaybackStalled;
     };
-  }, [pause, releaseNativePlayback, surahName, surahNumber]);
+  }, [pause, releaseNativePlayback, surahNumber]);
+
+  // Re-attach to native playback that outlived this page (reload, killed WebView renderer,
+  // notification tap): a fresh page starts with nativeModeRef=false and dropped every event from
+  // the still-playing service, so the reader showed ayah 1 while the audio was at 71.
+  // One reconciliation path, pulled from the native session: on load (a page that loads while
+  // audio plays) and whenever the app returns to the foreground (events pushed while it was in
+  // the background can be lost). Pushed events alone left the reader stuck on a stale ayah or
+  // "playing" after the audio stopped, and auto-play never moved to the next surah.
+  const syncWithNativeSession = useCallback(() => {
+    if (!isNativeApp() || !nativeSupportsPlaybackSession()) return;
+    const ayahCount = textAyahsRef.current.length;
+    if (!ayahCount) return;
+    if (playingRef.current && !nativeModeRef.current) return; // web playback: not ours to sync
+    const d = reconcileDecision(nativeGetPlaybackSession(), {
+      attached: nativeModeRef.current,
+      sessionId: nativeSessionIdRef.current,
+      surah: surahNumber,
+      ayahCount,
+      now: Date.now(),
+    });
+    switch (d.action) {
+      case "attach":
+        nativeModeRef.current = true;
+        nativeSessionIdRef.current = d.sessionId;
+        // Built by an earlier page from the same saved preferences.
+        nativeQueueKeyRef.current = currentQueueKeyRef.current;
+        playingRef.current = d.playing;
+        setPlaying(d.playing);
+        setPlayIndex(d.index);
+        onPlayIndexRef.current?.(d.index);
+        setStatus(textAyahsRef.current[d.index]?.verse_key ?? "");
+        return;
+      case "sync":
+        playingRef.current = d.playing;
+        setPlaying(d.playing);
+        if (!d.playing) setActiveWordIndex(-1);
+        if (d.index !== playIndexRef.current) {
+          setPlayIndex(d.index);
+          onPlayIndexRef.current?.(d.index);
+          setStatus(textAyahsRef.current[d.index]?.verse_key ?? "");
+        }
+        return;
+      case "reset":
+      case "finished":
+        // The service has already ended; reset this page only (pause() would stop it again).
+        nativeModeRef.current = false;
+        playingRef.current = false;
+        pause();
+        if (d.action === "finished") onPlaybackFinishedRef.current?.();
+        return;
+    }
+  }, [surahNumber, pause]);
+
+  const syncedForRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!textAyahs.length || syncedForRef.current === surahNumber) return;
+    syncedForRef.current = surahNumber;
+    syncWithNativeSession();
+  }, [textAyahs, surahNumber, syncWithNativeSession]);
+
+  useEffect(() => {
+    if (!isNativeApp()) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") syncWithNativeSession();
+    };
+    // Called by MainActivity.onResume (the WebView's visibility state is unreliable).
+    (window as unknown as { noorOnAppResume?: () => void }).noorOnAppResume = syncWithNativeSession;
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      delete (window as unknown as { noorOnAppResume?: unknown }).noorOnAppResume;
+    };
+  }, [syncWithNativeSession]);
 
   // Screen Wake Lock is spec'd to auto-release whenever the document goes
   // hidden (screen lock, backgrounding) regardless of what this module does,
@@ -993,6 +1173,24 @@ export function useSurahAudio({
 
   const playFromIndex = useCallback(
     async (start: number) => {
+      // Native queue paused (in-app button or notification) on this ayah with unchanged
+      // settings: resume it in place, keeping its position, session and notification.
+      if (
+        canResumeNative({
+          attached: nativeModeRef.current,
+          playing: playingRef.current,
+          requestedIndex: start,
+          pausedIndex: playIndexRef.current,
+          queueKeyAtStart: nativeQueueKeyRef.current,
+          currentQueueKey: currentQueueKeyRef.current,
+        }) &&
+        nativeSetQueuePlaying(true)
+      ) {
+        stopRef.current = false;
+        playingRef.current = true;
+        setPlaying(true);
+        return;
+      }
       // Runs synchronously within the click gesture, before the awaits below
       // consume it — otherwise mobile autoplay policy blocks the first play.
       primeAudioPlayback();
@@ -1070,12 +1268,31 @@ export function useSurahAudio({
           rangeHi,
           isRange,
         });
-        if (queue.length && nativePlayQuranQueue(surahName ?? `Surah ${surahNumber}`, queue)) {
+        const sessionId = newSessionId(surahNumber);
+        if (
+          queue.length &&
+          nativePlayQuranQueue(surahName ?? `Surah ${surahNumber}`, queue, {
+            surah: surahNumber,
+            sessionId,
+          })
+        ) {
           nativeModeRef.current = true;
+          nativeSessionIdRef.current = sessionId;
+          nativeQueueKeyRef.current = currentQueueKeyRef.current;
           setPlayIndex(idx);
           onPlayIndex?.(idx);
           setStatus(audioList[idx] ? textAyahs[idx]?.verse_key ?? "" : "");
           updateNowPlaying(textAyahs[idx]?.verse_key ?? `Ayah ${idx + 1}`);
+          return;
+        }
+        // A non-empty queue the native player turned down: only APK 1.9+ returns false, and only
+        // when Android refuses to start it from the background (screen off). Web playback can't
+        // play there either: falling back failed every clip and skipped through the surah in
+        // seconds, losing the listener's place. (WebView keeps visibilityState "visible" with the
+        // screen off, so this can't be keyed on visibility.)
+        if (queue.length) {
+          pause();
+          setAudioNotice("Playback couldn't start while the screen was off. Tap play to continue.");
           return;
         }
       }
@@ -1240,7 +1457,7 @@ export function useSurahAudio({
 
   function togglePlay(index: number) {
     if (playing) {
-      pause();
+      pausePlayback();
     } else {
       playFromIndex(index);
     }
@@ -1258,10 +1475,10 @@ export function useSurahAudio({
     audioReady,
     playbackMode,
     surahAudioAvailable,
-    activeWordIndex,
     activeBismillahWordIndex,
     isPlayingBismillah,
     pause,
+    pausePlayback,
     playFromIndex,
     togglePlay,
     setPlayIndex,

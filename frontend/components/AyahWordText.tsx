@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState, useSyncExternalStore } from "react";
+import { getWordHighlight, subscribeWordHighlight } from "@/lib/word-highlight";
 
 export type AyahWord = {
   ar: string;
@@ -11,22 +12,33 @@ export type AyahWord = {
 type Props = {
   verseKey: string;
   words?: AyahWord[] | null;
-  activeWordIndex: number;
+  /** Fixed highlight (Bismillah). Ayah text uses followLiveHighlight instead. */
+  activeWordIndex?: number;
+  /** Read the recited word from lib/word-highlight while this ayah is playing. */
+  followLiveHighlight?: boolean;
   fallbackArabic: string;
   isPlaying: boolean;
   align?: "right" | "center";
 };
 
 /** Renders Arabic words with hover meanings and active-word highlight during recitation. */
-export function AyahWordText({
+export const AyahWordText = memo(function AyahWordText({
   verseKey,
   words: wordsProp,
-  activeWordIndex,
+  activeWordIndex: fixedActiveWordIndex = -1,
+  followLiveHighlight = false,
   fallbackArabic,
   isPlaying,
   align = "right",
 }: Props) {
   const [words, setWords] = useState<AyahWord[] | null>(wordsProp ?? null);
+  // Ayahs that aren't playing select a constant, so a word change never re-renders them.
+  const liveWordIndex = useSyncExternalStore(
+    subscribeWordHighlight,
+    () => (followLiveHighlight && isPlaying ? getWordHighlight() : -1),
+    () => -1,
+  );
+  const activeWordIndex = followLiveHighlight ? liveWordIndex : fixedActiveWordIndex;
   const [hovered, setHovered] = useState<number | null>(null);
 
   // The reader supplies the words once its single surah-wide request resolves; until then the
@@ -89,4 +101,4 @@ export function AyahWordText({
       })}
     </p>
   );
-}
+});

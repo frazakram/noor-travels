@@ -580,7 +580,12 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
 
   function playAyah(index: number) {
     if (audio.playing && audio.playIndex === index) {
-      audio.pause();
+      audio.pausePlayback();
+    } else if (!audio.playing && audio.playIndex === index) {
+      // Paused on this ayah: playFromIndex resumes a paused native queue in place.
+      lastUserScrollAt.current = 0;
+      setViewIndex(index);
+      audio.playFromIndex(index);
     } else {
       audio.pause();
       lastUserScrollAt.current = 0;
@@ -591,7 +596,7 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
 
   function toggleToolbarPlay() {
     if (audio.playing) {
-      audio.pause();
+      audio.pausePlayback();
     } else {
       lastUserScrollAt.current = 0;
       audio.playFromIndex(viewIndex);
@@ -1137,7 +1142,7 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
               <AyahWordText
                 verseKey={a.verse_key}
                 words={wordsByVerse[a.verse_key]}
-                activeWordIndex={isPlaying ? audio.activeWordIndex : -1}
+                followLiveHighlight
                 fallbackArabic={ayahArabic(a.verse_key, a.arabic)}
                 isPlaying={isPlaying}
               />
