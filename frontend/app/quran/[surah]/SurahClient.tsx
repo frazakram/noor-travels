@@ -670,7 +670,10 @@ export default function SurahClient({ initialAyahs, initialName }: Props = {}) {
 
   return (
     <div className="space-y-4">
-      <AudioNoticeToast message={audio.audioNotice} onDismiss={audio.clearAudioNotice} />
+      <AudioNoticeToast
+        message={audio.audioNotice ? t(lang, audio.audioNotice.key).replace("{verse}", audio.audioNotice.verse ?? "") : null}
+        onDismiss={audio.clearAudioNotice}
+      />
       <Link
         href="/quran"
         className="inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-heading"

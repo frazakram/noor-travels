@@ -84,6 +84,12 @@ type LoadedAudio = {
   mode: "ayah" | "surah";
 };
 
+/** A notice for the reader to show, as an i18n key (this hook doesn't know the UI language). */
+export type AudioNotice = {
+  key: "audioNoticeRecitationSkipped" | "audioNoticeTranslationSkipped" | "audioNoticeStalled" | "audioNoticeScreenOff";
+  verse?: string;
+};
+
 type AudioPayload = {
   ayahs: AudioAyah[];
   playback_mode?: "ayah" | "surah";
@@ -232,7 +238,7 @@ export function useSurahAudio({
   const [status, setStatus] = useState("");
   // A reciter/translation clip that should exist but didn't play — surfaced to
   // the user explicitly instead of silently swapping in synthesized speech.
-  const [audioNotice, setAudioNotice] = useState<string | null>(null);
+  const [audioNotice, setAudioNotice] = useState<AudioNotice | null>(null);
   // Not state: see lib/word-highlight.ts. Only the playing ayah subscribes to it.
   const setActiveWordIndex = setWordHighlight;
   const [activeBismillahWordIndex, setActiveBismillahWordIndex] = useState(-1);
@@ -653,12 +659,11 @@ export function useSurahAudio({
         window as unknown as { noorOnPlaybackError?: (ayahIndex: number, kind: string, errorCode: string) => void }
       ).noorOnPlaybackError = (ayahIndex, kind) => {
         if (!nativeModeRef.current) return;
-        const vk = textAyahsRef.current[ayahIndex]?.verse_key ?? `ayah ${ayahIndex + 1}`;
-        setAudioNotice(
-          kind === "translation"
-            ? `Translation audio unavailable for ${vk} — skipped`
-            : `Recitation audio unavailable for ${vk} — skipped`,
-        );
+        const verse = textAyahsRef.current[ayahIndex]?.verse_key ?? `${surahNumber}:${ayahIndex + 1}`;
+        setAudioNotice({
+          key: kind === "translation" ? "audioNoticeTranslationSkipped" : "audioNoticeRecitationSkipped",
+          verse,
+        });
       };
       // Too many failures in a row (real outage, not one bad clip) — playback
       // has actually stopped. Distinct from noorOnPlaybackEnded so this isn't
@@ -666,7 +671,7 @@ export function useSurahAudio({
       (window as unknown as { noorOnPlaybackStalled?: () => void }).noorOnPlaybackStalled = () => {
         if (!nativeModeRef.current) return;
         pause();
-        setAudioNotice("Playback stopped — too many audio errors in a row. Check your connection.");
+        setAudioNotice({ key: "audioNoticeStalled" });
       };
       // Native (ExoPlayer) playback has no web <audio> element for ontimeupdate
       // to fire on, so the word-highlight glow would otherwise never move
@@ -1132,7 +1137,7 @@ export function useSurahAudio({
         // silent) per the same "call it out, don't silently degrade" rule as
         // the translation-audio path below.
         if (!stopRef.current && sessionRef.current === gen) {
-          setAudioNotice(`Recitation audio unavailable for ${text.verse_key} — skipped`);
+          setAudioNotice({ key: "audioNoticeRecitationSkipped", verse: text.verse_key });
         }
       }
     }
@@ -1154,7 +1159,7 @@ export function useSurahAudio({
           });
         } catch {
           if (!stopRef.current && sessionRef.current === gen) {
-            setAudioNotice(`Translation audio unavailable for ${text.verse_key} — skipped`);
+            setAudioNotice({ key: "audioNoticeTranslationSkipped", verse: text.verse_key });
           }
         }
       }
@@ -1292,7 +1297,7 @@ export function useSurahAudio({
         // screen off, so this can't be keyed on visibility.)
         if (queue.length) {
           pause();
-          setAudioNotice("Playback couldn't start while the screen was off. Tap play to continue.");
+          setAudioNotice({ key: "audioNoticeScreenOff" });
           return;
         }
       }
