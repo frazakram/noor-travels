@@ -3,6 +3,7 @@ import { Amiri, Inter } from "next/font/google";
 import { JsonLd } from "@/components/JsonLd";
 import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 import { AppShellDetect } from "@/components/AppShellDetect";
+import { ErrorReporter } from "@/components/ErrorReporter";
 import { AppTabBar } from "@/components/AppTabBar";
 import { ChatProvider } from "@/components/ChatProvider";
 import { ChatWidget } from "@/components/ChatWidget";
@@ -117,6 +118,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <SourceTransitionProvider>
               <NavigationProgress />
               <AppShellDetect />
+              <ErrorReporter />
               <Nav />
               {/* Fixed chrome goes BEFORE <main>: HTML streams and paints in
                   document order, so anything after the page content only shows

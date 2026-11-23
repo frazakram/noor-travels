@@ -35,6 +35,8 @@ type NoorAndroidBridge = {
   setPrayerLocation?: (json: string) => void;
   /** 1.9+: JSON of the native playback session (lib/playback-session.ts), or "null". */
   getQuranPlaybackSession?: () => string;
+  /** 1.10+: JSON array of crash reports saved since the last call (deleted once taken). */
+  takeCrashReports?: () => string;
   /** 1.9+: pause/resume the native queue in place; false when no queue is loaded. */
   setQuranQueuePlaying?: (play: boolean) => boolean;
   /** 1.8+: offline surah audio. The native queue plays the saved copy of any URL it has. */
@@ -277,5 +279,18 @@ export function nativeGetPlaybackSession(): NativePlaybackSession | null {
     return JSON.parse(raw) as NativePlaybackSession;
   } catch {
     return null;
+  }
+}
+
+export type NativeCrashReport = { kind: string; message: string; stack?: string; app_version?: string; path?: string };
+
+/** Crash reports the APK saved before Android closed it; [] on older APKs or in a browser. */
+export function nativeTakeCrashReports(): NativeCrashReport[] {
+  try {
+    const raw = bridge()?.takeCrashReports?.();
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((r) => r && typeof r.message === "string") : [];
+  } catch {
+    return [];
   }
 }

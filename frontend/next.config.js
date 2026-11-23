@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Short commit id baked in at build time, so an error report says which deploy it came from.
+  env: { NEXT_PUBLIC_BUILD_SHA: (process.env.VERCEL_GIT_COMMIT_SHA || "dev").slice(0, 7) },
   // Keep @xenova/transformers as a Node.js external — don't bundle ONNX/WASM through Turbopack
   serverExternalPackages: ["@huggingface/transformers", "onnxruntime-web"],
   // Acknowledge Turbopack (Next.js 16 default); no custom rules needed since
