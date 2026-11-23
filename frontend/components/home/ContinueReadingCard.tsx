@@ -5,11 +5,17 @@ import { useEffect, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import { loadLastRead, loadBookmarks, type QuranLastRead, type QuranBookmark } from "@/lib/quran-bookmarks";
 import { t } from "@/lib/i18n";
+import { useProgressSynced } from "@/hooks/useProgressSynced";
 
 export function ContinueReadingCard() {
   const { lang } = useLang();
   const [last, setLast] = useState<QuranLastRead | null>(null);
   const [bookmarks, setBookmarks] = useState<QuranBookmark[]>([]);
+
+  useProgressSynced(["quran-last-read", "quran-bookmarks"], () => {
+    setLast(loadLastRead());
+    setBookmarks(loadBookmarks().slice(0, 3));
+  });
 
   useEffect(() => {
     setLast(loadLastRead());

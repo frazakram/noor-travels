@@ -23,6 +23,7 @@ import {
 import { t, type Lang } from "@/lib/i18n";
 import { ayahArabic, displaySurahName } from "@/lib/quran-display";
 import type { Ayah } from "@/lib/quran-types";
+import { useProgressSynced } from "@/hooks/useProgressSynced";
 
 type SurahSummary = { number: number; name_en: string; ayah_count: number };
 
@@ -44,6 +45,8 @@ export default function HifzPage() {
   const [texts, setTexts] = useState<Record<number, Ayah[]>>({});
   const [showText, setShowText] = useState(false);
   const [today] = useState(dayKey);
+
+  useProgressSynced(["hifz"], () => setState(loadState()));
 
   useEffect(() => {
     setState(loadState());

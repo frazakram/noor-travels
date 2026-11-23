@@ -14,6 +14,7 @@ import {
 } from "@/lib/hadith-library";
 import { citationHref } from "@/lib/citation-links";
 import { t, type Lang } from "@/lib/i18n";
+import { useProgressSynced } from "@/hooks/useProgressSynced";
 
 type Hadith = {
   id: number;
@@ -217,6 +218,8 @@ export default function HadithPage() {
       return "loading";
     });
   }, []);
+
+  useProgressSynced(["hadith-favorites"], () => setFavorites(loadHadithFavorites()));
 
   useEffect(() => {
     setFavorites(loadHadithFavorites());

@@ -1,5 +1,7 @@
 "use client";
 
+import { notifyProgressChanged } from "./sync-signal.ts";
+
 export type DhikrProgress = {
   date: string; // YYYY-MM-DD, local time — resets when the day rolls over
   counts: Record<string, number>;
@@ -31,6 +33,7 @@ export function loadDhikrProgress(): DhikrProgress {
 
 function saveDhikrProgress(progress: DhikrProgress): void {
   localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+  notifyProgressChanged("dhikr-progress");
 }
 
 /** Increments an item's count, clamped to `target`. Returns the updated progress. */
@@ -75,5 +78,6 @@ export function toggleDhikrBookmark(id: string): string[] {
   }
   const next = list.slice(0, MAX_BOOKMARKS);
   localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(next));
+  notifyProgressChanged("dhikr-bookmarks");
   return next;
 }

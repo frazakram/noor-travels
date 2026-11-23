@@ -1,5 +1,6 @@
 import type { Lang } from "@/lib/i18n";
 import type { PrayerId } from "@/lib/salah";
+import { notifyProgressChanged } from "./sync-signal.ts";
 
 const STORAGE_KEY = "noor-salah-streak";
 
@@ -28,6 +29,7 @@ export function loadStreak(): StreakStore {
 
 export function saveStreak(store: StreakStore): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+  notifyProgressChanged("salah-streak");
 }
 
 export function todayKey(tz: string): string {
@@ -52,7 +54,7 @@ export function countToday(log: DayLog | undefined): number {
   return ALL_PRAYERS.filter((p) => log[p]).length;
 }
 
-function recomputeStreak(store: StreakStore, tz: string): StreakStore {
+export function recomputeStreak(store: StreakStore, tz: string): StreakStore {
   let streak = 0;
   const check = new Date();
   const today = todayKey(tz);

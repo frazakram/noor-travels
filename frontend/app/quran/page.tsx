@@ -13,6 +13,7 @@ import { cleanQuranText, displaySurahName } from "@/lib/quran-display";
 import { loadBookmarks, loadLastRead, type QuranBookmark, type QuranLastRead } from "@/lib/quran-bookmarks";
 import { SurahListDownload, SurahListOfflineHint } from "@/components/SurahAudioDownload";
 import { formatSurahDuration, getPreferredReciter, getSurahDurations } from "@/lib/quran-durations";
+import { useProgressSynced } from "@/hooks/useProgressSynced";
 
 type Surah = {
   number: number;
@@ -57,6 +58,11 @@ export default function QuranPage() {
   // Same preferences the reader uses, so a download here is the one the reader looks for.
   const [reciter, setReciter] = useState("ar.alafasy");
   const [audioLang, setAudioLang] = useState("en");
+
+  useProgressSynced(["quran-last-read", "quran-bookmarks"], () => {
+    setLastRead(loadLastRead());
+    setBookmarks(loadBookmarks());
+  });
 
   useEffect(() => {
     setLastRead(loadLastRead());

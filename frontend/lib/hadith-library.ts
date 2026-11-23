@@ -1,5 +1,7 @@
 "use client";
 
+import { notifyProgressChanged } from "./sync-signal.ts";
+
 export type FavoriteHadith = {
   id: number;
   reference: string;
@@ -38,6 +40,7 @@ export function loadHadithFavorites(): FavoriteHadith[] {
 
 function saveFavorites(list: FavoriteHadith[]): void {
   localStorage.setItem(FAVORITES_KEY, JSON.stringify(list.slice(0, MAX_FAVORITES)));
+  notifyProgressChanged("hadith-favorites");
 }
 
 export function isHadithFavorite(id: number): boolean {

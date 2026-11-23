@@ -4,6 +4,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 import { AppShellDetect } from "@/components/AppShellDetect";
 import { ErrorReporter } from "@/components/ErrorReporter";
+import { ProgressSync } from "@/components/ProgressSync";
 import { AppTabBar } from "@/components/AppTabBar";
 import { ChatProvider } from "@/components/ChatProvider";
 import { ChatWidget } from "@/components/ChatWidget";
@@ -119,6 +120,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <NavigationProgress />
               <AppShellDetect />
               <ErrorReporter />
+              <ProgressSync />
               <Nav />
               {/* Fixed chrome goes BEFORE <main>: HTML streams and paints in
                   document order, so anything after the page content only shows

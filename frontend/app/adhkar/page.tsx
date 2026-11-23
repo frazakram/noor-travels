@@ -22,6 +22,7 @@ import {
   setupMediaSession,
   updateMediaSession,
 } from "@/lib/media-session";
+import { useProgressSynced } from "@/hooks/useProgressSynced";
 
 type Adhkar = {
   id: string;
@@ -270,6 +271,11 @@ export default function AdhkarPage() {
   useEffect(() => {
     localStorage.setItem("noor-adhkar-include-translation", includeTranslation ? "1" : "0");
   }, [includeTranslation]);
+
+  useProgressSynced(["dhikr-progress", "dhikr-bookmarks"], () => {
+    setProgress(loadDhikrProgress());
+    setBookmarks(loadDhikrBookmarks());
+  });
 
   useEffect(() => {
     setProgress(loadDhikrProgress());

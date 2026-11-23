@@ -317,6 +317,8 @@ def delete_account(request: Request, body: DeleteAccountRequest, authorization: 
         _ensure_preferences_table(cur)
         cur.execute("DELETE FROM user_preferences WHERE user_id = %s", (user_id,))
         cur.execute("DELETE FROM user_learn_progress WHERE user_id = %s", (user_id,))
+        if use_sqlite():  # Postgres removes user_sync_docs through ON DELETE CASCADE
+            cur.execute("DELETE FROM user_sync_docs WHERE user_id = %s", (user_id,))
         chat_history.delete_all_for_user(cur, user_id)
         cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
     return {"deleted": True}

@@ -1,5 +1,7 @@
 "use client";
 
+import { notifyProgressChanged } from "./sync-signal.ts";
+
 export type QuranLastRead = {
   surah: number;
   ayah: number;
@@ -18,7 +20,7 @@ export type QuranBookmark = {
 
 const LAST_READ_KEY = "noor-quran-last-read";
 const BOOKMARKS_KEY = "noor-quran-bookmarks";
-const MAX_BOOKMARKS = 100;
+const MAX_BOOKMARKS = 300;
 
 export function loadLastRead(): QuranLastRead | null {
   if (typeof window === "undefined") return null;
@@ -46,6 +48,7 @@ export function saveLastRead(entry: Omit<QuranLastRead, "updatedAt"> & { updated
     updatedAt: entry.updatedAt ?? Date.now(),
   };
   localStorage.setItem(LAST_READ_KEY, JSON.stringify(next));
+  notifyProgressChanged("quran-last-read");
 }
 
 export function loadBookmarks(): QuranBookmark[] {
@@ -73,6 +76,7 @@ export function loadBookmarks(): QuranBookmark[] {
 
 function saveBookmarks(list: QuranBookmark[]): void {
   localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(list.slice(0, MAX_BOOKMARKS)));
+  notifyProgressChanged("quran-bookmarks");
 }
 
 export function isBookmarked(verseKey: string): boolean {

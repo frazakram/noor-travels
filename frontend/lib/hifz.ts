@@ -7,6 +7,8 @@
  * brings one back tomorrow. Pure functions over a plain JSON state kept on the device.
  */
 
+import { notifyProgressChanged } from "./sync-signal.ts";
+
 export type Grade = 0 | 1 | 2 | 3; // again, hard, good, easy
 
 export type HifzItem = {
@@ -162,6 +164,7 @@ export function loadState(): HifzState {
 export function saveState(state: HifzState): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    notifyProgressChanged("hifz");
   } catch {
     /* storage full or blocked: the session still works, it just won't persist */
   }
