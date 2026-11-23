@@ -56,7 +56,13 @@ type SurahAyahAudio = { ayah_number: number; audio: string | null; translation_a
 type PlayKind = "recitation" | "translation" | "all";
 type PlayState = { id: string; kind: PlayKind } | null;
 type AudioSegment = { itemId: string; url: string };
-const TRANSLATION_LANG: Lang = "ur";
+// The spoken translation is Urdu-only (see above); the written translation follows the reader's choice.
+const TEXT_LANGS: { id: Lang; labelKey: "english" | "urdu" | "hindi" }[] = [
+  { id: "en", labelKey: "english" },
+  { id: "ur", labelKey: "urdu" },
+  { id: "hi", labelKey: "hindi" },
+];
+const TEXT_LANG_KEY = "noor-adhkar-translation";
 
 function localized(item: Adhkar, lang: Lang, field: "title" | "translation"): string {
   const suffix = lang === "ur" ? "ur" : lang === "hi" ? "hi" : "en";
@@ -99,7 +105,8 @@ function DhikrCard({
   onPlayRecitation: () => void;
   onPlayTranslation: () => void;
 }) {
-  const title = localized(item, translationLang, "title");
+  // The heading follows the app's language; only the translation text follows the chosen language.
+  const title = localized(item, lang, "title");
   const translation = localized(item, translationLang, "translation");
   const done = count >= item.repeat_count;
   const isActive = playing?.id === item.id;
@@ -116,7 +123,7 @@ function DhikrCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="font-semibold text-heading" dir={translationLang === "ur" ? "rtl" : "ltr"}>
+          <h3 className="font-semibold text-heading" dir={lang === "ur" ? "rtl" : "ltr"}>
             {title}
           </h3>
           <p className="mt-0.5 text-xs text-accent">{item.source}</p>
@@ -147,7 +154,11 @@ function DhikrCard({
         {item.arabic}
       </p>
       <p className="mt-2 text-sm italic text-faint">{item.transliteration}</p>
-      <p className="mt-3 text-sm leading-relaxed text-body" dir={translationLang === "ur" ? "rtl" : "ltr"}>
+      <p
+        className={`mt-3 text-body ${translationLang === "ur" ? "text-base leading-loose" : "text-sm leading-relaxed"}`}
+        dir={translationLang === "ur" ? "rtl" : "ltr"}
+        lang={translationLang}
+      >
         {translation}
       </p>
 
@@ -227,6 +238,9 @@ export default function AdhkarPage() {
   const [query, setQuery] = useState("");
   const [showBookmarksOnly, setShowBookmarksOnly] = useState(false);
   const [includeTranslation, setIncludeTranslation] = useState(true);
+  // null until the saved choice is read, so the app language is used when there is none.
+  const [savedTextLang, setSavedTextLang] = useState<Lang | null>(null);
+  const textLang: Lang = savedTextLang ?? lang;
 
   const [progress, setProgress] = useState<DhikrProgress>({ date: "", counts: {} });
   const [bookmarks, setBookmarks] = useState<string[]>([]);
@@ -240,7 +254,18 @@ export default function AdhkarPage() {
   useEffect(() => {
     const saved = localStorage.getItem("noor-adhkar-include-translation");
     if (saved !== null) setIncludeTranslation(saved === "1");
+    const savedLang = localStorage.getItem(TEXT_LANG_KEY);
+    if (savedLang === "en" || savedLang === "ur" || savedLang === "hi") setSavedTextLang(savedLang);
   }, []);
+
+  const chooseTextLang = (next: Lang) => {
+    setSavedTextLang(next);
+    try {
+      localStorage.setItem(TEXT_LANG_KEY, next);
+    } catch {
+      /* private mode: the choice just isn't remembered */
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem("noor-adhkar-include-translation", includeTranslation ? "1" : "0");
@@ -276,7 +301,7 @@ export default function AdhkarPage() {
     const q = query.trim().toLowerCase();
     if (q) {
       list = list.filter((i) =>
-        [i.title_en, i.title_ur, i.title_hi, i.transliteration, i.translation_en, i.arabic].some((f) =>
+        [i.title_en, i.title_ur, i.title_hi, i.transliteration, i.translation_en, i.translation_ur, i.translation_hi, i.arabic].some((f) =>
           f.toLowerCase().includes(q),
         ),
       );
@@ -564,11 +589,23 @@ export default function AdhkarPage() {
       </div>
 
       <div className="card space-y-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2" role="group" aria-label={t(lang, "translation")}>
           <span className="shrink-0 text-xs text-faint">{t(lang, "translation")}</span>
-          <span className="shrink-0 rounded-md bg-noor-700 px-2.5 py-1 text-xs font-medium text-white dark:bg-noor-600">
-            {t(lang, "urdu")}
-          </span>
+          {TEXT_LANGS.map(({ id, labelKey }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => chooseTextLang(id)}
+              aria-pressed={textLang === id}
+              className={`shrink-0 rounded-md px-2.5 py-1 text-xs font-medium ${
+                textLang === id
+                  ? "bg-noor-700 text-white dark:bg-noor-600"
+                  : "border border-noor-200 text-muted dark:border-noor-600"
+              }`}
+            >
+              {t(lang, labelKey)}
+            </button>
+          ))}
         </div>
         <label className="flex items-center gap-2 text-xs text-body">
           <input
@@ -581,6 +618,8 @@ export default function AdhkarPage() {
             disabled={!!playing}
           />
           {t(lang, "includeTranslation")}
+          {/* The only recorded (human) translation audio is Urdu, whatever text language is shown. */}
+          <span className="text-faint">· {t(lang, "urdu")}</span>
         </label>
         <div className="flex flex-wrap items-center gap-2 border-t border-subtle pt-3">
           <button
@@ -673,7 +712,7 @@ export default function AdhkarPage() {
             key={item.id}
             item={item}
             lang={lang}
-            translationLang={TRANSLATION_LANG}
+            translationLang={textLang}
             count={progress.counts[item.id] ?? 0}
             bookmarked={bookmarks.includes(item.id)}
             playing={playing}
